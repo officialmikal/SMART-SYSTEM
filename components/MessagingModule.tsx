@@ -196,7 +196,7 @@ export const MessagingModule: React.FC<{ lang: Language }> = ({ lang }) => {
                   <span className="text-xs font-black text-gray-900">KES 1.00</span>
                </div>
                <div className="flex justify-between items-center w-full gap-4">
-                  <span className="text-[10px] font-bold text-gray-600 uppercase">Bulk Discount (>5K)</span>
+                  <span className="text-[10px] font-bold text-gray-600 uppercase">Bulk Discount (&gt;5K)</span>
                   <span className="text-xs font-black text-green-600">KES 0.85</span>
                </div>
             </div>

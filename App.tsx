@@ -19,7 +19,6 @@ import { Loader2, Lock, Mail, Smartphone, ShieldCheck, AlertCircle } from 'lucid
 const AUTH_DB = [
   {
     id: 'u1',
-    // Renamed username to email to match User interface
     email: 'principal@school.ac.ke',
     password: 'password123',
     name: 'Principal Maina',
@@ -28,7 +27,6 @@ const AUTH_DB = [
   },
   {
     id: 'u2',
-    // Renamed username to email to match User interface
     email: 'admin@school.ac.ke',
     password: 'adminpassword',
     name: 'Admin Kioko',
@@ -37,7 +35,6 @@ const AUTH_DB = [
   },
   {
     id: 'u3',
-    // Renamed username to email to match User interface
     email: 'teacher@school.ac.ke',
     password: 'teacherpassword',
     name: 'Tr. Wanjiku',
@@ -46,7 +43,6 @@ const AUTH_DB = [
   },
   {
     id: 'u4',
-    // Renamed username to email to match User interface
     email: 'student@school.ac.ke',
     password: 'studentpassword',
     name: 'Juma Kipruto',
@@ -55,7 +51,6 @@ const AUTH_DB = [
   },
   {
     id: 'u5',
-    // Renamed username to email to match User interface
     email: 'parent@school.ac.ke',
     password: 'parentpassword',
     name: 'Robert Kipruto',
@@ -76,20 +71,42 @@ const App: React.FC = () => {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
+  // PWA Installation State
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
     setIsAuthenticating(true);
 
-    // Simulate Network Latency
     await new Promise(resolve => setTimeout(resolve, 1200));
 
-    // Updated to lookup via email property
     const foundUser = AUTH_DB.find(u => u.email === username.toLowerCase() && u.password === password);
 
     if (foundUser) {
       const { password, ...userWithoutPassword } = foundUser;
-      // Fixed: Casting is now valid because email property is present
       setUser(userWithoutPassword as User);
       setCurrentTab('dashboard');
     } else {
@@ -102,7 +119,6 @@ const App: React.FC = () => {
     const roleUser = AUTH_DB.find(u => u.role === role);
     if (roleUser) {
       const { password, ...userWithoutPassword } = roleUser;
-      // Fixed: Casting is now valid because email property is present
       setUser(userWithoutPassword as User);
       setCurrentTab('dashboard');
     }
@@ -118,7 +134,6 @@ const App: React.FC = () => {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-blue-700 p-4 font-sans relative overflow-hidden">
-        {/* Background Decorative Elements */}
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600 rounded-full blur-[120px] opacity-50"></div>
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600 rounded-full blur-[120px] opacity-50"></div>
         
@@ -228,6 +243,7 @@ const App: React.FC = () => {
       lang={lang}
       setLang={setLang}
       switchRole={switchRole}
+      installApp={deferredPrompt ? handleInstallApp : undefined}
     >
       <main className="p-4 md:p-8 max-w-[1600px] mx-auto">
         {currentTab === 'dashboard' && <Dashboard user={user} lang={lang} />}

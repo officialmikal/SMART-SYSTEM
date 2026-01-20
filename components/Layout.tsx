@@ -17,7 +17,8 @@ import {
   ChevronDown,
   Shield,
   Calendar,
-  MessageSquare
+  MessageSquare,
+  Smartphone
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { Language, translations } from '../services/localizationService';
@@ -32,6 +33,7 @@ interface LayoutProps {
   lang: Language;
   setLang: (lang: Language) => void;
   switchRole?: (role: UserRole) => void;
+  installApp?: () => void;
   children: React.ReactNode;
 }
 
@@ -45,11 +47,11 @@ export const Layout: React.FC<LayoutProps> = ({
   lang,
   setLang,
   switchRole,
+  installApp,
   children 
 }) => {
   const t = translations[lang];
   
-  // Define visibility permissions for each module
   const hasAccess = (role: UserRole, tabId: string): boolean => {
     switch (tabId) {
       case 'dashboard': return true;
@@ -98,7 +100,7 @@ export const Layout: React.FC<LayoutProps> = ({
           </button>
         </div>
 
-        <nav className="p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-180px)]">
+        <nav className="p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-280px)]">
           {menuItems.map((item) => (
             <button
               key={item.id}
@@ -117,6 +119,25 @@ export const Layout: React.FC<LayoutProps> = ({
         </nav>
 
         <div className="absolute bottom-0 w-full p-4 border-t bg-gray-50/50">
+          {/* PWA Install Promotion Card */}
+          {installApp && (
+            <div className="mb-4 p-4 bg-blue-600 rounded-2xl shadow-xl shadow-blue-200 text-white relative overflow-hidden group">
+               <div className="absolute -right-2 -bottom-2 opacity-10 group-hover:scale-110 transition-transform">
+                  <Smartphone className="w-16 h-16" />
+               </div>
+               <div className="relative z-10">
+                 <h4 className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Get the App</h4>
+                 <p className="text-[11px] font-bold leading-tight mb-3">Install ElimuSmart for offline access.</p>
+                 <button 
+                  onClick={installApp}
+                  className="w-full py-2 bg-white text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-50 transition-colors shadow-sm"
+                 >
+                   Install Now
+                 </button>
+               </div>
+            </div>
+          )}
+
           <div className="mb-4 px-4">
              <div className="text-[10px] font-black uppercase text-gray-400 tracking-widest mb-2">School Version</div>
              <div className="text-[10px] font-bold text-gray-600">v2.4.0 Standard</div>
