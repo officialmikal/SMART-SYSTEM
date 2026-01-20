@@ -1,0 +1,165 @@
+
+import React from 'react';
+import { 
+  Users, 
+  TrendingUp, 
+  CheckCircle, 
+  Clock,
+  ArrowUpRight,
+  ArrowDownRight,
+  AlertCircle,
+  Banknote,
+  Target,
+  Forward
+} from 'lucide-react';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  AreaChart,
+  Area
+} from 'recharts';
+import { User } from '../types';
+import { Language, translations } from '../services/localizationService';
+
+const data = [
+  { name: 'Term 1', collection: 4.2 },
+  { name: 'Term 2', collection: 3.8 },
+  { name: 'Term 3', collection: 5.1 },
+];
+
+const attendanceData = [
+  { day: 'Mon', present: 450, total: 480 },
+  { day: 'Tue', present: 465, total: 480 },
+  { day: 'Wed', present: 420, total: 480 },
+  { day: 'Thu', present: 470, total: 480 },
+  { day: 'Fri', present: 455, total: 480 },
+];
+
+export const Dashboard: React.FC<{ user: User, lang: Language }> = ({ user, lang }) => {
+  const t = translations[lang];
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-2xl font-black text-gray-800 tracking-tight uppercase">{t.karibu}, {user.name}</h1>
+        <p className="text-gray-500 font-medium tracking-tight">System overview for today's school operations.</p>
+      </div>
+
+      {/* Primary Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {[
+          { label: t.total_expected, value: '6.24M', icon: Target, color: 'indigo', change: 'Target 2024', positive: true },
+          { label: t.collected_fee, value: '4.20M', icon: Banknote, color: 'green', change: '+8%', positive: true },
+          { label: t.outstanding_fees, value: '1.80M', icon: AlertCircle, color: 'red', change: '+KES 200k', positive: false },
+          { label: t.prepaid_fees, value: '240K', icon: Forward, color: 'blue', change: 'Adv. Payments', positive: true },
+        ].map((stat, idx) => (
+          <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between group hover:shadow-lg transition-all">
+            <div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{stat.label}</p>
+              <h3 className={`text-2xl font-black mt-1 tracking-tighter ${stat.color === 'red' ? 'text-red-700' : stat.color === 'green' ? 'text-green-700' : 'text-gray-900'}`}>{stat.value}</h3>
+              <div className={`mt-2 flex items-center text-[10px] font-black uppercase tracking-widest ${stat.positive ? 'text-green-600' : 'text-red-600'}`}>
+                {stat.positive ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
+                {stat.change}
+              </div>
+            </div>
+            <div className={`p-3 rounded-xl transition-transform group-hover:scale-110 ${
+              stat.color === 'blue' ? 'bg-blue-50 text-blue-600' : 
+              stat.color === 'green' ? 'bg-green-50 text-green-600' : 
+              stat.color === 'red' ? 'bg-red-50 text-red-600' : 
+              stat.color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
+              'bg-purple-50 text-purple-600'
+            } border border-white shadow-sm`}>
+              <stat.icon className="w-5 h-5" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Fee Collection Chart */}
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-8">
+            <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight">Fee Collection Velocity</h3>
+            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">3 Term Comparison</div>
+          </div>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data}>
+                <defs>
+                  <linearGradient id="colorColl" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
+                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" stroke="#94a3b8" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} />
+                <YAxis stroke="#94a3b8" fontSize={10} fontWeight="bold" tickLine={false} axisLine={false} />
+                <Tooltip 
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  labelStyle={{ fontWeight: '800', textTransform: 'uppercase', fontSize: '10px', color: '#1e293b' }}
+                />
+                <Area type="monotone" dataKey="collection" stroke="#2563eb" strokeWidth={4} fillOpacity={1} fill="url(#colorColl)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Operational Stats Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <div className="flex items-center gap-3 mb-4">
+                 <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                    <Users className="w-5 h-5" />
+                 </div>
+                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.total_students}</p>
+              </div>
+              <h4 className="text-4xl font-black text-gray-900 tracking-tighter">482</h4>
+              <p className="text-[10px] text-green-600 font-bold uppercase mt-2">+12 Enrolled this term</p>
+           </div>
+           
+           <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <div className="flex items-center gap-3 mb-4">
+                 <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
+                    <CheckCircle className="w-5 h-5" />
+                 </div>
+                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.avg_attendance}</p>
+              </div>
+              <h4 className="text-4xl font-black text-gray-900 tracking-tighter">94%</h4>
+              <p className="text-[10px] text-blue-600 font-bold uppercase mt-2">Consistent Engagement</p>
+           </div>
+
+           <div className="bg-blue-600 p-6 rounded-2xl shadow-xl shadow-blue-100 text-white sm:col-span-2">
+              <div className="flex justify-between items-start mb-4">
+                 <div>
+                    <h4 className="font-black uppercase tracking-tight">System Health</h4>
+                    <p className="text-[10px] opacity-70 font-bold uppercase tracking-widest">Real-time status</p>
+                 </div>
+                 <CheckCircle className="w-6 h-6" />
+              </div>
+              <div className="space-y-3 mt-6">
+                 <div className="flex justify-between text-[10px] font-bold uppercase">
+                    <span>M-Pesa Gateway</span>
+                    <span className="text-green-300">Operational</span>
+                 </div>
+                 <div className="w-full h-1 bg-blue-500 rounded-full overflow-hidden">
+                    <div className="w-[98%] h-full bg-green-300"></div>
+                 </div>
+                 <div className="flex justify-between text-[10px] font-bold uppercase">
+                    <span>SMS Alerts (Africa's Talking)</span>
+                    <span className="text-green-300">Active</span>
+                 </div>
+                 <div className="w-full h-1 bg-blue-500 rounded-full overflow-hidden">
+                    <div className="w-[100%] h-full bg-green-300"></div>
+                 </div>
+              </div>
+           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
