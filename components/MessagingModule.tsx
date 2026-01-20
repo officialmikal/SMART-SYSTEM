@@ -17,7 +17,11 @@ import {
   LayoutGrid,
   FileText,
   Smartphone,
-  Info
+  Info,
+  Plus,
+  ArrowUpRight,
+  X,
+  CreditCard
 } from 'lucide-react';
 import { smsService } from '../services/smsService';
 import { Language, translations } from '../services/localizationService';
@@ -36,17 +40,21 @@ export const MessagingModule: React.FC<{ lang: Language }> = ({ lang }) => {
   const t = translations[lang];
   
   // UI State
-  const [activeTab, setActiveTab] = useState<'compose' | 'history' | 'automated'>('compose');
+  const [activeTab, setActiveTab] = useState<'compose' | 'history' | 'automated' | 'credits'>('compose');
   const [selectedType, setSelectedType] = useState<MessageType>('fee');
   const [targetClass, setTargetClass] = useState('All Classes');
   const [isSending, setIsSending] = useState(false);
   const [customMessage, setCustomMessage] = useState('');
-  const [smsBalance, setSmsBalance] = useState(4250); // Simulated AT Credit in KES
+  const [smsBalance, setSmsBalance] = useState(4250); // Simulated AT Credit in KES/Units
+  const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
+  const [topUpAmount, setTopUpAmount] = useState('1000');
+  const [isTopUpProcessing, setIsTopUpProcessing] = useState(false);
   
   // Historical logs
   const [logs, setLogs] = useState([
     { id: '1', type: 'Fee Reminder', recipients: 45, date: '2024-05-10', status: 'Delivered', cost: 45 },
     { id: '2', type: 'Opening Date', recipients: 482, date: '2024-05-01', status: 'Delivered', cost: 482 },
+    { id: '3', type: 'CREDIT_TOPUP', recipients: 0, date: '2024-04-15', status: 'Confirmed', cost: -2000 },
   ]);
 
   // Template Generation Logic
@@ -70,34 +78,60 @@ export const MessagingModule: React.FC<{ lang: Language }> = ({ lang }) => {
   }, [selectedType, customMessage]);
 
   const handleSendBulk = async () => {
-    setIsSending(true);
-    // Logic to filter recipients based on targetClass and selectedType
-    const filtered = RECIPIENTS.filter(s => 
+    const recipientsToMessage = RECIPIENTS.filter(s => 
       (targetClass === 'All Classes' || s.class === targetClass) &&
       (selectedType !== 'fee' || s.feeBalance > 0)
     );
 
+    if (smsBalance < recipientsToMessage.length) {
+      alert("Insufficient SMS Credits. Please Top Up your gateway account.");
+      return;
+    }
+
+    setIsSending(true);
     try {
-      // Simulate API call to Africa's Talking
       await new Promise(r => setTimeout(r, 2000));
-      
       const newLog = {
         id: Math.random().toString(),
         type: selectedType.toUpperCase(),
-        recipients: filtered.length,
+        recipients: recipientsToMessage.length,
         date: new Date().toISOString().split('T')[0],
         status: 'Delivered',
-        cost: filtered.length
+        cost: recipientsToMessage.length
       };
-      
       setLogs([newLog, ...logs]);
-      setSmsBalance(prev => prev - filtered.length);
-      alert(`Success: ${filtered.length} messages dispatched via Africa's Talking Gateway.`);
+      setSmsBalance(prev => prev - recipientsToMessage.length);
+      alert(`Success: ${recipientsToMessage.length} messages dispatched via Africa's Talking Gateway.`);
       setCustomMessage('');
     } catch (error) {
       alert("Failed to send: Check Africa's Talking API balance.");
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleTopUp = async () => {
+    setIsTopUpProcessing(true);
+    try {
+      // Simulate M-Pesa STK Push flow
+      await new Promise(r => setTimeout(r, 3000));
+      const amount = parseInt(topUpAmount);
+      setSmsBalance(prev => prev + amount);
+      const topUpLog = {
+        id: 'TX-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+        type: 'CREDIT_TOPUP',
+        recipients: 0,
+        date: new Date().toISOString().split('T')[0],
+        status: 'Confirmed',
+        cost: -amount
+      };
+      setLogs([topUpLog, ...logs]);
+      setIsTopUpModalOpen(false);
+      alert(`KES ${amount} successfully added to your SMS Gateway account via M-Pesa.`);
+    } catch (e) {
+      alert("Payment failed. Please try again.");
+    } finally {
+      setIsTopUpProcessing(false);
     }
   };
 
@@ -135,25 +169,43 @@ export const MessagingModule: React.FC<{ lang: Language }> = ({ lang }) => {
         <div className="bg-white p-6 rounded-2xl border-2 border-gray-50 shadow-sm flex items-center justify-between group hover:border-blue-100 transition-all">
           <div className="space-y-1">
             <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Gateway Credits</p>
-            <h3 className="text-3xl font-black text-gray-900 tracking-tighter">KES {smsBalance.toLocaleString()}</h3>
+            <h3 className={`text-3xl font-black tracking-tighter ${smsBalance < 500 ? 'text-red-600' : 'text-gray-900'}`}>{smsBalance.toLocaleString()} Units</h3>
             <div className="flex items-center gap-1.5 text-[9px] font-black text-green-600 uppercase">
               <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
               Daraja Sync Active
             </div>
+            <button 
+              onClick={() => setIsTopUpModalOpen(true)}
+              className="mt-3 flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-md shadow-blue-100"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Top Up Units
+            </button>
           </div>
-          <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl">
+          <div className={`p-4 rounded-2xl ${smsBalance < 500 ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
             <Wallet className="w-8 h-8" />
           </div>
         </div>
 
         <div className="bg-white p-6 rounded-2xl border-2 border-gray-50 shadow-sm flex items-center justify-between">
           <div className="space-y-1">
-            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Sent Today</p>
-            <h3 className="text-3xl font-black text-gray-900 tracking-tighter">527</h3>
-            <p className="text-[9px] text-gray-400 font-bold uppercase">Last dispatch: 10:45 AM</p>
+            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Consumption Rates</p>
+            <div className="space-y-2 mt-2">
+               <div className="flex justify-between items-center w-full gap-4">
+                  <span className="text-[10px] font-bold text-gray-600 uppercase">Per SMS Unit</span>
+                  <span className="text-xs font-black text-gray-900">KES 1.00</span>
+               </div>
+               <div className="flex justify-between items-center w-full gap-4">
+                  <span className="text-[10px] font-bold text-gray-600 uppercase">Bulk Discount (>5K)</span>
+                  <span className="text-xs font-black text-green-600">KES 0.85</span>
+               </div>
+            </div>
+            <p className="text-[9px] text-blue-600 font-black uppercase tracking-widest mt-3 flex items-center gap-1">
+               <Info className="w-3 h-3" /> View Unit Calculator
+            </p>
           </div>
-          <div className="p-4 bg-green-50 text-green-600 rounded-2xl">
-            <Send className="w-8 h-8" />
+          <div className="p-4 bg-amber-50 text-amber-600 rounded-2xl">
+            <ArrowUpRight className="w-8 h-8" />
           </div>
         </div>
 
@@ -314,10 +366,10 @@ export const MessagingModule: React.FC<{ lang: Language }> = ({ lang }) => {
              <table className="w-full text-left">
                <thead>
                  <tr className="bg-gray-50/50 border-b text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                   <th className="px-8 py-5">Broadcast Type</th>
+                   <th className="px-8 py-5">Activity / Broadcast Type</th>
                    <th className="px-8 py-5">Dispatch Date</th>
                    <th className="px-8 py-5 text-center">Recipients</th>
-                   <th className="px-8 py-5">Cost (KES)</th>
+                   <th className="px-8 py-5">Units / Cost (KES)</th>
                    <th className="px-8 py-5 text-center">Status</th>
                    <th className="px-8 py-5 text-right">Action</th>
                  </tr>
@@ -325,14 +377,25 @@ export const MessagingModule: React.FC<{ lang: Language }> = ({ lang }) => {
                <tbody className="divide-y">
                  {logs.map(log => (
                    <tr key={log.id} className="hover:bg-gray-50/30 transition-colors group">
-                     <td className="px-8 py-6 font-black text-gray-900 tracking-tight">{log.type}</td>
+                     <td className="px-8 py-6">
+                        <div className="flex items-center gap-3">
+                           <div className={`p-2 rounded-lg ${log.type === 'CREDIT_TOPUP' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                              {log.type === 'CREDIT_TOPUP' ? <ArrowUpRight className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
+                           </div>
+                           <span className="font-black text-gray-900 tracking-tight">{log.type.replace('_', ' ')}</span>
+                        </div>
+                     </td>
                      <td className="px-8 py-6 text-gray-500 font-bold text-sm">{log.date}</td>
                      <td className="px-8 py-6 text-center">
-                        <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-black">{log.recipients} Parents</span>
+                        <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-black">
+                          {log.recipients > 0 ? `${log.recipients} Parents` : '--'}
+                        </span>
                      </td>
-                     <td className="px-8 py-6 font-black text-gray-700">{log.cost.toLocaleString()}.00</td>
+                     <td className={`px-8 py-6 font-black ${log.cost < 0 ? 'text-green-600' : 'text-gray-700'}`}>
+                        {log.cost < 0 ? '+' + Math.abs(log.cost).toLocaleString() : log.cost.toLocaleString()}
+                     </td>
                      <td className="px-8 py-6 text-center">
-                        <span className="flex items-center justify-center gap-1.5 text-[10px] font-black uppercase text-green-600">
+                        <span className={`flex items-center justify-center gap-1.5 text-[10px] font-black uppercase ${log.status === 'Confirmed' ? 'text-green-600' : 'text-blue-600'}`}>
                            <CheckCircle2 className="w-3.5 h-3.5" />
                            {log.status}
                         </span>
@@ -362,6 +425,82 @@ export const MessagingModule: React.FC<{ lang: Language }> = ({ lang }) => {
            <button className="bg-blue-600 text-white font-black uppercase tracking-widest px-8 py-4 rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-100">
              Configure New Workflow
            </button>
+        </div>
+      )}
+
+      {/* M-Pesa Top Up Modal */}
+      {isTopUpModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-[32px] w-full max-w-lg shadow-2xl relative overflow-hidden animate-in zoom-in duration-300">
+             <div className="bg-gray-900 p-8 text-white relative">
+                <div className="absolute top-0 right-0 p-6 opacity-10">
+                   <Smartphone className="w-20 h-20" />
+                </div>
+                <div className="flex items-center gap-4">
+                   <div className="p-3 bg-green-500 rounded-2xl">
+                      <CreditCard className="w-6 h-6 text-white" />
+                   </div>
+                   <div>
+                      <h3 className="text-xl font-black uppercase tracking-tight">Buy SMS Units</h3>
+                      <p className="text-[10px] font-black text-green-400 uppercase tracking-widest mt-1">Lipa na M-Pesa Online</p>
+                   </div>
+                </div>
+             </div>
+
+             <div className="p-8 space-y-6">
+                <div className="space-y-4">
+                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Select Unit Package</label>
+                   <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { amt: '500', units: '500', label: 'Starter' },
+                        { amt: '1000', units: '1000', label: 'Growth' },
+                        { amt: '2500', units: '2500', label: 'Pro' },
+                        { amt: '5000', units: '5800', label: 'Bulk' }
+                      ].map(pkg => (
+                        <button 
+                          key={pkg.amt}
+                          onClick={() => setTopUpAmount(pkg.amt)}
+                          className={`flex flex-col p-4 rounded-2xl border-2 transition-all text-left ${topUpAmount === pkg.amt ? 'border-green-600 bg-green-50 shadow-md' : 'border-gray-50 hover:border-gray-100'}`}
+                        >
+                           <span className={`text-[9px] font-black uppercase tracking-widest ${topUpAmount === pkg.amt ? 'text-green-600' : 'text-gray-400'}`}>{pkg.label}</span>
+                           <span className="text-lg font-black text-gray-900 mt-1">KES {pkg.amt}</span>
+                           <span className="text-[10px] font-bold text-gray-500">{pkg.units} SMS Units</span>
+                        </button>
+                      ))}
+                   </div>
+                </div>
+
+                <div className="space-y-2">
+                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">M-Pesa Number</label>
+                   <div className="relative">
+                      <input 
+                        type="text" 
+                        defaultValue="0711 222 333"
+                        className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black text-gray-800 focus:ring-4 focus:ring-green-100 focus:border-green-500 transition-all outline-none pl-12"
+                      />
+                      <Phone className="w-5 h-5 absolute left-4 top-4 text-gray-400" />
+                   </div>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                   <button 
+                      onClick={handleTopUp}
+                      disabled={isTopUpProcessing}
+                      className="w-full bg-green-600 text-white font-black uppercase tracking-widest py-4 rounded-2xl hover:bg-green-700 transition-all shadow-xl shadow-green-100 flex items-center justify-center gap-2"
+                   >
+                      {isTopUpProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                      {isTopUpProcessing ? 'Pushing STK to Phone...' : `Pay KES ${topUpAmount}`}
+                   </button>
+                   <button 
+                      onClick={() => setIsTopUpModalOpen(false)}
+                      disabled={isTopUpProcessing}
+                      className="w-full py-2 text-gray-400 font-black uppercase tracking-widest text-[9px] hover:text-gray-600 transition-colors"
+                   >
+                      Cancel Purchase
+                   </button>
+                </div>
+             </div>
+          </div>
         </div>
       )}
     </div>
