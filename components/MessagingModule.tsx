@@ -21,7 +21,8 @@ import {
   Plus,
   ArrowUpRight,
   X,
-  CreditCard
+  CreditCard,
+  History
 } from 'lucide-react';
 import { smsService } from '../services/smsService';
 import { Language, translations } from '../services/localizationService';
@@ -90,21 +91,21 @@ export const MessagingModule: React.FC<{ lang: Language }> = ({ lang }) => {
 
     setIsSending(true);
     try {
+      // Simulate real SMS dispatch
       await new Promise(r => setTimeout(r, 2000));
-      const newLog = {
-        id: Math.random().toString(),
-        type: selectedType.toUpperCase(),
+      setSmsBalance(prev => prev - recipientsToMessage.length);
+      setLogs([{
+        id: Date.now().toString(),
+        type: selectedType === 'custom' ? 'Announcement' : selectedType === 'fee' ? 'Fee Reminder' : 'Academic Alert',
         recipients: recipientsToMessage.length,
         date: new Date().toISOString().split('T')[0],
         status: 'Delivered',
         cost: recipientsToMessage.length
-      };
-      setLogs([newLog, ...logs]);
-      setSmsBalance(prev => prev - recipientsToMessage.length);
-      alert(`Success: ${recipientsToMessage.length} messages dispatched via Africa's Talking Gateway.`);
+      }, ...logs]);
+      alert(`Bulk campaign dispatched to ${recipientsToMessage.length} recipients.`);
       setCustomMessage('');
     } catch (error) {
-      alert("Failed to send: Check Africa's Talking API balance.");
+      alert("Failed to connect to SMS Gateway.");
     } finally {
       setIsSending(false);
     }
@@ -112,397 +113,295 @@ export const MessagingModule: React.FC<{ lang: Language }> = ({ lang }) => {
 
   const handleTopUp = async () => {
     setIsTopUpProcessing(true);
-    try {
-      // Simulate M-Pesa STK Push flow
-      await new Promise(r => setTimeout(r, 3000));
-      const amount = parseInt(topUpAmount);
-      setSmsBalance(prev => prev + amount);
-      const topUpLog = {
-        id: 'TX-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
-        type: 'CREDIT_TOPUP',
-        recipients: 0,
-        date: new Date().toISOString().split('T')[0],
-        status: 'Confirmed',
-        cost: -amount
-      };
-      setLogs([topUpLog, ...logs]);
-      setIsTopUpModalOpen(false);
-      alert(`KES ${amount} successfully added to your SMS Gateway account via M-Pesa.`);
-    } catch (e) {
-      alert("Payment failed. Please try again.");
-    } finally {
-      setIsTopUpProcessing(false);
-    }
+    await new Promise(r => setTimeout(r, 1500));
+    setSmsBalance(prev => prev + parseInt(topUpAmount));
+    setLogs([{
+      id: Date.now().toString(),
+      type: 'CREDIT_TOPUP',
+      recipients: 0,
+      date: new Date().toISOString().split('T')[0],
+      status: 'Confirmed',
+      cost: -parseInt(topUpAmount)
+    }, ...logs]);
+    setIsTopUpProcessing(false);
+    setIsTopUpModalOpen(false);
+    alert("Credits topped up successfully via M-Pesa STK.");
   };
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-20">
+    <div className="space-y-8 max-w-6xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-800 tracking-tight uppercase">Communication Hub</h1>
-          <p className="text-gray-500 font-medium tracking-tight">Parental alerts & Africa's Talking SMS Gateway</p>
+          <h1 className="text-2xl font-black text-gray-800 tracking-tight uppercase">Cloud Messaging Hub</h1>
+          <p className="text-gray-500 font-medium">Manage bulk SMS alerts and automated parent notifications.</p>
         </div>
-        <div className="flex p-1.5 bg-gray-100 rounded-xl no-print">
-          <button 
-            onClick={() => setActiveTab('compose')}
-            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'compose' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            Compose Bulk
-          </button>
-          <button 
-            onClick={() => setActiveTab('automated')}
-            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'automated' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            Automated Rules
-          </button>
-          <button 
-            onClick={() => setActiveTab('history')}
-            className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
-          >
-            Dispatch Log
-          </button>
+        <div className="flex items-center gap-3 bg-blue-600 p-1.5 rounded-2xl shadow-xl shadow-blue-100">
+           <div className="px-4 py-2 flex items-center gap-2">
+              <Smartphone className="w-5 h-5 text-white opacity-60" />
+              <div className="text-right">
+                <p className="text-[9px] font-black text-blue-200 uppercase leading-none mb-1">SMS Balance</p>
+                <p className="text-lg font-black text-white leading-none">{smsBalance.toLocaleString()}</p>
+              </div>
+           </div>
+           <button 
+            onClick={() => setIsTopUpModalOpen(true)}
+            className="bg-white text-blue-600 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest hover:bg-blue-50 transition-all flex items-center gap-2"
+           >
+             <Plus className="w-4 h-4" />
+             Top Up
+           </button>
         </div>
       </div>
 
-      {/* SMS Gateway Health & Balance */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border-2 border-gray-50 shadow-sm flex items-center justify-between group hover:border-blue-100 transition-all">
-          <div className="space-y-1">
-            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Gateway Credits</p>
-            <h3 className={`text-3xl font-black tracking-tighter ${smsBalance < 500 ? 'text-red-600' : 'text-gray-900'}`}>{smsBalance.toLocaleString()} Units</h3>
-            <div className="flex items-center gap-1.5 text-[9px] font-black text-green-600 uppercase">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-              Daraja Sync Active
-            </div>
-            <button 
-              onClick={() => setIsTopUpModalOpen(true)}
-              className="mt-3 flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-md shadow-blue-100"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Top Up Units
-            </button>
-          </div>
-          <div className={`p-4 rounded-2xl ${smsBalance < 500 ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
-            <Wallet className="w-8 h-8" />
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <aside className="md:col-span-1">
+          <nav className="bg-white p-2 rounded-2xl border border-gray-100 shadow-sm space-y-1">
+             <NavTab active={activeTab === 'compose'} onClick={() => setActiveTab('compose')} icon={MessageSquare} label="Compose Bulk" />
+             <NavTab active={activeTab === 'automated'} onClick={() => setActiveTab('automated')} icon={Clock} label="Automation" />
+             <NavTab active={activeTab === 'history'} onClick={() => setActiveTab('history')} icon={History} label="Logs & Delivery" />
+          </nav>
 
-        <div className="bg-white p-6 rounded-2xl border-2 border-gray-50 shadow-sm flex items-center justify-between">
-          <div className="space-y-1">
-            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Consumption Rates</p>
-            <div className="space-y-2 mt-2">
-               <div className="flex justify-between items-center w-full gap-4">
-                  <span className="text-[10px] font-bold text-gray-600 uppercase">Per SMS Unit</span>
-                  <span className="text-xs font-black text-gray-900">KES 1.00</span>
+          <div className="mt-6 p-6 bg-indigo-900 rounded-3xl text-white relative overflow-hidden">
+             <div className="absolute top-0 right-0 p-4 opacity-10">
+               <Info className="w-16 h-16" />
+             </div>
+             <p className="text-[10px] font-black uppercase tracking-widest opacity-60 mb-2">Gateway Status</p>
+             <div className="flex items-center gap-2 text-green-400">
+                <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-xs font-black uppercase tracking-widest">Active (Africa's Talking)</span>
+             </div>
+             <p className="text-[10px] mt-4 opacity-70 font-medium leading-relaxed">Integrated with Safaricom Daraja for real-time STK credit top-ups.</p>
+          </div>
+        </aside>
+
+        <div className="md:col-span-3">
+          {activeTab === 'compose' && (
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden animate-in fade-in duration-300">
+               <div className="p-8 border-b bg-gray-50/50 flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Compose Campaign</h3>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Direct Parent Outreach</p>
+                  </div>
                </div>
-               <div className="flex justify-between items-center w-full gap-4">
-                  <span className="text-[10px] font-bold text-gray-600 uppercase">Bulk Discount (&gt;5K)</span>
-                  <span className="text-xs font-black text-green-600">KES 0.85</span>
-               </div>
-            </div>
-            <p className="text-[9px] text-blue-600 font-black uppercase tracking-widest mt-3 flex items-center gap-1">
-               <Info className="w-3 h-3" /> View Unit Calculator
-            </p>
-          </div>
-          <div className="p-4 bg-amber-50 text-amber-600 rounded-2xl">
-            <ArrowUpRight className="w-8 h-8" />
-          </div>
-        </div>
-
-        <div className="bg-gray-900 p-6 rounded-2xl shadow-xl flex items-center justify-between text-white overflow-hidden relative">
-          <div className="relative z-10 space-y-1">
-            <p className="text-[9px] font-black opacity-60 uppercase tracking-widest">Auto-Reminder Engine</p>
-            <h3 className="text-lg font-black tracking-tight leading-none">3 active flows scheduled for today</h3>
-            <button className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all">
-              Manage Rules
-            </button>
-          </div>
-          <div className="absolute right-0 bottom-0 p-4 opacity-10">
-             <Smartphone className="w-24 h-24" />
-          </div>
-        </div>
-      </div>
-
-      {activeTab === 'compose' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in duration-300">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden">
-               <div className="p-8 border-b bg-gray-50/50">
-                  <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight flex items-center gap-3">
-                    <MessageSquare className="w-6 h-6 text-blue-600" />
-                    New Bulk Dispatch
-                  </h3>
-                  <p className="text-xs text-gray-500 font-medium mt-1">Select a template or compose a manual broadcast message.</p>
-               </div>
-
+               
                <div className="p-8 space-y-8">
-                 <div className="space-y-4">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Message Intent (Template)</label>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                       {[
-                         { id: 'fee', label: 'Fee Reminder', icon: Wallet },
-                         { id: 'opening', label: 'Opening Date', icon: Calendar },
-                         { id: 'closing', label: 'Closing Date', icon: Clock },
-                         { id: 'custom', label: 'Custom SMS', icon: FileText }
-                       ].map(type => (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Campaign Type</label>
+                       <div className="grid grid-cols-2 gap-2">
+                          <TypeBtn active={selectedType === 'fee'} label="Fee Arrears" onClick={() => setSelectedType('fee')} icon={Wallet} />
+                          <TypeBtn active={selectedType === 'opening'} label="Term Dates" onClick={() => setSelectedType('opening')} icon={Calendar} />
+                          <TypeBtn active={selectedType === 'closing'} label="End of Term" onClick={() => setSelectedType('closing')} icon={CheckCircle2} />
+                          <TypeBtn active={selectedType === 'custom'} label="Announcement" onClick={() => setSelectedType('custom')} icon={LayoutGrid} />
+                       </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Target Audience</label>
+                       <select 
+                        value={targetClass}
+                        onChange={(e) => setTargetClass(e.target.value)}
+                        className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black text-sm uppercase outline-none focus:border-blue-500 transition-all"
+                       >
+                         <option>All Classes</option>
+                         {KENYAN_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+                       </select>
+                       <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 flex items-center gap-3">
+                          <Users className="w-5 h-5 text-blue-600" />
+                          <span className="text-[10px] font-black uppercase text-blue-900">{RECIPIENTS.filter(s => targetClass === 'All Classes' || s.class === targetClass).length} Parent Contacts Targeted</span>
+                       </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Message Content</label>
+                    {selectedType === 'custom' ? (
+                      <textarea 
+                        value={customMessage}
+                        onChange={(e) => setCustomMessage(e.target.value)}
+                        placeholder="Type your announcement here..."
+                        className="w-full p-6 bg-gray-50 border-2 border-gray-100 rounded-3xl h-32 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-medium"
+                      />
+                    ) : (
+                      <div className="p-6 bg-gray-100 rounded-3xl border-2 border-dashed border-gray-200 text-gray-400 italic font-medium">
+                        Using standardized template. See preview below.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Live SMS Preview</label>
+                    <div className="bg-gray-900 p-6 rounded-3xl relative overflow-hidden group">
+                       <div className="absolute top-0 right-0 p-4 opacity-[0.05] group-hover:scale-110 transition-transform">
+                          <Send className="w-20 h-20 text-white" />
+                       </div>
+                       <div className="relative z-10 flex gap-4">
+                          <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center shrink-0">
+                             <MessageSquare className="w-5 h-5 text-white" />
+                          </div>
+                          <div className="space-y-2">
+                             <p className="text-white font-medium text-sm leading-relaxed">{currentPreview}</p>
+                             <div className="flex items-center gap-4">
+                                <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{currentPreview.length} Characters</span>
+                                <span className="text-[9px] font-black text-gray-500 uppercase tracking-widest">1 Page (KES 1.00)</span>
+                             </div>
+                          </div>
+                       </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={handleSendBulk}
+                    disabled={isSending || (selectedType === 'custom' && !customMessage)}
+                    className="w-full bg-blue-600 text-white py-5 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 disabled:opacity-50"
+                  >
+                    {isSending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                    Dispatch Bulk SMS Campaign
+                  </button>
+               </div>
+            </div>
+          )}
+
+          {activeTab === 'history' && (
+            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden animate-in fade-in duration-300">
+               <div className="p-8 border-b bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Campaign Logs</h3>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Delivery reports & billing</p>
+                  </div>
+                  <div className="flex gap-2">
+                     <button className="p-3 border rounded-xl hover:bg-gray-50 transition-colors"><Search className="w-4 h-4 text-gray-400" /></button>
+                     <button className="p-3 border rounded-xl hover:bg-gray-50 transition-colors"><Filter className="w-4 h-4 text-gray-400" /></button>
+                  </div>
+               </div>
+               
+               <div className="divide-y">
+                 {logs.map(log => (
+                   <div key={log.id} className="p-6 flex items-center justify-between hover:bg-gray-50/30 transition-colors">
+                      <div className="flex items-center gap-4">
+                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${log.cost < 0 ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                            {log.cost < 0 ? <CreditCard className="w-6 h-6" /> : <MessageSquare className="w-6 h-6" />}
+                         </div>
+                         <div>
+                            <p className="font-black text-gray-900">{log.type}</p>
+                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{log.date} • {log.recipients > 0 ? `${log.recipients} Recipients` : 'Wallet Operation'}</p>
+                         </div>
+                      </div>
+                      <div className="text-right">
+                         <p className={`text-lg font-black tracking-tight ${log.cost < 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                           {log.cost < 0 ? `+KES ${Math.abs(log.cost).toLocaleString()}` : `-${log.cost} Units`}
+                         </p>
+                         <span className="text-[9px] font-black uppercase text-green-500 tracking-widest flex items-center justify-end gap-1">
+                            <CheckCircle2 className="w-3 h-3" />
+                            {log.status}
+                         </span>
+                      </div>
+                   </div>
+                 ))}
+               </div>
+            </div>
+          )}
+
+          {activeTab === 'automated' && (
+             <div className="bg-white p-12 rounded-3xl border border-gray-100 text-center space-y-6 animate-in fade-in duration-300">
+                <div className="w-24 h-24 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto border-4 border-white shadow-xl">
+                   <Clock className="w-12 h-12" />
+                </div>
+                <div className="max-w-md mx-auto space-y-2">
+                   <h3 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Automated Triggers</h3>
+                   <p className="text-gray-500 font-medium">Smart alerts that send without human intervention based on system events.</p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+                   <AutoToggle label="Absence Alerts" active desc="Sends SMS when student is marked absent." />
+                   <AutoToggle label="Fee Postings" active desc="Instant receipt SMS on fee payment." />
+                   <AutoToggle label="Exam Results" desc="Dispatch mean grades once principal approves marks." />
+                   <AutoToggle label="Event Reminders" desc="Automated alerts 24h before school events." />
+                </div>
+             </div>
+          )}
+        </div>
+      </div>
+
+      {/* Top Up Modal */}
+      {isTopUpModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl relative overflow-hidden animate-in zoom-in duration-300">
+              <div className="p-8 border-b bg-gray-50/50 flex items-center justify-between">
+                 <div>
+                   <h3 className="text-2xl font-black text-gray-900 tracking-tight uppercase">Top Up Credits</h3>
+                   <p className="text-xs text-blue-600 font-black uppercase tracking-widest mt-1">Lipa Na M-Pesa Online</p>
+                 </div>
+                 <button onClick={() => setIsTopUpModalOpen(false)} className="p-2 hover:bg-white rounded-full transition-all text-gray-400"><X className="w-6 h-6" /></button>
+              </div>
+              <div className="p-8 space-y-6">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Select Amount (KES)</label>
+                    <div className="grid grid-cols-3 gap-2">
+                       {['500', '1000', '2000', '5000', '10000', '20000'].map(amt => (
                          <button 
-                           key={type.id}
-                           onClick={() => setSelectedType(type.id as MessageType)}
-                           className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${selectedType === type.id ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-md' : 'border-gray-50 text-gray-400 hover:border-gray-200'}`}
+                           key={amt}
+                           onClick={() => setTopUpAmount(amt)}
+                           className={`py-3 rounded-xl text-xs font-black transition-all ${topUpAmount === amt ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
                          >
-                            <type.icon className="w-5 h-5 mb-2" />
-                            <span className="text-[10px] font-black uppercase text-center leading-tight">{type.label}</span>
+                           {parseInt(amt).toLocaleString()}
                          </button>
                        ))}
                     </div>
                  </div>
-
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                   <div className="space-y-2">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Recipient Targeting</label>
-                     <div className="relative">
-                        <select 
-                          value={targetClass}
-                          onChange={(e) => setTargetClass(e.target.value)}
-                          className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black text-sm appearance-none focus:ring-4 focus:ring-blue-100 outline-none"
-                        >
-                          <option>All Classes</option>
-                          {KENYAN_CLASSES.map(cls => <option key={cls} value={cls}>{cls}</option>)}
-                        </select>
-                        <Filter className="w-4 h-4 absolute right-4 top-5 text-gray-400 pointer-events-none" />
-                     </div>
-                   </div>
-                   <div className="space-y-2">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Sender ID</label>
-                     <div className="p-4 bg-gray-100 border-2 border-dashed border-gray-200 rounded-2xl text-gray-500 font-mono text-xs flex items-center justify-between">
-                        <span>ELIMU_SMART</span>
-                        <Info className="w-4 h-4" />
-                     </div>
-                   </div>
-                 </div>
-
-                 {selectedType === 'custom' && (
-                    <div className="space-y-2 animate-in slide-in-from-top-2">
-                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Message Content</label>
-                       <textarea 
-                         rows={4}
-                         value={customMessage}
-                         onChange={(e) => setCustomMessage(e.target.value)}
-                         className="w-full p-4 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 outline-none font-medium"
-                         placeholder="Enter your custom school announcement here..."
-                       />
-                    </div>
-                 )}
-
-                 <div className="bg-amber-50 p-6 rounded-2xl border border-amber-100 flex gap-4">
-                    <AlertCircle className="w-6 h-6 text-amber-600 shrink-0" />
+                 <div className="p-6 bg-blue-50 rounded-2xl border border-blue-100 flex items-center justify-between">
                     <div>
-                       <p className="text-sm font-black text-amber-900 uppercase tracking-tight">Financial Disclaimer</p>
-                       <p className="text-xs text-amber-700 leading-relaxed font-medium">Standard SMS rates apply (KES 1.00 per unit). Total estimated cost for this dispatch is <b>KES {(RECIPIENTS.filter(s => targetClass === 'All Classes' || s.class === targetClass).length).toFixed(2)}</b>.</p>
+                       <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Total Credits</p>
+                       <p className="text-xl font-black text-blue-900">{parseInt(topUpAmount).toLocaleString()} Units</p>
+                    </div>
+                    <div className="text-right">
+                       <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Rate</p>
+                       <p className="text-xs font-black text-blue-900">KES 1.00 / SMS</p>
                     </div>
                  </div>
-
                  <button 
-                   onClick={handleSendBulk}
-                   disabled={isSending || (selectedType === 'custom' && !customMessage)}
-                   className="w-full py-5 bg-blue-600 text-white font-black uppercase tracking-widest rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-3 disabled:opacity-50"
+                  onClick={handleTopUp}
+                  disabled={isTopUpProcessing}
+                  className="w-full bg-green-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-green-700 transition-all shadow-xl shadow-green-100"
                  >
-                   {isSending ? <Loader2 className="w-6 h-6 animate-spin" /> : <Send className="w-6 h-6" />}
-                   {isSending ? 'Dispatching via Gateway...' : 'Initialize Broadast'}
+                    {isTopUpProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Smartphone className="w-5 h-5" />}
+                    Confirm & Send STK Push
                  </button>
-               </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden sticky top-8">
-               <div className="p-8 border-b bg-gray-50/50">
-                  <h3 className="text-lg font-black text-gray-800 uppercase tracking-tight">Live Preview</h3>
-               </div>
-               <div className="p-8 flex justify-center">
-                 {/* Smartphone UI Mockup */}
-                 <div className="w-[280px] h-[540px] border-[8px] border-gray-900 rounded-[40px] relative overflow-hidden shadow-2xl bg-white">
-                    <div className="absolute top-0 w-1/2 h-6 bg-gray-900 left-1/4 rounded-b-2xl z-20"></div>
-                    <div className="bg-gray-100 h-14 w-full flex items-center justify-between px-6 pt-4 border-b">
-                       <span className="text-[10px] font-bold text-gray-500">10:45 AM</span>
-                       <div className="flex gap-1">
-                          <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                          <div className="w-2 h-2 bg-gray-300 rounded-full"></div>
-                       </div>
-                    </div>
-                    
-                    <div className="p-4 space-y-4">
-                       <div className="bg-gray-200 rounded-2xl px-4 py-2 w-fit mx-auto text-[8px] font-black uppercase tracking-widest text-gray-500">Today</div>
-                       
-                       <div className="flex flex-col gap-1 items-start">
-                          <span className="text-[8px] font-black text-gray-400 ml-2 uppercase">ELIMU_SMART</span>
-                          <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 text-[11px] font-medium leading-relaxed text-blue-900 shadow-sm">
-                             {currentPreview}
-                          </div>
-                       </div>
-                    </div>
-
-                    <div className="absolute bottom-6 w-1/3 h-1.5 bg-gray-900/10 left-1/3 rounded-full"></div>
-                 </div>
-               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'history' && (
-        <div className="bg-white rounded-[32px] border border-gray-100 shadow-sm overflow-hidden animate-in fade-in duration-300">
-           <div className="p-8 border-b bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                 <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight">Dispatch Audit Logs</h3>
-                 <p className="text-xs text-gray-500 font-medium">History of all bulk communications sent through the platform.</p>
-              </div>
-              <div className="relative">
-                 <input type="text" placeholder="Search logs..." className="pl-10 pr-4 py-2.5 border rounded-xl text-xs font-bold focus:ring-2 focus:ring-blue-500 outline-none" />
-                 <Search className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
               </div>
            </div>
-           <div className="overflow-x-auto">
-             <table className="w-full text-left">
-               <thead>
-                 <tr className="bg-gray-50/50 border-b text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                   <th className="px-8 py-5">Activity / Broadcast Type</th>
-                   <th className="px-8 py-5">Dispatch Date</th>
-                   <th className="px-8 py-5 text-center">Recipients</th>
-                   <th className="px-8 py-5">Units / Cost (KES)</th>
-                   <th className="px-8 py-5 text-center">Status</th>
-                   <th className="px-8 py-5 text-right">Action</th>
-                 </tr>
-               </thead>
-               <tbody className="divide-y">
-                 {logs.map(log => (
-                   <tr key={log.id} className="hover:bg-gray-50/30 transition-colors group">
-                     <td className="px-8 py-6">
-                        <div className="flex items-center gap-3">
-                           <div className={`p-2 rounded-lg ${log.type === 'CREDIT_TOPUP' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
-                              {log.type === 'CREDIT_TOPUP' ? <ArrowUpRight className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
-                           </div>
-                           <span className="font-black text-gray-900 tracking-tight">{log.type.replace('_', ' ')}</span>
-                        </div>
-                     </td>
-                     <td className="px-8 py-6 text-gray-500 font-bold text-sm">{log.date}</td>
-                     <td className="px-8 py-6 text-center">
-                        <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-xs font-black">
-                          {log.recipients > 0 ? `${log.recipients} Parents` : '--'}
-                        </span>
-                     </td>
-                     <td className={`px-8 py-6 font-black ${log.cost < 0 ? 'text-green-600' : 'text-gray-700'}`}>
-                        {log.cost < 0 ? '+' + Math.abs(log.cost).toLocaleString() : log.cost.toLocaleString()}
-                     </td>
-                     <td className="px-8 py-6 text-center">
-                        <span className={`flex items-center justify-center gap-1.5 text-[10px] font-black uppercase ${log.status === 'Confirmed' ? 'text-green-600' : 'text-blue-600'}`}>
-                           <CheckCircle2 className="w-3.5 h-3.5" />
-                           {log.status}
-                        </span>
-                     </td>
-                     <td className="px-8 py-6 text-right">
-                        <button className="p-2 hover:bg-white rounded-lg transition-colors border shadow-sm">
-                           <ChevronRight className="w-4 h-4 text-gray-400" />
-                        </button>
-                     </td>
-                   </tr>
-                 ))}
-               </tbody>
-             </table>
-           </div>
-        </div>
-      )}
-
-      {activeTab === 'automated' && (
-        <div className="bg-white p-16 rounded-[48px] border border-gray-100 text-center space-y-8 shadow-sm animate-in fade-in duration-300">
-           <div className="mx-auto bg-blue-50 w-28 h-28 rounded-full flex items-center justify-center border-4 border-white shadow-2xl">
-              <Clock className="w-14 h-14 text-blue-600" />
-           </div>
-           <div className="space-y-3 max-w-xl mx-auto">
-             <h3 className="text-3xl font-black text-gray-900 tracking-tighter uppercase leading-none">Smart Scheduler</h3>
-             <p className="text-gray-500 font-medium leading-relaxed">Setup recurring triggers like monthly fee balance alerts (every 5th of the month) or automatic holiday assignment reminders.</p>
-           </div>
-           <button className="bg-blue-600 text-white font-black uppercase tracking-widest px-8 py-4 rounded-2xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-100">
-             Configure New Workflow
-           </button>
-        </div>
-      )}
-
-      {/* M-Pesa Top Up Modal */}
-      {isTopUpModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-[32px] w-full max-w-lg shadow-2xl relative overflow-hidden animate-in zoom-in duration-300">
-             <div className="bg-gray-900 p-8 text-white relative">
-                <div className="absolute top-0 right-0 p-6 opacity-10">
-                   <Smartphone className="w-20 h-20" />
-                </div>
-                <div className="flex items-center gap-4">
-                   <div className="p-3 bg-green-500 rounded-2xl">
-                      <CreditCard className="w-6 h-6 text-white" />
-                   </div>
-                   <div>
-                      <h3 className="text-xl font-black uppercase tracking-tight">Buy SMS Units</h3>
-                      <p className="text-[10px] font-black text-green-400 uppercase tracking-widest mt-1">Lipa na M-Pesa Online</p>
-                   </div>
-                </div>
-             </div>
-
-             <div className="p-8 space-y-6">
-                <div className="space-y-4">
-                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Select Unit Package</label>
-                   <div className="grid grid-cols-2 gap-3">
-                      {[
-                        { amt: '500', units: '500', label: 'Starter' },
-                        { amt: '1000', units: '1000', label: 'Growth' },
-                        { amt: '2500', units: '2500', label: 'Pro' },
-                        { amt: '5000', units: '5800', label: 'Bulk' }
-                      ].map(pkg => (
-                        <button 
-                          key={pkg.amt}
-                          onClick={() => setTopUpAmount(pkg.amt)}
-                          className={`flex flex-col p-4 rounded-2xl border-2 transition-all text-left ${topUpAmount === pkg.amt ? 'border-green-600 bg-green-50 shadow-md' : 'border-gray-50 hover:border-gray-100'}`}
-                        >
-                           <span className={`text-[9px] font-black uppercase tracking-widest ${topUpAmount === pkg.amt ? 'text-green-600' : 'text-gray-400'}`}>{pkg.label}</span>
-                           <span className="text-lg font-black text-gray-900 mt-1">KES {pkg.amt}</span>
-                           <span className="text-[10px] font-bold text-gray-500">{pkg.units} SMS Units</span>
-                        </button>
-                      ))}
-                   </div>
-                </div>
-
-                <div className="space-y-2">
-                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">M-Pesa Number</label>
-                   <div className="relative">
-                      <input 
-                        type="text" 
-                        defaultValue="0711 222 333"
-                        className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black text-gray-800 focus:ring-4 focus:ring-green-100 focus:border-green-500 transition-all outline-none pl-12"
-                      />
-                      <Phone className="w-5 h-5 absolute left-4 top-4 text-gray-400" />
-                   </div>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                   <button 
-                      onClick={handleTopUp}
-                      disabled={isTopUpProcessing}
-                      className="w-full bg-green-600 text-white font-black uppercase tracking-widest py-4 rounded-2xl hover:bg-green-700 transition-all shadow-xl shadow-green-100 flex items-center justify-center gap-2"
-                   >
-                      {isTopUpProcessing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                      {isTopUpProcessing ? 'Pushing STK to Phone...' : `Pay KES ${topUpAmount}`}
-                   </button>
-                   <button 
-                      onClick={() => setIsTopUpModalOpen(false)}
-                      disabled={isTopUpProcessing}
-                      className="w-full py-2 text-gray-400 font-black uppercase tracking-widest text-[9px] hover:text-gray-600 transition-colors"
-                   >
-                      Cancel Purchase
-                   </button>
-                </div>
-             </div>
-          </div>
         </div>
       )}
     </div>
   );
 };
+
+const NavTab: React.FC<{ active: boolean, onClick: () => void, icon: any, label: string }> = ({ active, onClick, icon: Icon, label }) => (
+  <button 
+    onClick={onClick}
+    className={`w-full flex items-center gap-4 px-5 py-4 rounded-xl text-sm font-black uppercase tracking-tighter transition-all ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'}`}
+  >
+    <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-gray-400'}`} />
+    <span>{label}</span>
+  </button>
+);
+
+const TypeBtn: React.FC<{ active: boolean, onClick: () => void, icon: any, label: string }> = ({ active, onClick, icon: Icon, label }) => (
+  <button 
+    onClick={onClick}
+    className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all group ${active ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-md' : 'border-gray-50 text-gray-400 hover:border-blue-100'}`}
+  >
+    <Icon className={`w-6 h-6 mb-2 transition-transform group-hover:scale-110 ${active ? 'text-blue-600' : 'text-gray-300'}`} />
+    <span className="text-[10px] font-black uppercase tracking-tight">{label}</span>
+  </button>
+);
+
+const AutoToggle: React.FC<{ label: string, desc: string, active?: boolean }> = ({ label, desc, active = false }) => (
+  <div className={`p-6 rounded-2xl border-2 transition-all text-left group ${active ? 'border-green-100 bg-green-50/50' : 'border-gray-50 bg-white opacity-60'}`}>
+     <div className="flex items-center justify-between mb-2">
+        <h4 className={`font-black uppercase tracking-tight ${active ? 'text-green-900' : 'text-gray-400'}`}>{label}</h4>
+        <div className={`w-10 h-5 rounded-full relative shadow-inner cursor-pointer transition-colors ${active ? 'bg-green-500' : 'bg-gray-200'}`}>
+           <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-all ${active ? 'right-1' : 'left-1'}`}></div>
+        </div>
+     </div>
+     <p className="text-[10px] font-medium text-gray-500 leading-tight">{desc}</p>
+  </div>
+);

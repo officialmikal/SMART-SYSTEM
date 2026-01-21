@@ -32,14 +32,6 @@ const data = [
   { name: 'Term 3', collection: 5.1 },
 ];
 
-const attendanceData = [
-  { day: 'Mon', present: 450, total: 480 },
-  { day: 'Tue', present: 465, total: 480 },
-  { day: 'Wed', present: 420, total: 480 },
-  { day: 'Thu', present: 470, total: 480 },
-  { day: 'Fri', present: 455, total: 480 },
-];
-
 export const Dashboard: React.FC<{ user: User, lang: Language }> = ({ user, lang }) => {
   const t = translations[lang];
 
@@ -57,39 +49,42 @@ export const Dashboard: React.FC<{ user: User, lang: Language }> = ({ user, lang
           { label: t.collected_fee, value: '4.20M', icon: Banknote, color: 'green', change: '+8%', positive: true },
           { label: t.outstanding_fees, value: '1.80M', icon: AlertCircle, color: 'red', change: '+KES 200k', positive: false },
           { label: t.prepaid_fees, value: '240K', icon: Forward, color: 'blue', change: 'Adv. Payments', positive: true },
-        ].map((stat, idx) => (
-          <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between group hover:shadow-lg transition-all">
-            <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{stat.label}</p>
-              <h3 className={`text-2xl font-black mt-1 tracking-tighter ${stat.color === 'red' ? 'text-red-700' : stat.color === 'green' ? 'text-green-700' : 'text-gray-900'}`}>{stat.value}</h3>
-              <div className={`mt-2 flex items-center text-[10px] font-black uppercase tracking-widest ${stat.positive ? 'text-green-600' : 'text-red-600'}`}>
-                {stat.positive ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
-                {stat.change}
+        ].map((stat, idx) => {
+          const Icon = stat.icon;
+          return (
+            <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between group hover:shadow-lg transition-all">
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{stat.label}</p>
+                <h3 className={`text-2xl font-black mt-1 tracking-tighter ${stat.color === 'red' ? 'text-red-700' : stat.color === 'green' ? 'text-green-700' : 'text-gray-900'}`}>{stat.value}</h3>
+                <div className={`mt-2 flex items-center text-[10px] font-black uppercase tracking-widest ${stat.positive ? 'text-green-600' : 'text-red-600'}`}>
+                  {stat.positive ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
+                  {stat.change}
+                </div>
+              </div>
+              <div className={`p-3 rounded-xl transition-transform group-hover:scale-110 ${
+                stat.color === 'blue' ? 'bg-blue-50 text-blue-600' : 
+                stat.color === 'green' ? 'bg-green-50 text-green-600' : 
+                stat.color === 'red' ? 'bg-red-50 text-red-600' : 
+                stat.color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
+                'bg-purple-50 text-purple-600'
+              } border border-white shadow-sm`}>
+                <Icon className="w-5 h-5" />
               </div>
             </div>
-            <div className={`p-3 rounded-xl transition-transform group-hover:scale-110 ${
-              stat.color === 'blue' ? 'bg-blue-50 text-blue-600' : 
-              stat.color === 'green' ? 'bg-green-50 text-green-600' : 
-              stat.color === 'red' ? 'bg-red-50 text-red-600' : 
-              stat.color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
-              'bg-purple-50 text-purple-600'
-            } border border-white shadow-sm`}>
-              <stat.icon className="w-5 h-5" />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Fee Collection Chart */}
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight">Fee Collection Velocity</h3>
             <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">3 Term Comparison</div>
           </div>
-          <div className="h-64">
+          <div className="w-full" style={{ height: '300px' }}>
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data}>
+              <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorColl" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>

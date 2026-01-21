@@ -17,21 +17,36 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Stable html2pdf.js CDN Bundle -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
     <style>
         body { font-family: 'Inter', sans-serif; }
         @media print {
             .no-print { display: none !important; }
             .print-only { display: block !important; }
-            #printable-transcript {
-                margin: 0 !important;
-                padding: 0 !important;
-                box-shadow: none !important;
-                border: none !important;
+            body { background: white !important; padding: 0 !important; margin: 0 !important; }
+            #root { height: auto !important; overflow: visible !important; }
+            .offscreen-template { 
+                position: static !important; 
+                left: auto !important; 
+                opacity: 1 !important; 
+                width: 100% !important; 
+                height: auto !important;
+                display: block !important;
             }
         }
         .print-only { display: none; }
-
-        /* Mobile specific PWA tweaks */
+        .offscreen-template {
+            position: fixed;
+            left: -9999px;
+            top: 0;
+            width: 210mm;
+            z-index: -100;
+            opacity: 0;
+            pointer-events: none;
+        }
         @media (display-mode: standalone) {
           body {
             -webkit-user-select: none;
@@ -49,7 +64,8 @@
     "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
     "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
     "recharts": "https://esm.sh/recharts@^3.6.0",
-    "html2pdf.js": "https://esm.sh/html2pdf.js@0.10.1"
+    "xlsx": "https://esm.sh/xlsx@0.18.5",
+    "html2pdf.js": "https://esm.sh/html2pdf.js@^0.14.0"
   }
 }
 </script>

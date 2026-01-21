@@ -1,6 +1,23 @@
 
-import React, { useState } from 'react';
-import { Plus, Search, Filter, MoreVertical, Phone, Mail, X, Camera, Trash2, Edit2, User, Users } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { 
+  Plus, 
+  Search, 
+  Filter, 
+  MoreVertical, 
+  Phone, 
+  Mail, 
+  X, 
+  Camera, 
+  Trash2, 
+  Edit2, 
+  User, 
+  Users, 
+  FileUp, 
+  FileDown, 
+  Loader2 
+} from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { Student, KENYAN_CLASSES } from '../types';
 
 const MOCK_STUDENTS: Student[] = [
@@ -16,6 +33,8 @@ export const StudentManagement: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState<Partial<Student>>({
     firstName: '',
@@ -73,6 +92,72 @@ export const StudentManagement: React.FC = () => {
     }
   };
 
+  // EXCEL EXPORT LOGIC
+  const handleExportExcel = () => {
+    const exportData = students.map(({ id, photo, ...rest }) => ({
+      'Adm Number': rest.admissionNumber,
+      'First Name': rest.firstName,
+      'Last Name': rest.lastName,
+      'Class': rest.class,
+      'Stream': rest.stream,
+      'Gender': rest.gender,
+      'Date of Birth': rest.dob,
+      'Guardian Name': rest.guardianName,
+      'Guardian Phone': rest.guardianPhone,
+      'Fee Balance': rest.feeBalance,
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Students');
+    
+    // Create Excel file and trigger download
+    XLSX.writeFile(workbook, `ElimuSmart_Student_Register_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  // EXCEL IMPORT LOGIC
+  const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsImporting(true);
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+        const importedStudents: Student[] = data.map((row, index) => ({
+          id: Math.random().toString(36).substr(2, 9),
+          admissionNumber: row['Adm Number'] || row['Admission Number'] || `IMP${index}`,
+          firstName: row['First Name'] || row['Name']?.split(' ')[0] || 'Unknown',
+          lastName: row['Last Name'] || row['Name']?.split(' ')[1] || 'Learner',
+          class: row['Class'] || 'Grade 7',
+          stream: row['Stream'] || 'General',
+          gender: (row['Gender']?.startsWith('F') || row['Gender']?.startsWith('f')) ? 'Female' : 'Male',
+          dob: row['Date of Birth'] || row['DOB'] || '2010-01-01',
+          guardianName: row['Guardian Name'] || 'Not Set',
+          guardianPhone: row['Guardian Phone'] || '0700000000',
+          feeBalance: parseFloat(row['Fee Balance'] || 0),
+          photo: `https://picsum.photos/100/100?random=${Math.floor(Math.random() * 100)}`
+        }));
+
+        setStudents(prev => [...prev, ...importedStudents]);
+        alert(`Successfully imported ${importedStudents.length} students.`);
+      } catch (error) {
+        console.error('Import Error:', error);
+        alert('Failed to parse Excel file. Ensure columns match "First Name", "Last Name", "Adm Number", etc.');
+      } finally {
+        setIsImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
   const filteredStudents = students.filter(s => 
     `${s.firstName} ${s.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
     s.admissionNumber.toLowerCase().includes(searchQuery.toLowerCase())
@@ -85,13 +170,31 @@ export const StudentManagement: React.FC = () => {
           <h1 className="text-2xl font-black text-gray-800 uppercase tracking-tight">Student Directory</h1>
           <p className="text-gray-500 font-medium tracking-tight">Manage {students.length} currently enrolled learners.</p>
         </div>
-        <button 
-          onClick={() => openModal()}
-          className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-8 py-4 rounded-2xl hover:bg-blue-700 transition-all font-black uppercase tracking-widest shadow-xl shadow-blue-100"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Add New Learner</span>
-        </button>
+        <div className="flex flex-wrap gap-3">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleImportExcel} 
+            accept=".xlsx, .xls, .csv" 
+            className="hidden" 
+          />
+          <button 
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isImporting}
+            className="flex items-center justify-center space-x-2 bg-white border-2 border-blue-100 text-blue-600 px-6 py-4 rounded-2xl hover:bg-blue-50 transition-all font-black uppercase tracking-widest shadow-sm"
+          >
+            {isImporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileUp className="w-5 h-5" />}
+            <span>{isImporting ? 'Importing...' : 'Import Excel'}</span>
+          </button>
+          
+          <button 
+            onClick={() => openModal()}
+            className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-8 py-4 rounded-2xl hover:bg-blue-700 transition-all font-black uppercase tracking-widest shadow-xl shadow-blue-100"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Add Learner</span>
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
@@ -111,7 +214,13 @@ export const StudentManagement: React.FC = () => {
               <Filter className="w-4 h-4" />
               <span>Filters</span>
             </button>
-            <button className="px-6 py-3 border-2 border-gray-100 rounded-2xl hover:bg-white hover:border-blue-100 transition-all font-black text-xs uppercase tracking-widest text-gray-500">Export</button>
+            <button 
+              onClick={handleExportExcel}
+              className="flex items-center space-x-2 px-6 py-3 border-2 border-gray-100 rounded-2xl hover:bg-white hover:border-blue-100 transition-all font-black text-xs uppercase tracking-widest text-gray-500"
+            >
+              <FileDown className="w-4 h-4" />
+              <span>Export Excel</span>
+            </button>
           </div>
         </div>
 

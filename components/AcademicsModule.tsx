@@ -135,15 +135,16 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
     setIsGeneratingRemarks(student.studentId);
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const prompt = `Write a one-sentence professional teacher remark for a student named ${student.studentName} who scored ${student.score}% (CBC level: ${student.competency}) in ${selectedSubject}. Make it encouraging and specific to the grade level ${selectedClass}.`;
+      const promptText = `Write a one-sentence professional teacher remark for a student named ${student.studentName} who scored ${student.score}% (CBC level: ${student.competency}) in ${selectedSubject}. Make it encouraging and specific to the grade level ${selectedClass}.`;
+      
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: prompt
+        contents: promptText
       });
-      handleRemarkChange(student.studentId, response.text || '');
+      handleRemarkChange(student.studentId, response.text || 'Commendable performance.');
     } catch (error) {
       console.error(error);
-      handleRemarkChange(student.studentId, 'Commendable performance.');
+      handleRemarkChange(student.studentId, 'Performance is within expectations.');
     } finally {
       setIsGeneratingRemarks(null);
     }

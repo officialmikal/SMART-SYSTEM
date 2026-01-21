@@ -244,8 +244,7 @@ export const AttendanceModule: React.FC<{ lang: Language }> = ({ lang }) => {
                   <div className="flex items-center space-x-4">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black uppercase border-2 shadow-sm ${
                       student.status === 'present' ? 'bg-green-50 text-green-600 border-green-100' : 
-                      student.status === 'absent' ? 'bg-red-50 text-red-600 border-red-100' : 
-                      'bg-amber-50 text-amber-600 border-amber-100'
+                      student.status === 'absent' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-600 border-amber-100'
                     }`}>
                       {student.name[0]}
                     </div>
@@ -260,19 +259,22 @@ export const AttendanceModule: React.FC<{ lang: Language }> = ({ lang }) => {
                       { id: 'present', label: t.present, icon: UserCheck, color: 'text-green-600', bg: 'bg-green-100' },
                       { id: 'late', label: t.late, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-100' },
                       { id: 'absent', label: t.absent, icon: UserX, color: 'text-red-600', bg: 'bg-red-100' }
-                    ].map(status => (
-                      <button 
-                        key={status.id}
-                        onClick={() => updateStatus(student.id, status.id)}
-                        className={`
-                          flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all
-                          ${student.status === status.id ? `${status.bg} ${status.color} shadow-sm ring-1 ring-white` : 'text-gray-400 hover:text-gray-600'}
-                        `}
-                      >
-                        <status.icon className="w-3 h-3" />
-                        <span className="hidden sm:inline">{status.label}</span>
-                      </button>
-                    ))}
+                    ].map(status => {
+                      const Icon = status.icon;
+                      return (
+                        <button 
+                          key={status.id}
+                          onClick={() => updateStatus(student.id, status.id)}
+                          className={`
+                            flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all
+                            ${student.status === status.id ? `${status.bg} ${status.color} shadow-sm ring-1 ring-white` : 'text-gray-400 hover:text-gray-600'}
+                          `}
+                        >
+                          <Icon className="w-3 h-3" />
+                          <span className="hidden sm:inline">{status.label}</span>
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {/* Print Only Status */}

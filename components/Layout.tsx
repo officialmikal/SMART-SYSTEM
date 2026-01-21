@@ -101,21 +101,24 @@ export const Layout: React.FC<LayoutProps> = ({
         </div>
 
         <nav className="p-4 space-y-1 overflow-y-auto max-h-[calc(100vh-280px)]">
-          {menuItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => { setCurrentTab(item.id); setIsSidebarOpen(false); }}
-              className={`
-                w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200
-                ${currentTab === item.id 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' 
-                  : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-medium'}
-              `}
-            >
-              <item.icon className={`w-5 h-5 ${currentTab === item.id ? 'text-white' : 'text-gray-400'}`} />
-              <span className="font-bold text-sm tracking-tight">{item.label}</span>
-            </button>
-          ))}
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => { setCurrentTab(item.id); setIsSidebarOpen(false); }}
+                className={`
+                  w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200
+                  ${currentTab === item.id 
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-100' 
+                    : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900 font-medium'}
+                `}
+              >
+                <Icon className={`w-5 h-5 ${currentTab === item.id ? 'text-white' : 'text-gray-400'}`} />
+                <span className="font-bold text-sm tracking-tight">{item.label}</span>
+              </button>
+            );
+          })}
         </nav>
 
         <div className="absolute bottom-0 w-full p-4 border-t bg-gray-50/50">
