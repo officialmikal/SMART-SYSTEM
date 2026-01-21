@@ -21,13 +21,14 @@ import { UserRole } from '../types';
 
 interface SettingsModuleProps {
   userRole: UserRole;
+  schoolLogo: string | null;
+  setSchoolLogo: (logo: string | null) => void;
 }
 
-export const SettingsModule: React.FC<SettingsModuleProps> = ({ userRole }) => {
+export const SettingsModule: React.FC<SettingsModuleProps> = ({ userRole, schoolLogo, setSchoolLogo }) => {
   const [activeSection, setActiveSection] = useState<'profile' | 'school' | 'academic' | 'security'>('profile');
   const [config, setConfig] = useState<AcademicConfig | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   useEffect(() => {
     schoolService.getAcademicConfig().then(setConfig);
@@ -40,7 +41,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ userRole }) => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setLogoPreview(reader.result as string);
+        setSchoolLogo(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -95,14 +96,6 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ userRole }) => {
               active={activeSection === 'security'} 
               onClick={() => setActiveSection('security')} 
             />
-            {userRole === UserRole.ADMIN && (
-              <NavItem 
-                icon={Database} 
-                label="System Logs" 
-                active={false} 
-                onClick={() => {}} 
-              />
-            )}
           </nav>
         </div>
 
@@ -143,9 +136,9 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ userRole }) => {
                     
                     <div className="relative group z-10">
                       <div className="w-40 h-40 rounded-3xl bg-white border-4 border-white shadow-2xl flex items-center justify-center overflow-hidden transition-transform group-hover:scale-[1.02]">
-                        {logoPreview || config?.schoolName ? (
+                        {schoolLogo || config?.schoolName ? (
                           <img 
-                            src={logoPreview || `https://api.dicebear.com/7.x/initials/svg?seed=${config?.schoolName || 'School'}&backgroundColor=1e3a8a&fontFamily=Inter&fontSize=45&bold=true`} 
+                            src={schoolLogo || `https://api.dicebear.com/7.x/initials/svg?seed=${config?.schoolName || 'School'}&backgroundColor=1e3a8a&fontFamily=Inter&fontSize=45&bold=true`} 
                             alt="Logo Preview" 
                             className="w-full h-full object-cover"
                           />
@@ -168,17 +161,16 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ userRole }) => {
                           Upload New Logo
                           <input type="file" className="hidden" accept="image/*" onChange={handleLogoChange} />
                         </label>
-                        {logoPreview && (
+                        {schoolLogo && (
                           <button 
                             type="button" 
-                            onClick={() => setLogoPreview(null)}
+                            onClick={() => setSchoolLogo(null)}
                             className="px-4 py-2 border-2 border-red-100 text-red-500 text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-red-50 transition-all"
                           >
                             Reset to Default
                           </button>
                         )}
                       </div>
-                      <p className="mt-4 text-[9px] text-gray-400 font-bold uppercase tracking-widest">Recommended: Square PNG/SVG, transparent background, max 2MB</p>
                     </div>
                   </div>
 
@@ -207,20 +199,6 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ userRole }) => {
                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Current Year</label>
                       <input type="number" defaultValue={2024} className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 font-black text-lg" />
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Current Term</label>
-                      <select className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500 font-black">
-                        <option value="1">Term 1</option>
-                        <option value="2">Term 2</option>
-                        <option value="3">Term 3</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100">
-                    <p className="text-xs text-indigo-700 flex gap-3 font-bold">
-                      <Shield className="w-5 h-5 flex-shrink-0" />
-                      <span>IMPORTANT: Changing the current year or term will dynamically update all student mark entries, finance collections, and transcript generation school-wide.</span>
-                    </p>
                   </div>
                 </div>
               )}
@@ -234,25 +212,6 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ userRole }) => {
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Current Password</label>
                         <input type="password" placeholder="••••••••" className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500" />
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">New Password</label>
-                          <input type="password" placeholder="••••••••" className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500" />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Confirm New Password</label>
-                          <input type="password" placeholder="••••••••" className="w-full p-3 border rounded-xl focus:ring-2 focus:ring-blue-500" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between p-6 bg-gray-50 rounded-2xl border border-transparent hover:border-blue-100 transition-all">
-                      <div>
-                        <p className="font-black text-sm uppercase tracking-tight text-gray-800">Two-Factor Authentication (2FA)</p>
-                        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">Verify logins via Africa's Talking SMS Gateway</p>
-                      </div>
-                      <div className="w-14 h-7 bg-blue-600 rounded-full relative shadow-inner cursor-pointer">
-                        <div className="absolute right-1 top-1 w-5 h-5 bg-white rounded-full shadow-md"></div>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -264,7 +223,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({ userRole }) => {
                   disabled={isSaving}
                   className="flex items-center space-x-2 bg-blue-600 text-white px-10 py-4 rounded-xl hover:bg-blue-700 font-black uppercase tracking-widest transition-all disabled:opacity-50 shadow-xl shadow-blue-100"
                 >
-                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
+                  {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="target-save-icon w-5 h-5" />}
                   <span>Save Configuration</span>
                 </button>
               </div>

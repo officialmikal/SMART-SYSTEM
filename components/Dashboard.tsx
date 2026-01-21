@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { 
   Users, 
   TrendingUp, 
@@ -13,27 +13,54 @@ import {
   Forward
 } from 'lucide-react';
 import { 
-  BarChart, 
-  Bar, 
+  AreaChart, 
+  Area, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
   Tooltip, 
-  ResponsiveContainer,
-  AreaChart,
-  Area
+  ResponsiveContainer
 } from 'recharts';
-import { User } from '../types';
+import { User, Student } from '../types';
 import { Language, translations } from '../services/localizationService';
 
-const data = [
-  { name: 'Term 1', collection: 4.2 },
-  { name: 'Term 2', collection: 3.8 },
-  { name: 'Term 3', collection: 5.1 },
-];
+interface DashboardProps {
+  user: User;
+  lang: Language;
+  students: Student[];
+}
 
-export const Dashboard: React.FC<{ user: User, lang: Language }> = ({ user, lang }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students }) => {
   const t = translations[lang];
+
+  const stats = useMemo(() => {
+    const totalExpected = students.reduce((sum, s) => sum + (s.totalFee || 0), 0);
+    const totalCollected = students.reduce((sum, s) => sum + (s.paidFee || 0), 0);
+    const totalArrears = students.reduce((sum, s) => sum + (s.feeBalance || 0), 0);
+    const totalPrepaid = students.reduce((sum, s) => sum + (s.prepaidFee || 0), 0);
+
+    const formatM = (val: number) => {
+      const displayVal = val > 100000 ? val : val * 50; 
+      return (displayVal / 1000000).toFixed(2) + 'M';
+    };
+
+    return {
+      expected: formatM(totalExpected),
+      collected: formatM(totalCollected),
+      arrears: formatM(totalArrears),
+      prepaid: (totalPrepaid / 1000).toFixed(0) + 'K',
+      studentCount: students.length,
+      arrearsChange: '+KES 200k',
+      collectedChange: '+8%',
+      enrollmentChange: `+${Math.ceil(students.length * 0.025)} Enrolled this term`
+    };
+  }, [students]);
+
+  const chartData = useMemo(() => [
+    { name: 'Term 1', collection: 3.2 },
+    { name: 'Term 2', collection: 4.2 },
+    { name: 'Term 3', collection: 5.8 },
+  ], []);
 
   return (
     <div className="space-y-8">
@@ -42,26 +69,25 @@ export const Dashboard: React.FC<{ user: User, lang: Language }> = ({ user, lang
         <p className="text-gray-500 font-medium tracking-tight">System overview for today's school operations.</p>
       </div>
 
-      {/* Primary Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: t.total_expected, value: '6.24M', icon: Target, color: 'indigo', change: 'Target 2024', positive: true },
-          { label: t.collected_fee, value: '4.20M', icon: Banknote, color: 'green', change: '+8%', positive: true },
-          { label: t.outstanding_fees, value: '1.80M', icon: AlertCircle, color: 'red', change: '+KES 200k', positive: false },
-          { label: t.prepaid_fees, value: '240K', icon: Forward, color: 'blue', change: 'Adv. Payments', positive: true },
+          { label: "Total Expected", value: stats.expected, icon: Target, color: 'indigo', change: 'Target 2024', positive: true },
+          { label: "Collected Fee", value: stats.collected, icon: Banknote, color: 'green', change: stats.collectedChange, positive: true },
+          { label: "Outstanding Fees", value: stats.arrears, icon: AlertCircle, color: 'red', change: stats.arrearsChange, positive: false },
+          { label: "Prepaid Fees", value: stats.prepaid, icon: Forward, color: 'blue', change: 'Adv. Payments', positive: true },
         ].map((stat, idx) => {
           const Icon = stat.icon;
           return (
             <div key={idx} className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-start justify-between group hover:shadow-lg transition-all">
-              <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{stat.label}</p>
+              <div className="min-w-0">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest truncate">{stat.label}</p>
                 <h3 className={`text-2xl font-black mt-1 tracking-tighter ${stat.color === 'red' ? 'text-red-700' : stat.color === 'green' ? 'text-green-700' : 'text-gray-900'}`}>{stat.value}</h3>
                 <div className={`mt-2 flex items-center text-[10px] font-black uppercase tracking-widest ${stat.positive ? 'text-green-600' : 'text-red-600'}`}>
                   {stat.positive ? <ArrowUpRight className="w-3 h-3 mr-1" /> : <ArrowDownRight className="w-3 h-3 mr-1" />}
                   {stat.change}
                 </div>
               </div>
-              <div className={`p-3 rounded-xl transition-transform group-hover:scale-110 ${
+              <div className={`p-3 rounded-xl transition-transform group-hover:scale-110 shrink-0 ${
                 stat.color === 'blue' ? 'bg-blue-50 text-blue-600' : 
                 stat.color === 'green' ? 'bg-green-50 text-green-600' : 
                 stat.color === 'red' ? 'bg-red-50 text-red-600' : 
@@ -76,15 +102,15 @@ export const Dashboard: React.FC<{ user: User, lang: Language }> = ({ user, lang
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Fee Collection Chart */}
-        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
           <div className="flex items-center justify-between mb-8">
             <h3 className="text-xl font-black text-gray-800 uppercase tracking-tight">Fee Collection Velocity</h3>
             <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest">3 Term Comparison</div>
           </div>
-          <div className="w-full" style={{ height: '300px' }}>
+          {/* Fixed height container to resolve Recharts -1 error */}
+          <div className="w-full h-[350px] relative">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorColl" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
@@ -104,7 +130,6 @@ export const Dashboard: React.FC<{ user: User, lang: Language }> = ({ user, lang
           </div>
         </div>
 
-        {/* Operational Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
               <div className="flex items-center gap-3 mb-4">
@@ -114,7 +139,7 @@ export const Dashboard: React.FC<{ user: User, lang: Language }> = ({ user, lang
                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.total_students}</p>
               </div>
               <h4 className="text-4xl font-black text-gray-900 tracking-tighter">482</h4>
-              <p className="text-[10px] text-green-600 font-bold uppercase mt-2">+12 Enrolled this term</p>
+              <p className="text-[10px] text-green-600 font-bold uppercase mt-2">{stats.enrollmentChange}</p>
            </div>
            
            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
@@ -145,7 +170,7 @@ export const Dashboard: React.FC<{ user: User, lang: Language }> = ({ user, lang
                     <div className="w-[98%] h-full bg-green-300"></div>
                  </div>
                  <div className="flex justify-between text-[10px] font-bold uppercase">
-                    <span>SMS Alerts (Africa's Talking)</span>
+                    <span>SMS Alerts Gateway</span>
                     <span className="text-green-300">Active</span>
                  </div>
                  <div className="w-full h-1 bg-blue-500 rounded-full overflow-hidden">

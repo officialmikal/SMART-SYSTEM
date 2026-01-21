@@ -30,9 +30,12 @@ import { KENYAN_CLASSES, Student } from '../types';
 
 // Mock student data for recipient targeting
 const RECIPIENTS: Student[] = [
-  { id: '1', admissionNumber: 'ADM001', firstName: 'Kamau', lastName: 'Njoroge', class: 'Grade 7', stream: 'Oak', gender: 'Male', dob: '2011-04-12', guardianPhone: '0712345678', guardianName: 'Sarah Njoroge', feeBalance: 12500 },
-  { id: '2', admissionNumber: 'ADM002', firstName: 'Amara', lastName: 'Kiprono', class: 'Grade 7', stream: 'Palm', gender: 'Female', dob: '2010-08-25', guardianPhone: '0722000111', guardianName: 'David Kiprono', feeBalance: 0 },
-  { id: '3', admissionNumber: 'ADM003', firstName: 'Zuri', lastName: 'Achieng', class: 'Grade 4', stream: 'Willow', gender: 'Female', dob: '2014-01-05', guardianPhone: '0788999888', guardianName: 'Grace Achieng', feeBalance: 4500 },
+  // Fix: Added missing totalFee, paidFee, and prepaidFee properties to satisfy the Student interface
+  { id: '1', admissionNumber: 'ADM001', firstName: 'Kamau', lastName: 'Njoroge', class: 'Grade 7', stream: 'Oak', gender: 'Male', dob: '2011-04-12', guardianPhone: '0712345678', guardianName: 'Sarah Njoroge', feeBalance: 12500, totalFee: 45000, paidFee: 32500, prepaidFee: 0 },
+  // Fix: Added missing totalFee, paidFee, and prepaidFee properties to satisfy the Student interface
+  { id: '2', admissionNumber: 'ADM002', firstName: 'Amara', lastName: 'Kiprono', class: 'Grade 7', stream: 'Palm', gender: 'Female', dob: '2010-08-25', guardianPhone: '0722000111', guardianName: 'David Kiprono', feeBalance: 0, totalFee: 45000, paidFee: 45000, prepaidFee: 2500 },
+  // Fix: Added missing totalFee, paidFee, and prepaidFee properties to satisfy the Student interface
+  { id: '3', admissionNumber: 'ADM003', firstName: 'Zuri', lastName: 'Achieng', class: 'Grade 4', stream: 'Willow', gender: 'Female', dob: '2014-01-05', guardianPhone: '0788999888', guardianName: 'Grace Achieng', feeBalance: 4500, totalFee: 45000, paidFee: 40500, prepaidFee: 0 },
 ];
 
 type MessageType = 'fee' | 'opening' | 'closing' | 'custom';

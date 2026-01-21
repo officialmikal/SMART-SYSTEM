@@ -1,13 +1,16 @@
 
-const CACHE_NAME = 'elimusmart-v1';
+const CACHE_NAME = 'elimusmart-v2';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/manifest.json'
+  './',
+  './index.html',
+  './manifest.json',
+  './types.ts',
+  './App.tsx'
 ];
 
 // Install Event: Cache Shell
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
@@ -28,21 +31,24 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+  return self.clients.claim();
 });
 
 // Fetch Event: Network First, Fallback to Cache
 self.addEventListener('fetch', (event) => {
-  // Skip cross-origin requests like Dicebear/Picsum unless needed
-  if (!event.request.url.startsWith(self.location.origin)) return;
-
+  // Only handle GET requests for internal resources
+  if (event.request.method !== 'GET') return;
+  
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Cache the successful response
-        const resClone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, resClone);
-        });
+        // Cache the successful response if it's from our origin
+        if (response.status === 200 && event.request.url.startsWith(self.location.origin)) {
+          const resClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, resClone);
+          });
+        }
         return response;
       })
       .catch(() => {

@@ -31,6 +31,11 @@ export const KENYAN_CLASSES = [
 
 export const SCHOOL_STREAMS = ['Oak', 'Palm', 'Eagle', 'Willow', 'Acacia'];
 
+export interface ClassFee {
+  className: string;
+  amount: number;
+}
+
 export interface Student {
   id: string;
   admissionNumber: string;
@@ -43,6 +48,9 @@ export interface Student {
   guardianPhone: string;
   guardianName: string;
   feeBalance: number;
+  totalFee: number;
+  paidFee: number;
+  prepaidFee: number;
   photo?: string;
 }
 

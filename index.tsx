@@ -11,7 +11,8 @@ if (!rootElement) {
 // Service Worker Registration for PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
+    // Relative path used to ensure registration works in root environments
+    navigator.serviceWorker.register('./sw.js', { scope: './' })
       .then(reg => console.log('ElimuSmart SW Registered', reg.scope))
       .catch(err => console.log('ElimuSmart SW Registration Failed', err));
   });
