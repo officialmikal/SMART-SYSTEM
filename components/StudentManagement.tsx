@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { 
   Plus, 
   Search, 
@@ -16,10 +16,14 @@ import {
   Loader2,
   ShieldCheck,
   AlertCircle,
-  Banknote
+  Banknote,
+  CheckCircle2,
+  Calendar,
+  AlertTriangle,
+  ArrowRight
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { Student, KENYAN_CLASSES, ClassFee } from '../types';
+import { Student, KENYAN_CLASSES, ClassFee, SCHOOL_STREAMS } from '../types';
 
 interface Props {
   students: Student[];
@@ -27,9 +31,11 @@ interface Props {
   feeStructure: ClassFee[];
 }
 
-export const StudentManagement: React.FC<Props> = ({ students, setStudents, feeStructure }) => {
+export const StudentManagement: React.FC<Props> = ({ students = [], setStudents, feeStructure }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -53,7 +59,7 @@ export const StudentManagement: React.FC<Props> = ({ students, setStudents, feeS
   const openModal = (student?: Student) => {
     if (student) {
       setEditingStudent(student);
-      setFormData(student);
+      setFormData({ ...student });
     } else {
       setEditingStudent(null);
       const defaultClass = 'Grade 7';
@@ -77,59 +83,78 @@ export const StudentManagement: React.FC<Props> = ({ students, setStudents, feeS
     setIsModalOpen(true);
   };
 
+  const openDeleteModal = (student: Student) => {
+    setStudentToDelete(student);
+    setIsDeleteModalOpen(true);
+  };
+
   const handleClassChange = (newClass: string) => {
     const fee = feeStructure.find(f => f.className === newClass)?.amount || 0;
     const currentPaid = formData.paidFee || 0;
     const newBalance = Math.max(0, fee - currentPaid);
     const newPrepaid = currentPaid > fee ? currentPaid - fee : 0;
     
-    setFormData({ 
-      ...formData, 
+    setFormData(prev => ({ 
+      ...prev, 
       class: newClass, 
       totalFee: fee, 
       feeBalance: newBalance,
       prepaidFee: newPrepaid
-    });
+    }));
   };
 
-  const handleInitialPaymentChange = (val: string) => {
-    const paid = parseFloat(val) || 0;
+  const handleInitialPaymentChange = (value: string) => {
+    const paid = parseFloat(value) || 0;
     const total = formData.totalFee || 0;
     const newBalance = Math.max(0, total - paid);
     const newPrepaid = paid > total ? paid - total : 0;
     
-    setFormData({ 
-      ...formData, 
+    setFormData(prev => ({ 
+      ...prev, 
       paidFee: paid, 
       feeBalance: newBalance,
       prepaidFee: newPrepaid
-    });
+    }));
+  };
+
+  const confirmDelete = () => {
+    if (studentToDelete) {
+      // Direct functional update ensures state consistency and UI sync
+      setStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
+      setIsDeleteModalOpen(false);
+      setStudentToDelete(null);
+    }
   };
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    const total = formData.totalFee || 0;
+    const paid = formData.paidFee || 0;
+    const balance = Math.max(0, total - paid);
+    const prepaid = paid > total ? paid - total : 0;
+
+    const finalStudentData: Student = {
+      ...(formData as Student),
+      feeBalance: balance,
+      prepaidFee: prepaid,
+      photo: formData.photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.firstName}${formData.admissionNumber}${Date.now()}`
+    };
+
     if (editingStudent) {
-      setStudents(prev => prev.map(s => s.id === editingStudent.id ? { ...s, ...formData } as Student : s));
+      setStudents(prev => prev.map(s => s.id === editingStudent.id ? { ...finalStudentData, id: s.id } : s));
     } else {
-      const newStudent = {
-        ...formData,
+      const newStudent: Student = {
+        ...finalStudentData,
         id: Math.random().toString(36).substr(2, 9),
-        photo: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.firstName}${formData.lastName}${Date.now()}`,
-      } as Student;
+      };
       setStudents(prev => [...prev, newStudent]);
     }
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirm('Are you absolutely sure you want to delete this student record? This action cannot be undone.')) {
-      setStudents(prev => prev.filter(s => s.id !== id));
-    }
-  };
-
   const handleExportExcel = () => {
-    const exportData = students.map(({ id, photo, ...rest }) => ({
+    const exportData = (students || []).map(({ id, photo, ...rest }) => ({
       'Adm Number': rest.admissionNumber,
       'First Name': rest.firstName,
       'Last Name': rest.lastName,
@@ -201,114 +226,107 @@ export const StudentManagement: React.FC<Props> = ({ students, setStudents, feeS
     reader.readAsBinaryString(file);
   };
 
-  const filteredStudents = students.filter(s => 
-    `${s.firstName} ${s.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.admissionNumber.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredStudents = useMemo(() => {
+    return (students || []).filter(s => 
+      `${s.firstName} ${s.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.admissionNumber.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [students, searchQuery]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black text-gray-800 uppercase tracking-tight">Student Directory</h1>
-          <p className="text-gray-500 font-medium">Manage {students.length} enrolled learners.</p>
+          <p className="text-gray-500 font-medium">Manage {(students || []).length} enrolled learners.</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <input 
-            type="file" 
-            ref={fileInputRef} 
-            onChange={handleImportExcel} 
-            className="hidden" 
-            accept=".xlsx, .xls, .csv" 
-          />
-          <button 
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isImporting}
-            className="flex items-center gap-2 bg-white border-2 border-gray-100 px-6 py-3 rounded-2xl hover:bg-gray-50 transition-all font-black uppercase tracking-widest text-xs"
-          >
+          <input type="file" ref={fileInputRef} onChange={handleImportExcel} className="hidden" accept=".xlsx, .xls, .csv" />
+          <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="flex items-center gap-2 bg-white border-2 border-gray-100 px-6 py-3 rounded-2xl hover:bg-gray-50 transition-all font-black uppercase tracking-widest text-xs shadow-sm active:scale-95">
             {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileUp className="w-4 h-4" />}
             <span>{isImporting ? 'Importing...' : 'Import'}</span>
           </button>
-          <button 
-            onClick={handleExportExcel}
-            className="flex items-center gap-2 bg-white border-2 border-gray-100 px-6 py-3 rounded-2xl hover:bg-gray-50 transition-all font-black uppercase tracking-widest text-xs"
-          >
-            <FileDown className="w-4 h-4" />
-            <span>Export</span>
+          <button type="button" onClick={handleExportExcel} className="flex items-center gap-2 bg-white border-2 border-gray-100 px-6 py-3 rounded-2xl hover:bg-gray-50 transition-all font-black uppercase tracking-widest text-xs shadow-sm active:scale-95">
+            <FileDown className="w-4 h-4" /> <span>Export</span>
           </button>
-          <button 
-            onClick={() => openModal()}
-            className="flex items-center gap-2 bg-blue-600 text-white px-8 py-3 rounded-2xl hover:bg-blue-700 transition-all font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-100"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Enroll Learner</span>
+          <button type="button" onClick={() => openModal()} className="flex items-center gap-2 bg-blue-600 text-white px-8 py-3 rounded-2xl hover:bg-blue-700 transition-all font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-100 active:scale-95">
+            <Plus className="w-4 h-4" /> <span>Enroll Learner</span>
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-6 border-b bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-8 border-b bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="relative flex-1 max-md:w-full">
             <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="Search by name or ADM..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-100 rounded-2xl focus:border-blue-500 transition-all outline-none font-medium" 
-            />
+            <input type="text" placeholder="Search by name or ADM..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-100 rounded-2xl focus:border-blue-500 transition-all outline-none font-medium shadow-inner" />
           </div>
           <div className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-xl text-blue-700 font-black uppercase text-[10px] tracking-widest border border-blue-100 shadow-sm">
-             <Users className="w-4 h-4" />
-             {filteredStudents.length} Result{filteredStudents.length !== 1 ? 's' : ''}
+             <Users className="w-4 h-4" /> {filteredStudents.length} Result{filteredStudents.length !== 1 ? 's' : ''}
           </div>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50/50 border-b text-[10px] text-gray-400 uppercase font-black tracking-widest">
-                <th className="px-8 py-5">Learner Profile</th>
-                <th className="px-8 py-5 text-center">ADM No</th>
-                <th className="px-8 py-5 text-center">Grade/Stream</th>
-                <th className="px-8 py-5 text-center">Fee Balance</th>
-                <th className="px-8 py-5 text-right">Actions</th>
+                <th className="px-8 py-6">Learner Profile</th>
+                <th className="px-8 py-6 text-center">ADM No</th>
+                <th className="px-8 py-6 text-center">Grade/Stream</th>
+                <th className="px-8 py-6 text-center">Fee Balance</th>
+                <th className="px-8 py-6 text-right">Operational Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredStudents.map((student) => (
                 <tr key={student.id} className="hover:bg-blue-50/20 transition-colors group">
-                  <td className="px-8 py-5">
+                  <td className="px-8 py-6">
                     <div className="flex items-center space-x-4">
-                      <img src={student.photo} className="w-10 h-10 rounded-xl bg-gray-100 border border-gray-100 shadow-sm" alt="Student" />
+                      <img src={student.photo} className="w-12 h-12 rounded-xl bg-gray-100 border border-gray-100 shadow-sm object-cover" alt="Student" />
                       <div>
                         <div className="font-black text-gray-900 leading-tight group-hover:text-blue-600 transition-colors">{student.firstName} {student.lastName}</div>
                         <div className="text-[10px] text-gray-400 uppercase font-black tracking-widest mt-0.5">{student.gender}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-8 py-5 text-center font-mono font-black text-blue-600">{student.admissionNumber}</td>
-                  <td className="px-8 py-5 text-center">
-                    <span className="px-3 py-1 bg-gray-100 rounded-lg text-[10px] font-black uppercase tracking-widest">{student.class} {student.stream && `• ${student.stream}`}</span>
+                  <td className="px-8 py-6 text-center font-mono font-black text-blue-600 tracking-tighter">{student.admissionNumber}</td>
+                  <td className="px-8 py-6 text-center">
+                    <span className="px-3 py-1 bg-gray-100 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-200">{student.class} {student.stream && `• ${student.stream}`}</span>
                   </td>
-                  <td className="px-8 py-5 text-center">
+                  <td className="px-8 py-6 text-center">
                     <div className={`font-black ${student.feeBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
                       {student.prepaidFee > 0 ? `+KES ${student.prepaidFee.toLocaleString()}` : `KES ${student.feeBalance.toLocaleString()}`}
                     </div>
                   </td>
-                  <td className="px-8 py-5 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button onClick={() => openModal(student)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={(e) => handleDelete(student.id, e)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                  <td className="px-8 py-6 text-right">
+                    <div className="flex justify-end gap-3">
+                      <button 
+                        type="button" 
+                        onClick={() => openModal(student)} 
+                        className="flex items-center gap-2 px-4 py-2.5 text-blue-600 bg-white hover:bg-blue-600 hover:text-white rounded-xl transition-all border-2 border-gray-50 hover:border-blue-600 active:scale-95 shadow-sm"
+                        title="Edit Student Record"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Edit</span>
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={() => openDeleteModal(student)} 
+                        className="flex items-center gap-2 px-4 py-2.5 text-red-600 bg-white hover:bg-red-600 hover:text-white transition-all border-2 border-gray-50 hover:border-red-600 shadow-sm active:scale-95"
+                        title="Permanently Delete Student"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Delete</span>
+                      </button>
                     </div>
                   </td>
                 </tr>
               ))}
               {filteredStudents.length === 0 && (
                 <tr>
-                   <td colSpan={5} className="py-20 text-center">
+                   <td colSpan={5} className="py-24 text-center">
                       <AlertCircle className="w-12 h-12 text-gray-200 mx-auto mb-4" />
-                      <p className="text-gray-400 font-black uppercase text-[10px] tracking-widest italic">No matching student records found.</p>
+                      <p className="text-gray-400 font-black uppercase text-[10px] tracking-widest">No student records matching your search.</p>
                    </td>
                 </tr>
               )}
@@ -317,102 +335,155 @@ export const StudentManagement: React.FC<Props> = ({ students, setStudents, feeS
         </div>
       </div>
 
+      {/* ENROLLMENT / EDIT MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-[32px] w-full max-w-2xl shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in duration-300">
-            <div className="p-8 border-b bg-gray-50/50 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-2xl font-black text-gray-900 uppercase leading-none">{editingStudent ? 'Edit Profile' : 'Enrollment Detail'}</h2>
-                <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-2">Personal & Academic Record</p>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md animate-in fade-in duration-200">
+           <div className="bg-white rounded-[40px] w-full max-w-2xl shadow-2xl relative overflow-hidden animate-in zoom-in duration-300 max-h-[90vh] flex flex-col">
+              <div className="p-8 border-b bg-gray-50/50 flex items-center justify-between">
+                 <div>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter text-gray-900 leading-none">{editingStudent ? 'Edit Learner' : 'Enroll New Learner'}</h2>
+                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.3em] mt-3">Official Student Registration</p>
+                 </div>
+                 <button onClick={() => setIsModalOpen(false)} className="p-4 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-full transition-all border border-transparent hover:border-red-100">
+                    <X className="w-6 h-6" />
+                 </button>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-3 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-full transition-all"><X className="w-6 h-6" /></button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-8">
-              <form onSubmit={handleSave} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-1">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">First Name</label>
-                     <input required value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 outline-none transition-all font-bold" placeholder="First Name" />
-                  </div>
-                  <div className="space-y-1">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Last Name</label>
-                     <input required value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 outline-none transition-all font-bold" placeholder="Last Name" />
-                  </div>
-                  <div className="space-y-1">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Admission Number</label>
-                     <input required value={formData.admissionNumber} onChange={e => setFormData({...formData, admissionNumber: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 outline-none transition-all font-mono font-black text-blue-600" placeholder="ADM001" />
-                  </div>
-                  <div className="space-y-1">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Gender</label>
-                     <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value as any})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 outline-none transition-all font-black uppercase">
-                      <option value="Male">Male</option>
-                      <option value="Female">Female</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Grade</label>
-                     <select value={formData.class} onChange={e => handleClassChange(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 outline-none transition-all font-black uppercase">
-                      {KENYAN_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Stream</label>
-                     <input 
-                       required 
-                       value={formData.stream} 
-                       onChange={e => setFormData({...formData, stream: e.target.value})} 
-                       className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 outline-none transition-all font-bold uppercase" 
-                       placeholder="e.g. Oak, Palm, Eagle" 
-                     />
-                  </div>
-                  <div className="space-y-1">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Guardian Identity</label>
-                     <input required value={formData.guardianName} onChange={e => setFormData({...formData, guardianName: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 outline-none transition-all font-bold" placeholder="Guardian Name" />
-                  </div>
-                  <div className="space-y-1">
-                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Phone Contact</label>
-                     <input required value={formData.guardianPhone} onChange={e => setFormData({...formData, guardianPhone: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 outline-none transition-all font-bold" placeholder="0700..." />
-                  </div>
-                </div>
 
-                <div className="space-y-4 pt-4">
-                  <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.25em] border-b pb-2">Financial Setup</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-1">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Initial Payment Received</label>
-                      <div className="relative">
-                        <Banknote className="absolute left-4 top-4 text-gray-400 w-5 h-5" />
-                        <input 
-                          type="number" 
-                          value={formData.paidFee} 
-                          onChange={e => handleInitialPaymentChange(e.target.value)} 
-                          className="w-full pl-12 p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-blue-500 outline-none transition-all font-bold" 
-                          placeholder="0.00" 
-                        />
-                      </div>
+              <form onSubmit={handleSave} className="p-8 space-y-8 overflow-y-auto">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">First Name</label>
+                       <input required type="text" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-bold" />
                     </div>
-                    <div className="p-6 bg-blue-50 rounded-2xl border border-blue-100 flex flex-col justify-center">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Total Invoice</span>
-                        <span className="text-sm font-black text-blue-900">KES {formData.totalFee?.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{formData.prepaidFee! > 0 ? 'Prepaid Credit' : 'Balance Due'}</span>
-                        <span className={`text-sm font-black ${formData.prepaidFee! > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                          KES {formData.prepaidFee! > 0 ? formData.prepaidFee?.toLocaleString() : formData.feeBalance?.toLocaleString()}
-                        </span>
-                      </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Last Name</label>
+                       <input required type="text" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-bold" />
                     </div>
-                  </div>
-                </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Admission Number</label>
+                       <input required type="text" value={formData.admissionNumber} onChange={e => setFormData({...formData, admissionNumber: e.target.value.toUpperCase()})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-black text-blue-600" />
+                    </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Gender</label>
+                       <select value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value as any})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-bold">
+                          <option>Male</option>
+                          <option>Female</option>
+                       </select>
+                    </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Class Level</label>
+                       <select value={formData.class} onChange={e => handleClassChange(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-bold">
+                          {KENYAN_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
+                       </select>
+                    </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Stream</label>
+                       <input 
+                         required
+                         type="text" 
+                         placeholder="e.g. Oak, North, etc."
+                         value={formData.stream} 
+                         onChange={e => setFormData({...formData, stream: e.target.value})} 
+                         className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-bold" 
+                       />
+                    </div>
+                 </div>
 
-                <button type="submit" className="w-full bg-blue-600 text-white py-5 rounded-[24px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-blue-100 hover:bg-blue-700 hover:scale-[1.01] active:scale-[0.99] transition-all">
-                  {editingStudent ? 'Update Profile' : 'Confirm Enrollment'}
-                </button>
+                 <div className="pt-6 border-t space-y-6">
+                    <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Guardian Information</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
+                          <input required type="text" value={formData.guardianName} onChange={e => setFormData({...formData, guardianName: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-blue-500" />
+                       </div>
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Phone Number (Safaricom)</label>
+                          <input required type="tel" value={formData.guardianPhone} onChange={e => setFormData({...formData, guardianPhone: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-blue-500" placeholder="07XX..." />
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="pt-6 border-t space-y-6">
+                    <div className="flex items-center justify-between">
+                       <h4 className="text-[10px] font-black text-green-600 uppercase tracking-[0.2em]">Initial Billing</h4>
+                       <div className="bg-green-50 px-3 py-1 rounded-full text-green-700 text-[10px] font-black">Termly: KES {(formData.totalFee || 0).toLocaleString()}</div>
+                    </div>
+                    <div className="space-y-4">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Initial Deposit Paid (KES)</label>
+                       <input type="number" value={formData.paidFee} onChange={e => handleInitialPaymentChange(e.target.value)} className="w-full p-5 bg-green-50/50 border-2 border-green-100 rounded-[24px] text-2xl font-black text-green-700 outline-none focus:border-green-500 transition-all shadow-inner" placeholder="0.00" />
+                       <div className="flex justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                          <div>
+                             <p className="text-[9px] font-black text-gray-400 uppercase">Closing Balance</p>
+                             <p className="text-sm font-black text-red-600">KES {(formData.feeBalance || 0).toLocaleString()}</p>
+                          </div>
+                          {formData.prepaidFee! > 0 && (
+                            <div className="text-right">
+                               <p className="text-[9px] font-black text-gray-400 uppercase">Prepaid Credit</p>
+                               <p className="text-sm font-black text-green-600">KES {(formData.prepaidFee || 0).toLocaleString()}</p>
+                            </div>
+                          )}
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="flex gap-4 pt-10">
+                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-5 text-gray-400 font-black uppercase tracking-widest hover:bg-gray-50 rounded-3xl transition-all">Discard</button>
+                    <button type="submit" className="flex-1 py-5 bg-blue-600 text-white font-black uppercase tracking-widest rounded-3xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-3">
+                       <CheckCircle2 className="w-6 h-6" /> {editingStudent ? 'Update Profile' : 'Confirm Enrollment'}
+                    </button>
+                 </div>
               </form>
-            </div>
-          </div>
+           </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL - Identical in behavior to the edit modal */}
+      {isDeleteModalOpen && studentToDelete && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-xl animate-in fade-in duration-300">
+           <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl relative overflow-hidden animate-in zoom-in duration-300">
+              <div className="p-10 text-center">
+                 <div className="w-24 h-24 bg-red-50 text-red-600 rounded-[32px] flex items-center justify-center mx-auto mb-8 shadow-xl shadow-red-100 border-4 border-white rotate-3 group-hover:rotate-0 transition-transform">
+                    <Trash2 className="w-10 h-10" />
+                 </div>
+                 
+                 <h2 className="text-3xl font-black text-gray-900 uppercase tracking-tighter leading-none">Confirm Deletion</h2>
+                 <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.3em] mt-4 mb-8">Permanently remove learner record</p>
+                 
+                 <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 mb-10">
+                    <div className="flex items-center gap-4">
+                       <img src={studentToDelete.photo} className="w-16 h-16 rounded-2xl border-4 border-white shadow-md bg-white object-cover" alt="Student" />
+                       <div className="text-left">
+                          <p className="font-black text-gray-900 text-xl leading-tight">{studentToDelete.firstName} {studentToDelete.lastName}</p>
+                          <p className="text-[10px] font-black text-red-600 uppercase tracking-widest mt-1">ADM: {studentToDelete.admissionNumber}</p>
+                       </div>
+                    </div>
+                 </div>
+
+                 <p className="text-sm font-medium text-gray-500 leading-relaxed px-4 mb-10">
+                    Are you certain? All academic achievements, fee history, and attendance data for this learner will be <strong>permanently purged</strong>.
+                 </p>
+
+                 <div className="flex gap-4">
+                    <button 
+                      type="button" 
+                      onClick={() => setIsDeleteModalOpen(false)} 
+                      className="flex-1 py-5 bg-gray-100 text-gray-400 font-black uppercase tracking-widest rounded-3xl hover:bg-gray-200 transition-all active:scale-95"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={confirmDelete}
+                      className="flex-1 py-5 bg-red-600 text-white font-black uppercase tracking-widest rounded-3xl hover:bg-red-700 transition-all shadow-xl shadow-red-100 active:scale-95 flex items-center justify-center gap-2"
+                    >
+                      <Trash2 className="w-5 h-5" /> Confirm Purge
+                    </button>
+                 </div>
+              </div>
+              <button onClick={() => setIsDeleteModalOpen(false)} className="absolute top-6 right-6 p-4 text-gray-300 hover:text-red-500 transition-colors">
+                 <X className="w-8 h-8" />
+              </button>
+           </div>
         </div>
       )}
     </div>

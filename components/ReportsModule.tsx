@@ -21,7 +21,7 @@ import _html2pdf from 'html2pdf.js';
 type ReportView = 'selection' | 'transcript' | 'attendance' | 'fees';
 
 interface Props {
-  students: Student[];
+  students?: Student[]; // Made optional
 }
 
 const ReportCard: React.FC<{ title: string; desc: string; icon: any; onClick: () => void; color: string; active?: boolean }> = ({ title, desc, icon: Icon, onClick, color, active }) => (
@@ -34,7 +34,7 @@ const ReportCard: React.FC<{ title: string; desc: string; icon: any; onClick: ()
   </button>
 );
 
-export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, students }) => {
+export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, students = [] }) => {
   const [view, setView] = useState<ReportView>('selection');
   const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
   const [feeData, setFeeData] = useState<FeeTransaction[]>([]);
@@ -42,7 +42,8 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
   const [selectedClass, setSelectedClass] = useState('Grade 7');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
-  const filteredStudents = students.filter(s => selectedClass === 'All Classes' || s.class === selectedClass);
+  // Added defensive check for students array
+  const filteredStudents = (students || []).filter(s => selectedClass === 'All Classes' || s.class === selectedClass);
 
   const openIndividualTranscript = (student: Student) => {
     setSelectedStudent(student);

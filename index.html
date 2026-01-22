@@ -28,25 +28,21 @@
             .print-only { display: block !important; }
             body { background: white !important; padding: 0 !important; margin: 0 !important; }
             #root { height: auto !important; overflow: visible !important; }
-            .offscreen-template { 
-                position: static !important; 
-                left: auto !important; 
-                opacity: 1 !important; 
-                width: 100% !important; 
-                height: auto !important;
-                display: block !important;
-            }
         }
         .print-only { display: none; }
+        
+        /* Fixed: Render-ready offscreen container */
         .offscreen-template {
             position: fixed;
-            left: -9999px;
             top: 0;
+            left: -5000px; /* Hidden from user but exists in render tree */
             width: 210mm;
-            z-index: -100;
-            opacity: 0;
-            pointer-events: none;
+            min-height: 297mm;
+            background: white;
+            z-index: -9999;
+            visibility: visible;
         }
+
         @media (display-mode: standalone) {
           body {
             -webkit-user-select: none;
