@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Download, Printer, ShieldCheck, Loader2 } from 'lucide-react';
 import { Student, ExamResult, CBCGrade } from '../types';
 import { schoolService, AcademicConfig } from '../services/schoolService';
@@ -43,6 +43,24 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({ student, hid
       .finally(() => setIsLoadingConfig(false));
   }, []);
 
+  // Use real student marks if they exist, otherwise fallback to mocks for demonstration
+  const displayResults = useMemo(() => {
+    if (activeStudent.results && activeStudent.results.length > 0) {
+      return activeStudent.results;
+    }
+    return DEFAULT_MOCK_RESULTS;
+  }, [activeStudent.results]);
+
+  const meanScore = useMemo(() => {
+    if (displayResults.length === 0) return 0;
+    const total = displayResults.reduce((sum, r) => sum + r.score, 0);
+    return Math.round(total / displayResults.length);
+  }, [displayResults]);
+
+  const meanCompetency = useMemo(() => {
+    return schoolService.calculateCBCGrade(meanScore);
+  }, [meanScore]);
+
   const exportToPDF = (elementId: string, fileName: string) => {
     const element = document.getElementById(elementId);
     if (!element) return;
@@ -63,7 +81,6 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({ student, hid
         .then(() => setIsDownloading(false))
         .catch(() => setIsDownloading(false));
     } else {
-      console.error("html2pdf library not found on window object.");
       setIsDownloading(false);
       window.print();
     }
@@ -87,18 +104,11 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({ student, hid
             <p className="text-gray-500 font-medium">Academic Year: {config?.year} | Term: {config?.term}</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <button 
-              onClick={() => exportToPDF('reportcard-container', `Report_${activeStudent.firstName}_T${config?.term}.pdf`)}
-              disabled={isDownloading}
-              className="flex items-center space-x-2 border-2 border-gray-100 px-6 py-3 rounded-2xl hover:bg-gray-50 transition font-black uppercase text-xs tracking-widest text-gray-700 disabled:opacity-50"
-            >
+            <button onClick={() => exportToPDF('reportcard-container', `Report_${activeStudent.firstName}_T${config?.term}.pdf`)} disabled={isDownloading} className="flex items-center space-x-2 border-2 border-gray-100 px-6 py-3 rounded-2xl hover:bg-gray-50 transition font-black uppercase text-xs tracking-widest text-gray-700 disabled:opacity-50">
               {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
               <span>Save PDF</span>
             </button>
-            <button 
-              onClick={() => window.print()}
-              className="flex items-center space-x-2 bg-gray-900 text-white px-6 py-3 rounded-2xl hover:bg-black transition shadow-lg font-black uppercase text-xs tracking-widest"
-            >
+            <button onClick={() => window.print()} className="flex items-center space-x-2 bg-gray-900 text-white px-6 py-3 rounded-2xl hover:bg-black transition shadow-lg font-black uppercase text-xs tracking-widest">
               <Printer className="w-4 h-4" />
               <span>Print Card</span>
             </button>
@@ -106,59 +116,32 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({ student, hid
         </div>
       )}
 
-      {/* Document Area */}
-      <div 
-        className={`bg-white shadow-2xl mx-auto overflow-hidden p-16 relative ${hideControls ? 'mb-8' : ''}`} 
-        id="reportcard-container" 
-        style={{ minHeight: '1123px', width: '100%', maxWidth: '210mm', border: '1px solid #eee' }}
-      >
+      <div className={`bg-white shadow-2xl mx-auto overflow-hidden p-16 relative ${hideControls ? 'mb-8' : ''}`} id="reportcard-container" style={{ minHeight: '1123px', width: '100%', maxWidth: '210mm', border: '1px solid #eee' }}>
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] rotate-45 select-none">
           <ShieldCheck className="w-[600px] h-[600px]" />
         </div>
 
-        {/* School Header */}
         <div className="relative z-10 flex flex-col items-center text-center border-b-4 border-blue-900 pb-10 mb-10">
           <div className="mb-6">
-            <img 
-              src={`https://api.dicebear.com/7.x/initials/svg?seed=${config?.schoolName || 'School'}&backgroundColor=1e3a8a&fontFamily=Inter&fontSize=45&bold=true`} 
-              alt="Logo" 
-              className="w-32 h-32 rounded-[40px] border-4 border-white shadow-2xl bg-blue-900"
-            />
+            <img src={`https://api.dicebear.com/7.x/initials/svg?seed=${config?.schoolName || 'School'}&backgroundColor=1e3a8a&fontFamily=Inter&fontSize=45&bold=true`} alt="Logo" className="w-32 h-32 rounded-[40px] border-4 border-white shadow-2xl bg-blue-900" />
           </div>
           <h2 className="text-5xl font-black text-blue-900 uppercase tracking-tighter leading-none mb-3">{config?.schoolName}</h2>
           <div className="text-sm font-black text-gray-500 uppercase tracking-[0.4em] mb-2">{config?.motto}</div>
           <p className="text-gray-800 text-xs font-black uppercase tracking-widest">Reg No: {config?.registrationNo}</p>
-          
-          <div className="mt-10 bg-blue-900 text-white px-16 py-3 rounded-2xl text-xl font-black uppercase tracking-[0.2em] shadow-xl">
-            Student Assessment Report Card
-          </div>
+          <div className="mt-10 bg-blue-900 text-white px-16 py-3 rounded-2xl text-xl font-black uppercase tracking-[0.2em] shadow-xl">Student Assessment Report Card</div>
         </div>
 
-        {/* Student Particulars */}
         <div className="relative z-10 grid grid-cols-2 gap-12 mb-12 text-sm">
           <div className="space-y-4">
-            <div className="flex justify-between border-b-2 border-gray-100 pb-2">
-              <span className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Full Name:</span>
-              <span className="font-black text-gray-900 uppercase">{activeStudent.firstName} {activeStudent.lastName}</span>
-            </div>
-            <div className="flex justify-between border-b-2 border-gray-100 pb-2">
-              <span className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Adm No:</span>
-              <span className="font-mono font-black text-blue-700">{activeStudent.admissionNumber}</span>
-            </div>
+            <div className="flex justify-between border-b-2 border-gray-100 pb-2"><span className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Full Name:</span><span className="font-black text-gray-900 uppercase">{activeStudent.firstName} {activeStudent.lastName}</span></div>
+            <div className="flex justify-between border-b-2 border-gray-100 pb-2"><span className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Adm No:</span><span className="font-mono font-black text-blue-700">{activeStudent.admissionNumber}</span></div>
           </div>
           <div className="space-y-4">
-            <div className="flex justify-between border-b-2 border-gray-100 pb-2">
-              <span className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Grade / Level:</span>
-              <span className="font-black text-gray-900 uppercase">{activeStudent.class} • {activeStudent.stream}</span>
-            </div>
-            <div className="flex justify-between border-b-2 border-gray-100 pb-2">
-              <span className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Academic Year:</span>
-              <span className="font-black text-gray-900 uppercase">{config?.year} • Term {config?.term}</span>
-            </div>
+            <div className="flex justify-between border-b-2 border-gray-100 pb-2"><span className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Grade / Level:</span><span className="font-black text-gray-900 uppercase">{activeStudent.class} {activeStudent.stream && `• ${activeStudent.stream}`}</span></div>
+            <div className="flex justify-between border-b-2 border-gray-100 pb-2"><span className="text-gray-400 font-black uppercase text-[10px] tracking-widest">Academic Year:</span><span className="font-black text-gray-900 uppercase">{config?.year} • Term {config?.term}</span></div>
           </div>
         </div>
 
-        {/* Subject Matrix */}
         <div className="relative z-10 mb-12">
           <table className="w-full text-left border-collapse border-4 border-gray-900">
             <thead>
@@ -169,7 +152,7 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({ student, hid
               </tr>
             </thead>
             <tbody className="text-[13px] font-medium">
-              {DEFAULT_MOCK_RESULTS.map((res, i) => (
+              {displayResults.map((res, i) => (
                 <tr key={i}>
                   <td className="p-5 border-4 border-gray-900 font-black text-gray-800 uppercase">{res.subject}</td>
                   <td className="p-5 border-4 border-gray-900 text-center font-mono font-black text-xl">{res.score}</td>
@@ -178,18 +161,19 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({ student, hid
               ))}
               <tr className="bg-blue-50">
                 <td className="p-5 border-4 border-gray-900 font-black uppercase text-blue-900 text-lg">Mean Assessment Score</td>
-                <td className="p-5 border-4 border-gray-900 text-center font-mono font-black text-3xl text-blue-900">82</td>
-                <td className="p-5 border-4 border-gray-900 text-center font-black text-blue-900 text-2xl uppercase tracking-widest">EE</td>
+                <td className="p-5 border-4 border-gray-900 text-center font-mono font-black text-3xl text-blue-900">{meanScore}</td>
+                <td className="p-5 border-4 border-gray-900 text-center font-black text-blue-900 text-2xl uppercase tracking-widest">{meanCompetency}</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        {/* Remarks Section */}
         <div className="relative z-10 grid grid-cols-1 gap-6 mb-12">
            <div className="p-8 bg-gray-50 rounded-[32px] border-2 border-gray-100">
               <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 mb-3">Teacher's Remarks</h3>
-              <p className="text-base font-medium text-gray-700 italic leading-relaxed">"Excellent effort and academic discipline. Keep up the high standard of performance."</p>
+              <p className="text-base font-medium text-gray-700 italic leading-relaxed">
+                {activeStudent.results?.length ? activeStudent.results[0].remarks : `"Excellent effort and academic discipline. Keep up the high standard of performance."`}
+              </p>
            </div>
            <div className="p-8 bg-blue-50/50 rounded-[32px] border-2 border-blue-100">
               <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-blue-400 mb-3">Headteacher's Observations</h3>
@@ -197,7 +181,6 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({ student, hid
            </div>
         </div>
 
-        {/* Footer */}
         <div className="relative z-10 mt-auto pt-10 border-t-4 border-gray-900">
           <div className="flex justify-between items-center mb-8">
             <div className="text-center">
@@ -206,9 +189,7 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({ student, hid
                <p className="text-[10px] text-gray-500 font-black mt-2 uppercase tracking-widest">Headteacher's Signature</p>
             </div>
             <div className="w-32 h-32 rounded-full border-8 border-double border-blue-900/10 flex items-center justify-center rotate-[-12deg] shadow-inner">
-               <div className="text-[10px] font-black text-blue-900/20 text-center uppercase leading-none font-mono">
-                  OFFICIAL SEAL<br/>ELIMUSMART<br/>ACADEMY
-               </div>
+               <div className="text-[10px] font-black text-blue-900/20 text-center uppercase leading-none font-mono">OFFICIAL SEAL<br/>ELIMUSMART<br/>ACADEMY</div>
             </div>
           </div>
         </div>

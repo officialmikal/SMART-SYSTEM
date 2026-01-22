@@ -36,6 +36,15 @@ export interface ClassFee {
   amount: number;
 }
 
+export interface ExamResult {
+  examId?: string;
+  subject: string;
+  score: number;
+  grade: string;
+  competency: CBCGrade;
+  remarks: string;
+}
+
 export interface Student {
   id: string;
   admissionNumber: string;
@@ -52,6 +61,7 @@ export interface Student {
   paidFee: number;
   prepaidFee: number;
   photo?: string;
+  results?: ExamResult[];
 }
 
 export interface Staff {
@@ -79,14 +89,6 @@ export interface MarkEntry {
   studentName: string;
   admissionNumber: string;
   score: number;
-  competency: CBCGrade;
-  remarks: string;
-}
-
-export interface ExamResult {
-  subject: string;
-  score: number;
-  grade: string;
   competency: CBCGrade;
   remarks: string;
 }

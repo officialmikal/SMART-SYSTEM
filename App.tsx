@@ -16,8 +16,8 @@ import { Language, translations } from './services/localizationService';
 import { Smartphone, Check, X } from 'lucide-react';
 
 const INITIAL_STUDENTS: Student[] = [
-  { id: '1', admissionNumber: 'ADM001', firstName: 'Kamau', lastName: 'Njoroge', class: 'Grade 7', stream: 'Oak', gender: 'Male', dob: '2011-04-12', guardianPhone: '0712345678', guardianName: 'Sarah Njoroge', totalFee: 45000, paidFee: 32500, feeBalance: 12500, prepaidFee: 0, photo: 'https://picsum.photos/100/100?random=10' },
-  { id: '2', admissionNumber: 'ADM002', firstName: 'Amara', lastName: 'Kiprono', class: 'Grade 8', stream: 'Palm', gender: 'Female', dob: '2010-08-25', guardianPhone: '0722000111', guardianName: 'David Kiprono', totalFee: 45000, paidFee: 45000, feeBalance: 0, prepaidFee: 2500, photo: 'https://picsum.photos/100/100?random=11' },
+  { id: '1', admissionNumber: 'ADM001', firstName: 'Kamau', lastName: 'Njoroge', class: 'Grade 7', stream: 'Oak', gender: 'Male', dob: '2011-04-12', guardianPhone: '0712345678', guardianName: 'Sarah Njoroge', totalFee: 45000, paidFee: 32500, feeBalance: 12500, prepaidFee: 0, photo: 'https://picsum.photos/100/100?random=1' },
+  { id: '2', admissionNumber: 'ADM002', firstName: 'Amara', lastName: 'Kiprono', class: 'Grade 8', stream: 'Palm', gender: 'Female', dob: '2010-08-25', guardianPhone: '0722000111', guardianName: 'David Kiprono', totalFee: 45000, paidFee: 45000, feeBalance: 0, prepaidFee: 2500, photo: 'https://picsum.photos/100/100?random=2' },
 ];
 
 const INITIAL_FEE_STRUCTURE: ClassFee[] = KENYAN_CLASSES.map(cls => ({ className: cls, amount: 45000 }));
@@ -33,7 +33,6 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [lang, setLang] = useState<Language>('en');
   
-  // Robust state initialization from localStorage
   const [students, setStudents] = useState<Student[]>(() => {
     try {
       const saved = localStorage.getItem('elimusmart_students');
@@ -57,7 +56,6 @@ const App: React.FC = () => {
     return localStorage.getItem('elimusmart_logo');
   });
 
-  // Effects to sync state with localStorage - ensures persistence everywhere
   useEffect(() => {
     localStorage.setItem('elimusmart_students', JSON.stringify(students));
   }, [students]);
@@ -152,7 +150,6 @@ const App: React.FC = () => {
       switchRole={switchRole}
       installApp={deferredPrompt ? handleInstallApp : undefined}
     >
-      {/* PWA AUTO-INSTALL MODAL */}
       {showInstallPop && deferredPrompt && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] w-full max-w-md px-4 animate-in slide-in-from-top-4 duration-500">
           <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.2)] p-6 border-2 border-blue-50 flex items-center gap-6 relative overflow-hidden">
@@ -183,7 +180,7 @@ const App: React.FC = () => {
         {currentTab === 'dashboard' && <Dashboard user={user} lang={lang} students={students} />}
         {currentTab === 'students' && <StudentManagement students={students} setStudents={setStudents} feeStructure={feeStructure} />}
         {currentTab === 'staff' && <StaffManagement />}
-        {currentTab === 'academics' && <AcademicsModule lang={lang} />}
+        {currentTab === 'academics' && <AcademicsModule lang={lang} students={students} setStudents={setStudents} />}
         {currentTab === 'timetable' && <TimetableModule lang={lang} />}
         {currentTab === 'finance' && <FinanceModule lang={lang} students={students} setStudents={setStudents} feeStructure={feeStructure} setFeeStructure={setFeeStructure} schoolLogo={schoolLogo} />}
         {currentTab === 'attendance' && <AttendanceModule lang={lang} />}

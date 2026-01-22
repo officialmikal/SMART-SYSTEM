@@ -21,7 +21,7 @@ import {
   LayoutGrid
 } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
-import { Exam, MarkEntry, CBCGrade, KENYAN_CLASSES, SCHOOL_STREAMS } from '../types';
+import { Exam, MarkEntry, CBCGrade, KENYAN_CLASSES, SCHOOL_STREAMS, Student, ExamResult } from '../types';
 import { schoolService } from '../services/schoolService';
 import { Language, translations } from '../services/localizationService';
 
@@ -41,11 +41,16 @@ const MOCK_SUBJECTS: Subject[] = [
   { id: 'sub6', name: 'Pre-Technical Studies', category: 'Technical', gradeRange: 'Grade 7 - Grade 9' },
 ];
 
-export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
+interface AcademicsProps {
+  lang: Language;
+  students: Student[];
+  setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
+}
+
+export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students, setStudents }) => {
   const t = translations[lang];
   const [view, setView] = useState<'exams' | 'mark-entry' | 'subjects'>('exams');
   
-  // State for Exams
   const [exams, setExams] = useState<Exam[]>([]);
   const [isExamModalOpen, setIsExamModalOpen] = useState(false);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
@@ -58,7 +63,6 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
     date: new Date().toISOString().split('T')[0]
   });
 
-  // State for Subjects
   const [subjects, setSubjects] = useState<Subject[]>(MOCK_SUBJECTS);
   const [isSubjectModalOpen, setIsSubjectModalOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
@@ -69,7 +73,6 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
     gradeRange: 'Grade 1 - Grade 6' 
   });
 
-  // State for Mark Entry
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [selectedSubject, setSelectedSubject] = useState('Mathematics');
   const [selectedClass, setSelectedClass] = useState('Grade 7');
@@ -82,7 +85,6 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
     schoolService.getExams().then(setExams);
   }, []);
 
-  // Filtered Exams
   const filteredExams = useMemo(() => {
     return exams.filter(ex => 
       ex.title.toLowerCase().includes(examSearch.toLowerCase()) ||
@@ -90,7 +92,6 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
     );
   }, [exams, examSearch]);
 
-  // Filtered Subjects
   const filteredSubjects = useMemo(() => {
     return subjects.filter(s => 
       s.name.toLowerCase().includes(subjectSearch.toLowerCase()) ||
@@ -98,10 +99,24 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
     );
   }, [subjects, subjectSearch]);
 
-  // Exam CRUD Logic
-  const handleOpenMarkEntry = async (exam: Exam) => {
+  const handleOpenMarkEntry = (exam: Exam) => {
     setSelectedExam(exam);
-    const entries = await schoolService.getMarkEntries(exam.id, selectedSubject, `${selectedClass} ${selectedStream}`);
+    // Fetch actual students for the class/stream
+    const classStudents = students.filter(s => s.class === selectedClass && (selectedStream === 'All Streams' || s.stream === selectedStream || !s.stream));
+    
+    const entries: MarkEntry[] = classStudents.map(s => {
+      // Check if student already has a mark for this exam and subject
+      const existing = s.results?.find(r => r.examId === exam.id && r.subject === selectedSubject);
+      return {
+        studentId: s.id,
+        studentName: `${s.firstName} ${s.lastName}`,
+        admissionNumber: s.admissionNumber,
+        score: existing?.score || 0,
+        competency: existing?.competency || CBCGrade.BE,
+        remarks: existing?.remarks || ''
+      };
+    });
+    
     setMarks(entries);
     setView('mark-entry');
   };
@@ -155,7 +170,6 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
     }
   };
 
-  // Subject CRUD Logic
   const openSubjectModal = (subject?: Subject) => {
     if (subject) {
       setEditingSubject(subject);
@@ -197,7 +211,6 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
     }
   };
 
-  // Mark Entry Logic
   const handleScoreChange = (studentId: string, scoreStr: string) => {
     const score = parseInt(scoreStr) || 0;
     setMarks(prev => prev.map(m => 
@@ -238,8 +251,33 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
   const saveMarks = async () => {
     setIsSaving(true);
     await new Promise(r => setTimeout(r, 1200));
+
+    // Update the global students list with results
+    setStudents(prev => prev.map(student => {
+      const markEntry = marks.find(m => m.studentId === student.id);
+      if (markEntry && selectedExam) {
+        const result: ExamResult = {
+          examId: selectedExam.id,
+          subject: selectedSubject,
+          score: markEntry.score,
+          grade: markEntry.score >= 80 ? 'A' : markEntry.score >= 60 ? 'B' : markEntry.score >= 40 ? 'C' : 'D',
+          competency: markEntry.competency,
+          remarks: markEntry.remarks
+        };
+
+        const existingResults = student.results || [];
+        const filteredResults = existingResults.filter(r => !(r.examId === selectedExam.id && r.subject === selectedSubject));
+        
+        return {
+          ...student,
+          results: [...filteredResults, result]
+        };
+      }
+      return student;
+    }));
+
     setIsSaving(false);
-    alert('Marks successfully recorded and synced with student analytics.');
+    alert('Marks successfully recorded and synced with student report cards.');
     setView('exams');
   };
 
@@ -293,19 +331,43 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
 
       {view === 'exams' && (
         <div className="space-y-6 animate-in fade-in duration-300">
-          <div className="bg-white p-6 rounded-2xl border flex items-center gap-4 no-print">
-             <div className="relative flex-1">
-                <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-300" />
-                <input 
-                  type="text"
-                  placeholder="Filter assessments by title or type..."
-                  value={examSearch}
-                  onChange={e => setExamSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none font-medium"
-                />
+          <div className="bg-white p-8 rounded-[32px] border-2 border-gray-50 flex flex-col md:flex-row items-center gap-6 no-print shadow-sm">
+             <div className="flex-1 w-full space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Select Target Class</label>
+                <div className="relative">
+                  <Search className="absolute left-3.5 top-3.5 w-5 h-5 text-gray-300" />
+                  <select 
+                    value={selectedClass} 
+                    onChange={e => setSelectedClass(e.target.value)}
+                    className="w-full pl-12 pr-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black uppercase text-sm focus:border-blue-500 outline-none transition-all shadow-inner"
+                  >
+                    {KENYAN_CLASSES.map(cls => <option key={cls} value={cls}>{cls}</option>)}
+                  </select>
+                </div>
              </div>
-             <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                <Filter className="w-5 h-5" />
+             
+             <div className="flex-1 w-full space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Select Subject</label>
+                <select 
+                  value={selectedSubject} 
+                  onChange={e => setSelectedSubject(e.target.value)}
+                  className="w-full p-3.5 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black uppercase text-sm focus:border-blue-500 outline-none transition-all shadow-inner"
+                >
+                  {subjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                </select>
+             </div>
+
+             <div className="w-full md:w-auto self-end">
+                <div className="relative w-full">
+                    <input 
+                      type="text"
+                      placeholder="Find exam..."
+                      value={examSearch}
+                      onChange={e => setExamSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3.5 bg-white border-2 border-gray-100 rounded-2xl focus:border-blue-500 outline-none font-medium text-sm"
+                    />
+                    <Filter className="absolute left-3 top-4 w-4 h-4 text-gray-300" />
+                </div>
              </div>
           </div>
 
@@ -321,18 +383,8 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
                     <BookOpen className="w-6 h-6" />
                   </div>
                   <div className="flex gap-2 no-print">
-                    <button 
-                      onClick={() => openExamModal(exam)}
-                      className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all border border-transparent hover:border-blue-100"
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => handleDeleteExam(exam.id)}
-                      className="p-2.5 bg-gray-50 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    <button onClick={() => openExamModal(exam)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all border border-transparent hover:border-blue-100"><Edit3 className="w-4 h-4" /></button>
+                    <button onClick={() => handleDeleteExam(exam.id)} className="p-2.5 bg-gray-50 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100"><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
 
@@ -352,7 +404,7 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
                   </div>
                   <button 
                     onClick={() => handleOpenMarkEntry(exam)}
-                    className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-blue-600 hover:text-blue-700 transition-colors"
+                    className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-blue-600 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
                   >
                     Enter Marks <ChevronRight className="w-4 h-4" />
                   </button>
@@ -413,18 +465,8 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
                      </td>
                      <td className="px-10 py-6 text-right no-print">
                         <div className="flex justify-end gap-2">
-                          <button 
-                            onClick={() => openSubjectModal(subject)}
-                            className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
-                          >
-                            <Edit3 className="w-5 h-5" />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteSubject(subject.id)}
-                            className="p-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+                          <button onClick={() => openSubjectModal(subject)} className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit3 className="w-5 h-5" /></button>
+                          <button onClick={() => handleDeleteSubject(subject.id)} className="p-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"><Trash2 className="w-5 h-5" /></button>
                         </div>
                      </td>
                    </tr>
@@ -449,27 +491,13 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
             </div>
             
             <div className="flex flex-wrap gap-3">
-              <select 
-                value={selectedClass} 
-                onChange={e => setSelectedClass(e.target.value)}
-                className="p-3 border-2 border-gray-100 rounded-2xl text-[11px] bg-gray-50 font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-all"
-              >
-                {KENYAN_CLASSES.map(cls => <option key={cls} value={cls}>{cls}</option>)}
-              </select>
-              <select 
-                value={selectedSubject} 
-                onChange={e => setSelectedSubject(e.target.value)}
-                className="p-3 border-2 border-gray-100 rounded-2xl text-[11px] bg-gray-50 font-black uppercase tracking-widest outline-none focus:border-blue-500 transition-all"
-              >
-                {subjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-              </select>
               <button 
                 onClick={saveMarks}
                 disabled={isSaving}
                 className="flex items-center space-x-3 bg-blue-600 text-white px-8 py-3 rounded-2xl hover:bg-blue-700 transition-all font-black uppercase text-xs tracking-widest disabled:opacity-50 shadow-xl shadow-blue-100"
               >
                 {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                <span>Sync Results</span>
+                <span>Update Report Cards</span>
               </button>
             </div>
           </div>
@@ -495,10 +523,7 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
                       </td>
                       <td className="px-12 py-6 w-48 text-center">
                         <input 
-                          type="number" 
-                          max="100" 
-                          min="0"
-                          value={entry.score}
+                          type="number" max="100" min="0" value={entry.score}
                           onChange={e => handleScoreChange(entry.studentId, e.target.value)}
                           className="w-24 p-4 border-2 border-gray-100 rounded-2xl text-center font-black text-xl focus:ring-8 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none bg-gray-50 focus:bg-white"
                         />
@@ -516,9 +541,7 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
                       <td className="px-12 py-6 min-w-[400px]">
                         <div className="flex items-center space-x-3 bg-gray-100/50 px-6 py-4 rounded-3xl border-2 border-transparent focus-within:border-blue-400 focus-within:bg-white transition-all shadow-inner">
                           <input 
-                            type="text"
-                            placeholder="Add observation..."
-                            value={entry.remarks}
+                            type="text" placeholder="Add observation..." value={entry.remarks}
                             onChange={e => handleRemarkChange(entry.studentId, e.target.value)}
                             className="flex-1 bg-transparent border-none focus:ring-0 italic text-gray-600 font-medium placeholder:text-gray-300 placeholder:not-italic"
                           />
@@ -536,6 +559,13 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
                       </td>
                     </tr>
                   ))}
+                  {marks.length === 0 && (
+                    <tr>
+                       <td colSpan={5} className="py-24 text-center">
+                          <p className="text-gray-400 font-black uppercase tracking-widest text-xs italic">No students found in {selectedClass} {selectedStream}.</p>
+                       </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -552,173 +582,31 @@ export const AcademicsModule: React.FC<{ lang: Language }> = ({ lang }) => {
                 <h2 className="text-3xl font-black text-gray-900 tracking-tighter uppercase leading-none">{editingExam ? 'Modify Assessment' : 'New Assessment'}</h2>
                 <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.3em] mt-3">Official Examination Entry</p>
               </div>
-              <button onClick={() => setIsExamModalOpen(false)} className="p-4 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-full transition-all border border-transparent hover:border-red-100">
-                <X className="w-6 h-6" />
-              </button>
+              <button onClick={() => setIsExamModalOpen(false)} className="p-4 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-full transition-all border border-transparent hover:border-red-100"><X className="w-6 h-6" /></button>
             </div>
 
             <form onSubmit={handleSaveExam} className="p-10 space-y-8">
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Assessment Title</label>
-                  <input 
-                    required 
-                    type="text" 
-                    placeholder="e.g. End of Term II Exams"
-                    value={examFormData.title}
-                    onChange={e => setExamFormData({...examFormData, title: e.target.value})}
-                    className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-[24px] focus:ring-8 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-black text-gray-800" 
-                  />
+                  <input required type="text" placeholder="e.g. End of Term II Exams" value={examFormData.title} onChange={e => setExamFormData({...examFormData, title: e.target.value})} className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-[24px] focus:ring-8 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-black text-gray-800" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Academic Term</label>
-                    <select 
-                      value={examFormData.term}
-                      onChange={e => setExamFormData({...examFormData, term: parseInt(e.target.value)})}
-                      className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-[24px] focus:ring-8 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-black text-gray-800"
-                    >
-                      <option value="1">Term 1</option>
-                      <option value="2">Term 2</option>
-                      <option value="3">Term 3</option>
-                    </select>
+                    <select value={examFormData.term} onChange={e => setExamFormData({...examFormData, term: parseInt(e.target.value)})} className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-[24px] focus:ring-8 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-black text-gray-800"><option value="1">Term 1</option><option value="2">Term 2</option><option value="3">Term 3</option></select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Assessment Format</label>
-                    <select 
-                      value={examFormData.type}
-                      onChange={e => setExamFormData({...examFormData, type: e.target.value as any})}
-                      className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-[24px] focus:ring-8 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-black text-gray-800"
-                    >
-                      <option value="CAT">Continuous Assessment (CAT)</option>
-                      <option value="End of Term">Term Examination</option>
-                      <option value="Initial Assessment">Initial Entry Assessment</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Examination Date</label>
-                    <div className="relative">
-                      <input 
-                        required 
-                        type="date" 
-                        value={examFormData.date}
-                        onChange={e => setExamFormData({...examFormData, date: e.target.value})}
-                        className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-[24px] focus:ring-8 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-black text-gray-800 pl-14" 
-                      />
-                      <CalendarDays className="absolute left-5 top-5 text-gray-400 w-6 h-6" />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Academic Year</label>
-                    <input 
-                      required 
-                      type="number" 
-                      value={examFormData.year}
-                      onChange={e => setExamFormData({...examFormData, year: parseInt(e.target.value)})}
-                      className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-[24px] focus:ring-8 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-black text-gray-800" 
-                    />
+                    <select value={examFormData.type} onChange={e => setExamFormData({...examFormData, type: e.target.value as any})} className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-[24px] focus:ring-8 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-black text-gray-800"><option value="CAT">Continuous Assessment (CAT)</option><option value="End of Term">Term Examination</option><option value="Initial Assessment">Initial Entry Assessment</option></select>
                   </div>
                 </div>
               </div>
 
               <div className="flex gap-4 pt-6">
-                <button 
-                  type="button" 
-                  onClick={() => setIsExamModalOpen(false)}
-                  className="flex-1 py-5 text-gray-400 font-black uppercase tracking-widest hover:bg-gray-50 rounded-3xl transition-all"
-                >
-                  Discard
-                </button>
-                <button 
-                  type="submit"
-                  className="flex-1 py-5 bg-blue-600 text-white font-black uppercase tracking-widest rounded-3xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-100"
-                >
-                  {editingExam ? 'Update Schedule' : 'Confirm Entry'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Subject Modal */}
-      {isSubjectModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/70 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-white rounded-[40px] w-full max-w-xl shadow-2xl relative overflow-hidden animate-in zoom-in duration-300">
-            <div className="p-10 border-b bg-gray-50/50 flex items-center justify-between">
-              <div>
-                <h2 className="text-3xl font-black text-gray-900 tracking-tighter uppercase leading-none">{editingSubject ? 'Edit Learning Area' : 'New Learning Area'}</h2>
-                <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.3em] mt-3">Curriculum Definition</p>
-              </div>
-              <button onClick={() => setIsSubjectModalOpen(false)} className="p-4 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-full transition-all border border-transparent hover:border-red-100">
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveSubject} className="p-10 space-y-8">
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Learning Area Name</label>
-                  <input 
-                    required 
-                    type="text" 
-                    placeholder="e.g. Agriculture & Nutrition"
-                    value={subjectFormData.name}
-                    onChange={e => setSubjectFormData({...subjectFormData, name: e.target.value})}
-                    className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-[24px] focus:ring-8 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-black text-gray-800" 
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Area Category</label>
-                    <select 
-                      value={subjectFormData.category}
-                      onChange={e => setSubjectFormData({...subjectFormData, category: e.target.value})}
-                      className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-[24px] focus:ring-8 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-black text-gray-800"
-                    >
-                      <option>STEM</option>
-                      <option>Languages</option>
-                      <option>Arts</option>
-                      <option>Social</option>
-                      <option>Technical</option>
-                      <option>Physical Ed</option>
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Applicable Grades</label>
-                    <select 
-                      value={subjectFormData.gradeRange}
-                      onChange={e => setSubjectFormData({...subjectFormData, gradeRange: e.target.value})}
-                      className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-[24px] focus:ring-8 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-black text-gray-800"
-                    >
-                      <option>PP1 - PP2</option>
-                      <option>Grade 1 - Grade 6</option>
-                      <option>Grade 7 - Grade 9</option>
-                      <option>PP1 - Grade 9</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-4 pt-6">
-                <button 
-                  type="button" 
-                  onClick={() => setIsSubjectModalOpen(false)}
-                  className="flex-1 py-5 text-gray-400 font-black uppercase tracking-widest hover:bg-gray-50 rounded-3xl transition-all"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  className="flex-1 py-5 bg-blue-600 text-white font-black uppercase tracking-widest rounded-3xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-100"
-                >
-                  {editingSubject ? 'Update Area' : 'Register Area'}
-                </button>
+                <button type="button" onClick={() => setIsExamModalOpen(false)} className="flex-1 py-5 text-gray-400 font-black uppercase tracking-widest hover:bg-gray-50 rounded-3xl transition-all">Discard</button>
+                <button type="submit" className="flex-1 py-5 bg-blue-600 text-white font-black uppercase tracking-widest rounded-3xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-100">{editingExam ? 'Update Schedule' : 'Confirm Entry'}</button>
               </div>
             </form>
           </div>
