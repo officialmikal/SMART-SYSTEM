@@ -62,7 +62,7 @@ export const Layout: React.FC<LayoutProps> = ({
       case 'attendance': return [UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.CLASS_TEACHER, UserRole.SUBJECT_TEACHER].includes(role);
       case 'messaging': return [UserRole.ADMIN, UserRole.PRINCIPAL].includes(role);
       case 'finance': return [UserRole.ADMIN, UserRole.PRINCIPAL].includes(role);
-      case 'reports': return true;
+      case 'reports': return [UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.CLASS_TEACHER, UserRole.SUBJECT_TEACHER].includes(role);
       case 'settings': return true;
       default: return false;
     }
@@ -123,14 +123,14 @@ export const Layout: React.FC<LayoutProps> = ({
 
         <div className="absolute bottom-0 w-full p-4 border-t bg-gray-50/50">
           {/* PWA Install Promotion Card */}
-          {installApp && (
+          {installApp && !window.matchMedia('(display-mode: standalone)').matches && (
             <div className="mb-4 p-4 bg-blue-600 rounded-2xl shadow-xl shadow-blue-200 text-white relative overflow-hidden group">
                <div className="absolute -right-2 -bottom-2 opacity-10 group-hover:scale-110 transition-transform">
                   <Smartphone className="w-16 h-16" />
                </div>
                <div className="relative z-10">
                  <h4 className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Get the App</h4>
-                 <p className="text-[11px] font-bold leading-tight mb-3">Install ElimuSmart for offline access.</p>
+                 <p className="text-[11px] font-bold leading-tight mb-3">Install ElimuSmart for the best experience.</p>
                  <button 
                   onClick={installApp}
                   className="w-full py-2 bg-white text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-50 transition-colors shadow-sm"

@@ -13,7 +13,7 @@ import { TimetableModule } from './components/TimetableModule';
 import { MessagingModule } from './components/MessagingModule';
 import { UserRole, User, Student, ClassFee, KENYAN_CLASSES } from './types';
 import { Language, translations } from './services/localizationService';
-import { Smartphone, Check, X } from 'lucide-react';
+import { Smartphone, Check, X, Share } from 'lucide-react';
 
 const INITIAL_STUDENTS: Student[] = [
   { id: '1', admissionNumber: 'ADM001', firstName: 'Kamau', lastName: 'Njoroge', class: 'Grade 7', stream: 'Oak', gender: 'Male', dob: '2011-04-12', guardianPhone: '0712345678', guardianName: 'Sarah Njoroge', totalFee: 45000, paidFee: 32500, feeBalance: 12500, prepaidFee: 0, photo: 'https://picsum.photos/100/100?random=1' },
@@ -25,6 +25,7 @@ const INITIAL_FEE_STRUCTURE: ClassFee[] = KENYAN_CLASSES.map(cls => ({ className
 const AUTH_DB = [
   { id: 'u1', email: 'principal@school.ac.ke', password: 'password123', name: 'Principal Maina', role: UserRole.PRINCIPAL, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maina' },
   { id: 'u2', email: 'admin@school.ac.ke', password: 'adminpassword', name: 'Admin Kioko', role: UserRole.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Kioko' },
+  { id: 'u3', email: 'teacher@school.ac.ke', password: 'teacher123', name: 'Tr. Wambui', role: UserRole.CLASS_TEACHER, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Wambui' },
 ];
 
 const App: React.FC = () => {
@@ -73,12 +74,20 @@ const App: React.FC = () => {
   const [password, setPassword] = useState('');
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallPop, setShowInstallPop] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
+    // Detect iOS
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    setIsIOS(ios);
+
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      setTimeout(() => setShowInstallPop(true), 4000);
+      // Only show popup if not already in standalone mode
+      if (!window.matchMedia('(display-mode: standalone)').matches) {
+        setTimeout(() => setShowInstallPop(true), 4000);
+      }
     };
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -87,7 +96,7 @@ const App: React.FC = () => {
   const handleInstallApp = () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
-      deferredPrompt.userChoice.then((choiceResult: { outcome: string }) => {
+      deferredPrompt.userChoice.then(() => {
         setDeferredPrompt(null);
         setShowInstallPop(false);
       });
@@ -117,20 +126,38 @@ const App: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-blue-700 p-4">
-        <div className="bg-white rounded-[40px] shadow-2xl p-10 max-w-lg w-full">
+      <div className="min-h-screen flex items-center justify-center bg-blue-700 p-4 relative overflow-hidden">
+        {/* Animated background circles */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600 rounded-full -mr-48 -mt-48 opacity-50 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-800 rounded-full -ml-32 -mb-32 opacity-50 blur-3xl"></div>
+        
+        <div className="bg-white rounded-[40px] shadow-2xl p-10 max-w-lg w-full relative z-10 animate-in fade-in zoom-in duration-500">
           <div className="text-center mb-10">
+            <div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-blue-100">
+               <span className="text-white font-black text-3xl">E</span>
+            </div>
             <h1 className="text-4xl font-black text-gray-900 tracking-tighter leading-none">ElimuSmart</h1>
             <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-2 leading-none">Management ERP System</p>
           </div>
           <form className="space-y-6" onSubmit={handleLogin}>
-            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-500" placeholder="Email" />
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 bg-gray-50 border rounded-2xl font-bold outline-none focus:ring-2 focus:ring-blue-500" placeholder="Password" />
-            <button type="submit" className="w-full bg-blue-600 text-white font-black py-4 rounded-2xl uppercase tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all">Sign In</button>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all" placeholder="name@school.ac.ke" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Secure Password</label>
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all" placeholder="••••••••" />
+            </div>
+            <button type="submit" className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95">Sign In to Dashboard</button>
           </form>
-          <div className="mt-8 flex gap-2 justify-center">
-            <button onClick={() => { setUsername('principal@school.ac.ke'); setPassword('password123'); }} className="text-[9px] bg-gray-100 px-3 py-2 rounded-xl font-black uppercase text-gray-500 hover:bg-gray-200 transition-all">Principal Demo</button>
-            <button onClick={() => { setUsername('admin@school.ac.ke'); setPassword('adminpassword'); }} className="text-[9px] bg-gray-100 px-3 py-2 rounded-xl font-black uppercase text-gray-500 hover:bg-gray-200 transition-all">Admin Demo</button>
+          
+          <div className="mt-10 border-t pt-8">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center mb-4">Quick Access Demos</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              <button onClick={() => { setUsername('principal@school.ac.ke'); setPassword('password123'); }} className="text-[9px] bg-gray-50 px-4 py-2 rounded-xl font-black uppercase text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-all border border-gray-100">Principal</button>
+              <button onClick={() => { setUsername('admin@school.ac.ke'); setPassword('adminpassword'); }} className="text-[9px] bg-gray-50 px-4 py-2 rounded-xl font-black uppercase text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-all border border-gray-100">Admin</button>
+              <button onClick={() => { setUsername('teacher@school.ac.ke'); setPassword('teacher123'); }} className="text-[9px] bg-gray-50 px-4 py-2 rounded-xl font-black uppercase text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-all border border-gray-100">Teacher</button>
+            </div>
           </div>
         </div>
       </div>
@@ -148,9 +175,9 @@ const App: React.FC = () => {
       lang={lang}
       setLang={setLang}
       switchRole={switchRole}
-      installApp={deferredPrompt ? handleInstallApp : undefined}
+      installApp={(deferredPrompt || isIOS) ? () => setShowInstallPop(true) : undefined}
     >
-      {showInstallPop && deferredPrompt && (
+      {showInstallPop && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] w-full max-w-md px-4 animate-in slide-in-from-top-4 duration-500">
           <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.2)] p-6 border-2 border-blue-50 flex items-center gap-6 relative overflow-hidden">
              <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
@@ -160,14 +187,23 @@ const App: React.FC = () => {
                 <Smartphone size={24} />
              </div>
              <div className="flex-1">
-                <h4 className="text-sm font-black text-gray-900 uppercase tracking-tight">Offline Access Ready</h4>
-                <p className="text-[11px] font-bold text-gray-500 leading-tight mt-1">Install ElimuSmart for the best experience.</p>
+                <h4 className="text-sm font-black text-gray-900 uppercase tracking-tight">{isIOS ? 'Install on iPhone' : 'Offline Access Ready'}</h4>
+                <p className="text-[11px] font-bold text-gray-500 leading-tight mt-1">
+                  {isIOS ? 'Tap Share and "Add to Home Screen"' : 'Install ElimuSmart for the best experience.'}
+                </p>
                 <div className="flex gap-2 mt-4">
-                   <button onClick={handleInstallApp} className="bg-blue-600 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 flex items-center gap-2">
-                     <Check size={14} /> Install Now
-                   </button>
+                   {!isIOS && (
+                     <button onClick={handleInstallApp} className="bg-blue-600 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-100 flex items-center gap-2">
+                       <Check size={14} /> Install Now
+                     </button>
+                   )}
+                   {isIOS && (
+                     <div className="flex items-center gap-2 text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-3 py-2 rounded-xl">
+                        <Share size={14} /> Share Menu
+                     </div>
+                   )}
                    <button onClick={() => setShowInstallPop(false)} className="bg-gray-100 text-gray-500 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">
-                     Later
+                     Close
                    </button>
                 </div>
              </div>
