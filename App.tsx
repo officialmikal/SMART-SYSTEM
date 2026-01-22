@@ -13,20 +13,26 @@ import { TimetableModule } from './components/TimetableModule';
 import { MessagingModule } from './components/MessagingModule';
 import { UserRole, User, Student, ClassFee, KENYAN_CLASSES } from './types';
 import { Language, translations } from './services/localizationService';
-import { Smartphone, Check, X, Share } from 'lucide-react';
+import { Smartphone, Check, X, Share, ShieldCheck } from 'lucide-react';
 
 const INITIAL_STUDENTS: Student[] = [
   { id: '1', admissionNumber: 'ADM001', firstName: 'Kamau', lastName: 'Njoroge', class: 'Grade 7', stream: 'Oak', gender: 'Male', dob: '2011-04-12', guardianPhone: '0712345678', guardianName: 'Sarah Njoroge', totalFee: 45000, paidFee: 32500, feeBalance: 12500, prepaidFee: 0, photo: 'https://picsum.photos/100/100?random=1' },
   { id: '2', admissionNumber: 'ADM002', firstName: 'Amara', lastName: 'Kiprono', class: 'Grade 8', stream: 'Palm', gender: 'Female', dob: '2010-08-25', guardianPhone: '0722000111', guardianName: 'David Kiprono', totalFee: 45000, paidFee: 45000, feeBalance: 0, prepaidFee: 2500, photo: 'https://picsum.photos/100/100?random=2' },
 ];
 
-const INITIAL_FEE_STRUCTURE: ClassFee[] = KENYAN_CLASSES.map(cls => ({ className: cls, amount: 45000 }));
-
-const AUTH_DB = [
+const INITIAL_USERS: User[] = [
   { id: 'u1', email: 'principal@school.ac.ke', password: 'password123', name: 'Principal Maina', role: UserRole.PRINCIPAL, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Maina' },
   { id: 'u2', email: 'admin@school.ac.ke', password: 'adminpassword', name: 'Admin Kioko', role: UserRole.ADMIN, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Kioko' },
   { id: 'u3', email: 'teacher@school.ac.ke', password: 'teacher123', name: 'Tr. Wambui', role: UserRole.CLASS_TEACHER, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Wambui' },
 ];
+
+const INITIAL_FEE_STRUCTURE: ClassFee[] = KENYAN_CLASSES.map(cls => ({ className: cls, amount: 45000 }));
+
+const INITIAL_SCHOOL_CONFIG = {
+  schoolName: 'ElimuSmart Academy',
+  motto: 'Excellence in Knowledge and Character',
+  registrationNo: 'MOE/P/2024/0981'
+};
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -34,6 +40,15 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [lang, setLang] = useState<Language>('en');
   
+  const [users, setUsers] = useState<User[]>(() => {
+    try {
+      const saved = localStorage.getItem('elimusmart_users');
+      return saved ? JSON.parse(saved) : INITIAL_USERS;
+    } catch (e) {
+      return INITIAL_USERS;
+    }
+  });
+
   const [students, setStudents] = useState<Student[]>(() => {
     try {
       const saved = localStorage.getItem('elimusmart_students');
@@ -57,6 +72,19 @@ const App: React.FC = () => {
     return localStorage.getItem('elimusmart_logo');
   });
 
+  const [schoolConfig, setSchoolConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem('elimusmart_config');
+      return saved ? JSON.parse(saved) : INITIAL_SCHOOL_CONFIG;
+    } catch (e) {
+      return INITIAL_SCHOOL_CONFIG;
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('elimusmart_users', JSON.stringify(users));
+  }, [users]);
+
   useEffect(() => {
     localStorage.setItem('elimusmart_students', JSON.stringify(students));
   }, [students]);
@@ -64,6 +92,10 @@ const App: React.FC = () => {
   useEffect(() => {
     localStorage.setItem('elimusmart_fees', JSON.stringify(feeStructure));
   }, [feeStructure]);
+
+  useEffect(() => {
+    localStorage.setItem('elimusmart_config', JSON.stringify(schoolConfig));
+  }, [schoolConfig]);
 
   useEffect(() => {
     if (schoolLogo) localStorage.setItem('elimusmart_logo', schoolLogo);
@@ -77,14 +109,12 @@ const App: React.FC = () => {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // Detect iOS
     const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(ios);
 
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // Only show popup if not already in standalone mode
       if (!window.matchMedia('(display-mode: standalone)').matches) {
         setTimeout(() => setShowInstallPop(true), 4000);
       }
@@ -105,21 +135,19 @@ const App: React.FC = () => {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const foundUser = AUTH_DB.find(u => u.email === username.toLowerCase() && u.password === password);
+    const foundUser = users.find(u => u.email === username.toLowerCase() && u.password === password);
     if (foundUser) {
-      const { password, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword as User);
+      setUser(foundUser);
       setCurrentTab('dashboard');
     } else {
-      alert('Invalid credentials.');
+      alert('Authentication Failed: Incorrect email or password.');
     }
   };
 
   const switchRole = (role: UserRole) => {
-    const roleUser = AUTH_DB.find(u => u.role === role);
+    const roleUser = users.find(u => u.role === role);
     if (roleUser) {
-      const { password, ...userWithoutPassword } = roleUser;
-      setUser(userWithoutPassword as User);
+      setUser(roleUser);
       setCurrentTab('dashboard');
     }
   };
@@ -127,17 +155,16 @@ const App: React.FC = () => {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-blue-700 p-4 relative overflow-hidden">
-        {/* Animated background circles */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600 rounded-full -mr-48 -mt-48 opacity-50 blur-3xl"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-800 rounded-full -ml-32 -mb-32 opacity-50 blur-3xl"></div>
         
         <div className="bg-white rounded-[40px] shadow-2xl p-10 max-w-lg w-full relative z-10 animate-in fade-in zoom-in duration-500">
           <div className="text-center mb-10">
             <div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-blue-100">
-               <span className="text-white font-black text-3xl">E</span>
+               <ShieldCheck className="text-white w-8 h-8" />
             </div>
             <h1 className="text-4xl font-black text-gray-900 tracking-tighter leading-none">ElimuSmart</h1>
-            <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-2 leading-none">Management ERP System</p>
+            <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-2 leading-none">Secure School Environment</p>
           </div>
           <form className="space-y-6" onSubmit={handleLogin}>
             <div className="space-y-1">
@@ -148,16 +175,13 @@ const App: React.FC = () => {
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Secure Password</label>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all" placeholder="••••••••" />
             </div>
-            <button type="submit" className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95">Sign In to Dashboard</button>
+            <button type="submit" className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95">Enter System Portal</button>
           </form>
           
-          <div className="mt-10 border-t pt-8">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest text-center mb-4">Quick Access Demos</p>
-            <div className="flex flex-wrap gap-2 justify-center">
-              <button onClick={() => { setUsername('principal@school.ac.ke'); setPassword('password123'); }} className="text-[9px] bg-gray-50 px-4 py-2 rounded-xl font-black uppercase text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-all border border-gray-100">Principal</button>
-              <button onClick={() => { setUsername('admin@school.ac.ke'); setPassword('adminpassword'); }} className="text-[9px] bg-gray-50 px-4 py-2 rounded-xl font-black uppercase text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-all border border-gray-100">Admin</button>
-              <button onClick={() => { setUsername('teacher@school.ac.ke'); setPassword('teacher123'); }} className="text-[9px] bg-gray-50 px-4 py-2 rounded-xl font-black uppercase text-gray-500 hover:bg-blue-50 hover:text-blue-600 transition-all border border-gray-100">Teacher</button>
-            </div>
+          <div className="mt-8 text-center">
+             <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest leading-relaxed">
+               Authorized Personnel Only. All access is logged for institutional integrity.
+             </p>
           </div>
         </div>
       </div>
@@ -218,11 +242,21 @@ const App: React.FC = () => {
         {currentTab === 'staff' && <StaffManagement />}
         {currentTab === 'academics' && <AcademicsModule lang={lang} students={students} setStudents={setStudents} />}
         {currentTab === 'timetable' && <TimetableModule lang={lang} />}
-        {currentTab === 'finance' && <FinanceModule lang={lang} students={students} setStudents={setStudents} feeStructure={feeStructure} setFeeStructure={setFeeStructure} schoolLogo={schoolLogo} />}
+        {currentTab === 'finance' && <FinanceModule lang={lang} students={students} setStudents={setStudents} feeStructure={feeStructure} setFeeStructure={setFeeStructure} schoolLogo={schoolLogo} schoolConfig={schoolConfig} />}
         {currentTab === 'attendance' && <AttendanceModule lang={lang} />}
         {currentTab === 'messaging' && <MessagingModule lang={lang} students={students} />}
-        {currentTab === 'reports' && <ReportsModule lang={lang} students={students} />}
-        {currentTab === 'settings' && <SettingsModule userRole={user.role} schoolLogo={schoolLogo} setSchoolLogo={setSchoolLogo} />}
+        {currentTab === 'reports' && <ReportsModule lang={lang} students={students} schoolLogo={schoolLogo} schoolConfig={schoolConfig} />}
+        {currentTab === 'settings' && (
+          <SettingsModule 
+            currentUser={user} 
+            users={users} 
+            setUsers={setUsers} 
+            schoolLogo={schoolLogo} 
+            setSchoolLogo={setSchoolLogo} 
+            schoolConfig={schoolConfig}
+            setSchoolConfig={setSchoolConfig}
+          />
+        )}
       </main>
     </Layout>
   );

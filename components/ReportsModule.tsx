@@ -6,22 +6,20 @@ import {
   Wallet, 
   ArrowLeft,
   FileBadge,
-  Filter,
-  Loader2,
   Layers,
   Printer
 } from 'lucide-react';
 import { TranscriptModule } from './TranscriptModule';
-import { schoolService, AttendanceRecord, FeeTransaction } from '../services/schoolService';
+import { AttendanceRecord, FeeTransaction } from '../services/schoolService';
 import { Language, translations } from '../services/localizationService';
 import { KENYAN_CLASSES, Student } from '../types';
-// @ts-ignore
-import _html2pdf from 'html2pdf.js';
 
 type ReportView = 'selection' | 'transcript' | 'attendance' | 'fees';
 
 interface Props {
-  students?: Student[]; // Made optional
+  students?: Student[];
+  schoolLogo: string | null;
+  schoolConfig: any;
 }
 
 const ReportCard: React.FC<{ title: string; desc: string; icon: any; onClick: () => void; color: string; active?: boolean }> = ({ title, desc, icon: Icon, onClick, color, active }) => (
@@ -34,15 +32,12 @@ const ReportCard: React.FC<{ title: string; desc: string; icon: any; onClick: ()
   </button>
 );
 
-export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, students = [] }) => {
+export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, students = [], schoolLogo, schoolConfig }) => {
+  const t = translations[lang];
   const [view, setView] = useState<ReportView>('selection');
-  const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
-  const [feeData, setFeeData] = useState<FeeTransaction[]>([]);
-  const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const [selectedClass, setSelectedClass] = useState('Grade 7');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
-  // Added defensive check for students array
   const filteredStudents = (students || []).filter(s => selectedClass === 'All Classes' || s.class === selectedClass);
 
   const openIndividualTranscript = (student: Student) => {
@@ -54,7 +49,7 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
     return (
       <div className="space-y-6">
         <button onClick={() => setView('selection')} className="flex items-center text-blue-600 font-black uppercase text-xs tracking-widest"><ArrowLeft className="w-5 h-5 mr-2" /> Back</button>
-        <TranscriptModule student={selectedStudent} />
+        <TranscriptModule student={selectedStudent} schoolLogo={schoolLogo} schoolConfig={schoolConfig} />
       </div>
     );
   }
