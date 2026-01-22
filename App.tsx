@@ -54,7 +54,6 @@ const App: React.FC = () => {
       const saved = localStorage.getItem('elimusmart_students');
       return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
     } catch (e) {
-      console.error("Failed to parse students from localStorage", e);
       return INITIAL_STUDENTS;
     }
   });
@@ -109,16 +108,30 @@ const App: React.FC = () => {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
+    // 1. Detect platform and installation status
     const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+    
     setIsIOS(ios);
 
+    // 2. iOS Logic: Show popup after 5 seconds if not installed (since no event exists)
+    if (ios && !isStandalone) {
+      const timer = setTimeout(() => {
+        setShowInstallPop(true);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+
+    // 3. Android/Chrome Logic: Wait for the event
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      if (!window.matchMedia('(display-mode: standalone)').matches) {
-        setTimeout(() => setShowInstallPop(true), 4000);
+      // Show custom popup after 3 seconds if not already installed
+      if (!isStandalone) {
+        setTimeout(() => setShowInstallPop(true), 3000);
       }
     };
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
   }, []);

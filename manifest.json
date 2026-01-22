@@ -21,6 +21,12 @@
       "src": "https://api.dicebear.com/7.x/initials/png?seed=ES&backgroundColor=1e3a8a&fontFamily=Inter&fontSize=45&bold=true&size=512",
       "type": "image/png",
       "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "https://api.dicebear.com/7.x/initials/png?seed=ES&backgroundColor=1e3a8a&fontFamily=Inter&fontSize=45&bold=true&size=512",
+      "type": "image/png",
+      "sizes": "512x512",
       "purpose": "maskable"
     }
   ]
