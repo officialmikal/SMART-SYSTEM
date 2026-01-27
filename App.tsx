@@ -34,7 +34,13 @@ const INITIAL_FEE_STRUCTURE: ClassFee[] = KENYAN_CLASSES.map(cls => ({ className
 const INITIAL_SCHOOL_CONFIG = {
   schoolName: 'ElimuSmart Academy',
   motto: 'Excellence in Knowledge and Character',
-  registrationNo: 'MOE/P/2024/0981'
+  registrationNo: 'MOE/P/2024/0981',
+  year: 2024,
+  term: 1,
+  mpesaPaybill: '522522',
+  mpesaTill: '',
+  bankName: 'KCB Bank',
+  bankAccountNumber: '1100223344'
 };
 
 const App: React.FC = () => {

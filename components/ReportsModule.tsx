@@ -11,13 +11,15 @@ import {
   Type,
   Search,
   Filter,
-  GraduationCap
+  GraduationCap,
+  Users
 } from 'lucide-react';
 import { TranscriptModule } from './TranscriptModule';
 import { Language, translations } from '../services/localizationService';
 import { KENYAN_CLASSES, SCHOOL_STREAMS, Student } from '../types';
 
 type ReportView = 'selection' | 'transcript' | 'attendance' | 'fees';
+type ReportType = 'academic' | 'attendance' | 'finance';
 
 interface Props {
   students?: Student[];
@@ -41,8 +43,9 @@ const ReportCard: React.FC<{ title: string; desc: string; icon: any; onClick: ()
 export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, students = [], schoolLogo, schoolConfig }) => {
   const t = translations[lang];
   const [view, setView] = useState<ReportView>('selection');
+  const [reportType, setReportType] = useState<ReportType>('academic');
   const [selectedClass, setSelectedClass] = useState('Grade 7');
-  const [selectedStream, setSelectedStream] = useState('Eagle');
+  const [selectedStream, setSelectedStream] = useState(''); // Default to empty (All Streams) to ensure students show up
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -74,10 +77,11 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-20 animate-in fade-in duration-500">
-      <datalist id="kenyan-classes">
+      <datalist id="kenyan-classes-reports">
         {KENYAN_CLASSES.map(c => <option key={c} value={c} />)}
       </datalist>
-      <datalist id="school-streams">
+      <datalist id="school-streams-reports">
+        <option value="">All Streams</option>
         {SCHOOL_STREAMS.map(s => <option key={s} value={s} />)}
       </datalist>
 
@@ -95,7 +99,7 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
              <div className="flex items-center px-4 gap-2 border-r border-gray-100">
                 <Type size={14} className="text-gray-400" />
                 <input 
-                  list="kenyan-classes"
+                  list="kenyan-classes-reports"
                   value={selectedClass}
                   placeholder="Class"
                   onChange={e => setSelectedClass(e.target.value)}
@@ -105,9 +109,9 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
              <div className="flex items-center px-4 gap-2">
                 <Layers size={14} className="text-gray-400" />
                 <input 
-                  list="school-streams"
+                  list="school-streams-reports"
                   value={selectedStream}
-                  placeholder="Stream"
+                  placeholder="All Streams"
                   onChange={e => setSelectedStream(e.target.value)}
                   className="bg-transparent w-28 py-2 text-[10px] font-black uppercase tracking-widest border-none outline-none text-gray-900"
                 />
@@ -122,16 +126,37 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
       {view === 'selection' && (
         <div className="space-y-12">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <ReportCard title="Transcripts" desc="Generate official CBC individual report cards." icon={FileBadge} onClick={() => {}} color="indigo" active />
-            <ReportCard title="Attendance" desc="Review longitudinal presence tracking history." icon={ClipboardCheck} onClick={() => {}} color="emerald" />
-            <ReportCard title="Financials" desc="Access detailed fee statements and balances." icon={Wallet} onClick={() => {}} color="blue" />
+            <ReportCard 
+              title="Transcripts" 
+              desc="Generate official CBC individual report cards." 
+              icon={FileBadge} 
+              onClick={() => setReportType('academic')} 
+              color="indigo" 
+              active={reportType === 'academic'} 
+            />
+            <ReportCard 
+              title="Attendance" 
+              desc="Review longitudinal presence tracking history." 
+              icon={ClipboardCheck} 
+              onClick={() => setReportType('attendance')} 
+              color="emerald" 
+              active={reportType === 'attendance'} 
+            />
+            <ReportCard 
+              title="Financials" 
+              desc="Access detailed fee statements and balances." 
+              icon={Wallet} 
+              onClick={() => setReportType('finance')} 
+              color="blue" 
+              active={reportType === 'finance'} 
+            />
           </div>
 
           <div className="bg-white rounded-[48px] border-2 border-gray-50 overflow-hidden shadow-2xl relative">
              <div className="p-10 border-b bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
                    <h3 className="text-2xl font-black text-gray-900 tracking-tighter uppercase italic leading-none">Student Directory</h3>
-                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">{selectedClass} {selectedStream} • {filteredStudents.length} Found</p>
+                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">{selectedClass} {selectedStream || 'All Streams'} • {filteredStudents.length} Found</p>
                 </div>
                 <div className="relative w-full md:w-80">
                     <input 
@@ -158,7 +183,7 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                         </div>
                         <div>
                            <p className="font-black text-gray-900 text-xl tracking-tighter leading-none uppercase italic">{student.firstName} {student.lastName}</p>
-                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">ADM: {student.admissionNumber}</p>
+                           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">ADM: {student.admissionNumber} • {student.stream}</p>
                         </div>
                      </div>
                      <div className="flex gap-3">
@@ -166,7 +191,7 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                           onClick={() => openIndividualTranscript(student)} 
                           className="flex items-center gap-3 bg-white border-2 border-gray-100 px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-700 hover:border-blue-500 hover:text-blue-600 transition-all shadow-sm"
                         >
-                           <FileText className="w-5 h-5" /> Generate Card
+                           <FileText className="w-5 h-5" /> {reportType === 'academic' ? 'Generate Card' : reportType === 'attendance' ? 'View Attendance' : 'Fee Statement'}
                         </button>
                         <button onClick={() => window.print()} className="p-3 bg-gray-900 text-white rounded-2xl hover:bg-black transition-all shadow-lg shadow-gray-200"><Printer className="w-5 h-5" /></button>
                      </div>
@@ -176,6 +201,12 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                   <div className="py-24 text-center">
                     <Search className="w-16 h-16 text-gray-100 mx-auto mb-6" />
                     <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.4em] italic">No learners match your current filter.</p>
+                    <button 
+                      onClick={() => { setSelectedClass('Grade 7'); setSelectedStream(''); setSearchQuery(''); }}
+                      className="mt-6 px-6 py-3 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all"
+                    >
+                      Reset Directory View
+                    </button>
                   </div>
                 )}
              </div>

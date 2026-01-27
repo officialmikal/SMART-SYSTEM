@@ -17,7 +17,15 @@ import {
   Trash2,
   Users,
   Plus,
-  Key
+  Key,
+  Smartphone,
+  Banknote,
+  CreditCard,
+  Hash,
+  Edit3,
+  X,
+  ShieldCheck,
+  UserPlus
 } from 'lucide-react';
 import { UserRole, User as UserType } from '../types';
 
@@ -51,9 +59,15 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
   // School Edit State
   const [editableConfig, setEditableConfig] = useState(schoolConfig);
 
-  // User Management State
-  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-  const [newUser, setNewUser] = useState<Partial<UserType>>({
+  // Sync editableConfig when schoolConfig changes
+  useEffect(() => {
+    setEditableConfig(schoolConfig);
+  }, [schoolConfig]);
+
+  // Unified User Modal State
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserType | null>(null);
+  const [userFormData, setUserFormData] = useState<Partial<UserType>>({
     name: '',
     email: '',
     role: UserRole.SUBJECT_TEACHER,
@@ -97,22 +111,42 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
     setConfirmPassword('');
   };
 
-  const handleAddUser = (e: React.FormEvent) => {
+  const openUserModal = (user?: UserType) => {
+    if (user) {
+      setEditingUser(user);
+      setUserFormData({
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        password: user.password || ''
+      });
+    } else {
+      setEditingUser(null);
+      setUserFormData({ name: '', email: '', role: UserRole.SUBJECT_TEACHER, password: '' });
+    }
+    setIsUserModalOpen(true);
+  };
+
+  const handleSaveUser = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newUser.name || !newUser.email || !newUser.password) return;
+    if (!userFormData.name || !userFormData.email) return;
 
-    const userToAdd: UserType = {
-      id: `u${Date.now()}`,
-      name: newUser.name,
-      email: newUser.email.toLowerCase(),
-      role: newUser.role as UserRole,
-      password: newUser.password,
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${newUser.name}`
-    };
-
-    setUsers(prev => [...prev, userToAdd]);
-    setIsAddUserModalOpen(false);
-    setNewUser({ name: '', email: '', role: UserRole.SUBJECT_TEACHER, password: '' });
+    if (editingUser) {
+      setUsers(prev => prev.map(u => u.id === editingUser.id ? { ...u, ...userFormData } : u));
+      alert(`Account for ${userFormData.name} updated successfully.`);
+    } else {
+      const userToAdd: UserType = {
+        id: `u${Date.now()}`,
+        name: userFormData.name || '',
+        email: (userFormData.email || '').toLowerCase(),
+        role: userFormData.role as UserRole,
+        password: userFormData.password || 'password123',
+        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userFormData.name}`
+      };
+      setUsers(prev => [...prev, userToAdd]);
+      alert(`New account created for ${userFormData.name}.`);
+    }
+    setIsUserModalOpen(false);
   };
 
   const handleDeleteUser = (id: string) => {
@@ -120,7 +154,8 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
       alert("Error: You cannot delete your own active session.");
       return;
     }
-    if (window.confirm('Security Warning: Are you sure you want to permanently revoke this user\'s access?')) {
+    const target = users.find(u => u.id === id);
+    if (window.confirm(`Security Warning: Are you sure you want to permanently revoke access for ${target?.name}?`)) {
       setUsers(prev => prev.filter(u => u.id !== id));
     }
   };
@@ -181,36 +216,54 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               <div className="p-8 space-y-6 animate-in fade-in duration-300">
                 <div className="flex items-center justify-between border-b pb-4">
                    <h3 className="text-lg font-black uppercase tracking-tight text-gray-800">Platform Users</h3>
-                   <button onClick={() => setIsAddUserModalOpen(true)} className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">
-                     <Plus className="w-4 h-4" /> Add User
+                   <button onClick={() => openUserModal()} className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg shadow-blue-100">
+                     <UserPlus className="w-4 h-4" /> Create Account
                    </button>
                 </div>
                 
                 <div className="divide-y border rounded-2xl overflow-hidden">
                   {users.map(u => (
-                    <div key={u.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors">
+                    <div key={u.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors group">
                        <div className="flex items-center gap-4">
-                          <img src={u.avatar} className="w-10 h-10 rounded-xl border bg-white" />
+                          <div className="relative">
+                            <img src={u.avatar} className="w-12 h-12 rounded-xl border bg-white" />
+                            {u.id === currentUser.id && (
+                              <div className="absolute -top-1 -right-1 bg-green-500 w-3 h-3 rounded-full border-2 border-white"></div>
+                            )}
+                          </div>
                           <div>
-                            <p className="font-black text-gray-900 text-sm">{u.name}</p>
-                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">{u.role}</p>
+                            <p className="font-black text-gray-900 text-sm">{u.name} {u.id === currentUser.id && <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded ml-1 font-bold text-gray-400 tracking-normal">YOU</span>}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[9px] font-black bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded uppercase tracking-wider">{u.role.replace('_', ' ')}</span>
+                              <span className="text-[10px] text-gray-400 font-medium">{u.email}</span>
+                            </div>
                           </div>
                        </div>
-                       <div className="flex items-center gap-4">
-                          <div className="text-right">
-                             <p className="text-[10px] text-gray-400 font-medium">{u.email}</p>
-                             <p className="text-[9px] font-mono text-gray-300">ID: {u.id}</p>
-                          </div>
+                       <div className="flex items-center gap-2">
+                          <button 
+                            onClick={() => openUserModal(u)}
+                            className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all border border-transparent hover:border-blue-100"
+                            title="Update Credentials"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
                           <button 
                             onClick={() => handleDeleteUser(u.id)}
-                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                            className={`p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100 ${u.id === currentUser.id ? 'opacity-20 cursor-not-allowed' : ''}`}
                             title="Revoke Access"
+                            disabled={u.id === currentUser.id}
                           >
-                            <Trash2 className="w-5 h-5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                        </div>
                     </div>
                   ))}
+                </div>
+                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex items-start gap-3">
+                   <ShieldCheck className="w-5 h-5 text-gray-400 mt-0.5" />
+                   <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest leading-relaxed italic">
+                     Only Administrators can manage user accounts. Changes to roles affect portal visibility and permissions immediately.
+                   </p>
                 </div>
               </div>
             )}
@@ -287,10 +340,57 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                     <input type="text" value={editableConfig?.motto} onChange={e => setEditableConfig({...editableConfig, motto: e.target.value})} className="w-full p-3 border rounded-xl font-bold outline-none focus:border-blue-500" />
                   </div>
                 </div>
-                <div className="flex justify-end">
-                   <button type="submit" disabled={isSaving} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-100 flex items-center gap-2">
+
+                <div className="pt-6 border-t mt-8">
+                   <div className="flex items-center gap-3 mb-6">
+                      <Banknote className="text-blue-600 w-6 h-6" />
+                      <h3 className="text-lg font-black text-blue-900 uppercase tracking-tight">Financial Disbursement Details</h3>
+                   </div>
+                   
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-4">
+                         <div className="flex items-center gap-2 mb-2">
+                            <Smartphone className="w-4 h-4 text-green-600" />
+                            <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">M-Pesa Merchant Accounts</p>
+                         </div>
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Paybill No.</label>
+                               <input type="text" placeholder="e.g. 522522" value={editableConfig?.mpesaPaybill} onChange={e => setEditableConfig({...editableConfig, mpesaPaybill: e.target.value})} className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl font-black focus:border-green-500 outline-none transition-all shadow-inner" />
+                            </div>
+                            <div className="space-y-1">
+                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Buy Goods Till</label>
+                               <input type="text" placeholder="e.g. 123456" value={editableConfig?.mpesaTill} onChange={e => setEditableConfig({...editableConfig, mpesaTill: e.target.value})} className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl font-black focus:border-green-500 outline-none transition-all shadow-inner" />
+                            </div>
+                         </div>
+                      </div>
+
+                      <div className="space-y-4">
+                         <div className="flex items-center gap-2 mb-2">
+                            <CreditCard className="w-4 h-4 text-blue-600" />
+                            <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Official Bank Account</p>
+                         </div>
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Bank Name</label>
+                               <input type="text" placeholder="e.g. Equity Bank" value={editableConfig?.bankName} onChange={e => setEditableConfig({...editableConfig, bankName: e.target.value})} className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl font-black focus:border-blue-500 outline-none transition-all shadow-inner" />
+                            </div>
+                            <div className="space-y-1">
+                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Account No.</label>
+                               <input type="text" placeholder="0123456789" value={editableConfig?.bankAccountNumber} onChange={e => setEditableConfig({...editableConfig, bankAccountNumber: e.target.value})} className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl font-black focus:border-blue-500 outline-none transition-all shadow-inner" />
+                            </div>
+                         </div>
+                      </div>
+                   </div>
+                   <p className="mt-4 text-[9px] text-gray-400 font-bold uppercase tracking-widest italic flex items-center gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100">
+                      <Hash size={10} className="text-blue-500" /> These details will appear on official fee statements and printed invoices generated for guardians.
+                   </p>
+                </div>
+
+                <div className="flex justify-end pt-6 border-t mt-10">
+                   <button type="submit" disabled={isSaving} className="bg-gray-900 text-white px-10 py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl hover:bg-black transition-all flex items-center gap-3 border-b-4 border-black active:scale-95">
                      {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                     Save Changes
+                     Commit Profile Updates
                    </button>
                 </div>
               </form>
@@ -315,45 +415,53 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
         </div>
       </div>
 
-      {/* Add User Modal */}
-      {isAddUserModalOpen && (
+      {/* Unified User Modal (Add/Update) */}
+      {isUserModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md animate-in fade-in duration-200">
            <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl relative overflow-hidden animate-in zoom-in duration-300">
               <div className="p-8 border-b bg-gray-50/50 flex items-center justify-between">
-                 <div>
-                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">New Credentials</h2>
-                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-2">Create Secure System Account</p>
+                 <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center text-blue-600 shadow-sm border-2 border-white">
+                      {editingUser ? <Edit3 size={24} /> : <UserPlus size={24} />}
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter leading-none">{editingUser ? 'Update Account' : 'New Credentials'}</h2>
+                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-2">{editingUser ? 'Modify Secure System Account' : 'Create Secure System Account'}</p>
+                    </div>
                  </div>
-                 <button onClick={() => setIsAddUserModalOpen(false)} className="p-4 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-full transition-all">
-                    <Trash2 className="w-6 h-6" />
+                 <button onClick={() => setIsUserModalOpen(false)} className="p-4 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-all">
+                    <X className="w-6 h-6" />
                  </button>
               </div>
 
-              <form onSubmit={handleAddUser} className="p-8 space-y-6">
+              <form onSubmit={handleSaveUser} className="p-8 space-y-6">
                  <div className="space-y-4">
                     <div className="space-y-1">
                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
-                       <input required type="text" value={newUser.name} onChange={e => setNewUser({...newUser, name: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner" />
+                       <input required type="text" value={userFormData.name} onChange={e => setUserFormData({...userFormData, name: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner" placeholder="John Doe" />
                     </div>
                     <div className="space-y-1">
                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
-                       <input required type="email" value={newUser.email} onChange={e => setNewUser({...newUser, email: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner" />
+                       <input required type="email" value={userFormData.email} onChange={e => setUserFormData({...userFormData, email: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner" placeholder="name@school.ac.ke" />
                     </div>
                     <div className="space-y-1">
                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">System Role</label>
-                       <select value={newUser.role} onChange={e => setNewUser({...newUser, role: e.target.value as UserRole})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner">
+                       <select value={userFormData.role} onChange={e => setUserFormData({...userFormData, role: e.target.value as UserRole})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-black uppercase text-xs outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner">
                           {Object.values(UserRole).map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
                        </select>
                     </div>
                     <div className="space-y-1">
-                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Initial Password</label>
-                       <input required type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner" />
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{editingUser ? 'Reset Password (Optional)' : 'Initial Password'}</label>
+                       <input type="password" value={userFormData.password} onChange={e => setUserFormData({...userFormData, password: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner" placeholder="••••••••" />
                     </div>
                  </div>
 
                  <div className="flex gap-4 pt-6">
-                    <button type="button" onClick={() => setIsAddUserModalOpen(false)} className="flex-1 py-4 text-gray-400 font-black uppercase text-xs tracking-widest">Discard</button>
-                    <button type="submit" className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all">Confirm Account</button>
+                    <button type="button" onClick={() => setIsUserModalOpen(false)} className="flex-1 py-5 text-gray-400 font-black uppercase text-[10px] tracking-widest">Discard</button>
+                    <button type="submit" className="flex-[2] py-5 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 border-b-4 border-blue-800 flex items-center justify-center gap-3">
+                       {editingUser ? <Save size={18} /> : <UserPlus size={18} />}
+                       {editingUser ? 'Save Changes' : 'Confirm Account'}
+                    </button>
                  </div>
               </form>
            </div>
