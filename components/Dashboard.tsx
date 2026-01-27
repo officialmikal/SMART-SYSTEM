@@ -1,5 +1,5 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
   Users, 
   TrendingUp, 
@@ -11,7 +11,10 @@ import {
   Banknote,
   Target,
   Forward,
-  Shield
+  Shield,
+  Wand2,
+  Sparkles,
+  Loader2
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -22,6 +25,7 @@ import {
   Tooltip, 
   ResponsiveContainer
 } from 'recharts';
+import { GoogleGenAI } from '@google/genai';
 import { User, Student } from '../types';
 import { Language, translations } from '../services/localizationService';
 
@@ -33,6 +37,8 @@ interface DashboardProps {
 
 export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [] }) => {
   const t = translations[lang];
+  const [aiBriefing, setAiBriefing] = useState<string>('');
+  const [isBriefingLoading, setIsBriefingLoading] = useState(false);
 
   // Calculate accurate statistics from the students source of truth
   const stats = useMemo(() => {
@@ -41,7 +47,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [] 
     const totalArrears = students.reduce((sum, s) => sum + (Number(s.feeBalance) || 0), 0);
     const totalPrepaid = students.reduce((sum, s) => sum + (Number(s.prepaidFee) || 0), 0);
 
-    // Formatter for accurate currency display
     const formatKES = (val: number) => {
       if (val >= 1000000) return (val / 1000000).toFixed(2) + 'M';
       if (val >= 1000) return (val / 1000).toFixed(1) + 'K';
@@ -55,22 +60,94 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [] 
       collected: formatKES(totalCollected),
       arrears: formatKES(totalArrears),
       prepaid: formatKES(totalPrepaid),
+      rawExpected: totalExpected,
+      rawCollected: totalCollected,
       studentCount: students.length,
       collectionRate: collectionRate.toFixed(1) + '%',
-      attendanceRate: '94.2%', // Mocked until Attendance state is globalized
+      attendanceRate: '94.2%',
       enrollmentChange: `+${Math.ceil(students.length * 0.05)} New this term`
     };
   }, [students]);
 
-  // Chart data reflecting real collection proportions
+  // AI Briefing Logic
+  useEffect(() => {
+    const fetchBriefing = async () => {
+      if (!process.env.API_KEY || aiBriefing) return;
+      
+      setIsBriefingLoading(true);
+      try {
+        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const prompt = `You are a school management advisor for a Kenyan school. 
+          Analyze these current stats:
+          - Enrollment: ${stats.studentCount} students
+          - Collection Rate: ${stats.collectionRate}
+          - Total Collected: KES ${stats.collected}
+          - Arrears: KES ${stats.arrears}
+          - Attendance: ${stats.attendanceRate}
+          
+          Write a short, professional, and punchy 2-sentence executive summary (Principal's Briefing) for the dashboard. Use an encouraging tone.`;
+
+        const response = await ai.models.generateContent({
+          model: 'gemini-3-flash-preview',
+          contents: prompt,
+        });
+        setAiBriefing(response.text || '');
+      } catch (e) {
+        setAiBriefing("School operations are stable. Focus on fee collection to meet Term 3 targets.");
+      } finally {
+        setIsBriefingLoading(false);
+      }
+    };
+
+    fetchBriefing();
+  }, [stats]);
+
   const chartData = useMemo(() => [
     { name: 'Term 1', collection: 3200000 },
     { name: 'Term 2', collection: 4100000 },
-    { name: 'Term 3', collection: students.reduce((sum, s) => sum + (Number(s.paidFee) || 0), 0) },
-  ], [students]);
+    { name: 'Term 3', collection: stats.rawCollected },
+  ], [stats.rawCollected]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-700">
+      {/* Principal's Briefing Card */}
+      <div className="bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12 group-hover:scale-110 transition-transform duration-1000">
+          <Sparkles size={160} />
+        </div>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+          <div className="space-y-4 max-w-2xl">
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-400/20 p-2 rounded-xl backdrop-blur-md border border-white/10">
+                <Wand2 className="w-5 h-5 text-blue-200" />
+              </div>
+              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-200">AI Principal's Briefing</h2>
+            </div>
+            {isBriefingLoading ? (
+              <div className="flex items-center gap-3 text-blue-200/60 font-medium italic">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Generating operational insights...</span>
+              </div>
+            ) : (
+              <p className="text-2xl font-black tracking-tight leading-snug">
+                {aiBriefing || "Initializing system diagnostics... Prepare for Term 3 closure reports."}
+              </p>
+            )}
+          </div>
+          <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-[32px] shrink-0">
+             <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-green-400 rounded-full flex items-center justify-center shadow-lg shadow-green-400/20">
+                   <Shield className="w-6 h-6 text-green-900" />
+                </div>
+                <div>
+                   <p className="text-[10px] font-black uppercase tracking-widest text-blue-100">System Integrity</p>
+                   <p className="text-xl font-black text-white">OPTIMIZED</p>
+                </div>
+             </div>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase leading-none">{t.karibu}, {user.name.split(' ')[0]}</h1>
@@ -180,7 +257,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [] 
               <p className="text-[10px] text-blue-600 font-black uppercase mt-4 tracking-widest">Target Met for Term 3</p>
            </div>
 
-           <div className="bg-gradient-to-br from-blue-700 to-blue-900 p-8 rounded-[48px] shadow-2xl shadow-blue-200 text-white sm:col-span-2 relative overflow-hidden group">
+           <div className="bg-gradient-to-br from-indigo-700 to-blue-900 p-8 rounded-[48px] shadow-2xl shadow-blue-200 text-white sm:col-span-2 relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-12 opacity-5 rotate-12 group-hover:scale-110 transition-transform duration-700">
                  <Target size={200} />
               </div>

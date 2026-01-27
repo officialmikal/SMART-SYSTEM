@@ -13,7 +13,7 @@ import { TimetableModule } from './components/TimetableModule';
 import { MessagingModule } from './components/MessagingModule';
 import { UserRole, User, Student, ClassFee, KENYAN_CLASSES } from './types';
 import { Language, translations } from './services/localizationService';
-import { Smartphone, Check, X, Share, ShieldCheck } from 'lucide-react';
+import { Smartphone, Check, X, Share, ShieldCheck, DownloadCloud } from 'lucide-react';
 
 const INITIAL_STUDENTS: Student[] = [
   { id: '1', admissionNumber: 'ADM001', firstName: 'Kamau', lastName: 'Njoroge', class: 'Grade 7', stream: 'Oak', gender: 'Male', dob: '2011-04-12', guardianPhone: '0712345678', guardianName: 'Sarah Njoroge', totalFee: 45000, paidFee: 32500, feeBalance: 12500, prepaidFee: 0, photo: 'https://picsum.photos/100/100?random=1' },
@@ -108,27 +108,26 @@ const App: React.FC = () => {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // 1. Detect platform and installation status
-    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    // 1. Detect if it's already installed (Standalone Mode)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
     
+    // 2. Detect iOS
+    const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(ios);
 
-    // 2. iOS Logic: Show popup after 5 seconds if not installed (since no event exists)
+    // 3. Proactive Trigger for iOS (No event exists)
     if (ios && !isStandalone) {
-      const timer = setTimeout(() => {
-        setShowInstallPop(true);
-      }, 5000);
+      const timer = setTimeout(() => setShowInstallPop(true), 8000);
       return () => clearTimeout(timer);
     }
 
-    // 3. Android/Chrome Logic: Wait for the event
+    // 4. Handle Android/Desktop Install Prompt
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // Show custom popup after 3 seconds if not already installed
+      // Auto-show after user engagement (8 seconds) if not installed
       if (!isStandalone) {
-        setTimeout(() => setShowInstallPop(true), 3000);
+        setTimeout(() => setShowInstallPop(true), 8000);
       }
     };
 
@@ -139,9 +138,12 @@ const App: React.FC = () => {
   const handleInstallApp = () => {
     if (deferredPrompt) {
       deferredPrompt.prompt();
-      deferredPrompt.userChoice.then(() => {
-        setDeferredPrompt(null);
-        setShowInstallPop(false);
+      deferredPrompt.userChoice.then((choice: any) => {
+        if (choice.outcome === 'accepted') {
+          console.log('ElimuSmart: User accepted install');
+          setDeferredPrompt(null);
+          setShowInstallPop(false);
+        }
       });
     }
   };
@@ -176,24 +178,24 @@ const App: React.FC = () => {
             <div className="bg-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-blue-100">
                <ShieldCheck className="text-white w-8 h-8" />
             </div>
-            <h1 className="text-4xl font-black text-gray-900 tracking-tighter leading-none">ElimuSmart</h1>
-            <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-2 leading-none">Secure School Environment</p>
+            <h1 className="text-4xl font-black text-gray-900 tracking-tighter leading-none text-center">ElimuSmart</h1>
+            <p className="text-gray-400 font-bold uppercase text-[10px] tracking-widest mt-2 leading-none text-center">Official System Portal</p>
           </div>
           <form className="space-y-6" onSubmit={handleLogin}>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
-              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all" placeholder="name@school.ac.ke" />
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner" placeholder="name@school.ac.ke" />
             </div>
             <div className="space-y-1">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Secure Password</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all" placeholder="••••••••" />
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner" placeholder="••••••••" />
             </div>
             <button type="submit" className="w-full bg-blue-600 text-white font-black py-5 rounded-2xl uppercase tracking-widest shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95">Enter System Portal</button>
           </form>
           
           <div className="mt-8 text-center">
              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest leading-relaxed">
-               Authorized Personnel Only. All access is logged for institutional integrity.
+               Authorized Personnel Only. System activity is encrypted.
              </p>
           </div>
         </div>
@@ -215,18 +217,18 @@ const App: React.FC = () => {
       installApp={(deferredPrompt || isIOS) ? () => setShowInstallPop(true) : undefined}
     >
       {showInstallPop && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] w-full max-w-md px-4 animate-in slide-in-from-top-4 duration-500">
-          <div className="bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.2)] p-6 border-2 border-blue-50 flex items-center gap-6 relative overflow-hidden">
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[200] w-full max-w-md px-4 animate-in slide-in-from-top-4 duration-500 no-print">
+          <div className="bg-white rounded-[32px] shadow-[0_25px_60px_rgba(0,0,0,0.3)] p-6 border-2 border-blue-50 flex items-center gap-6 relative overflow-hidden">
              <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                 <Smartphone size={100} />
              </div>
              <div className="bg-blue-600 text-white p-4 rounded-2xl shadow-xl shadow-blue-100 shrink-0">
-                <Smartphone size={24} />
+                <DownloadCloud size={24} />
              </div>
              <div className="flex-1">
                 <h4 className="text-sm font-black text-gray-900 uppercase tracking-tight">{isIOS ? 'Install on iPhone' : 'Offline Access Ready'}</h4>
                 <p className="text-[11px] font-bold text-gray-500 leading-tight mt-1">
-                  {isIOS ? 'Tap Share and "Add to Home Screen"' : 'Install ElimuSmart for the best experience.'}
+                  {isIOS ? 'Tap "Share" and then "Add to Home Screen" to install ElimuSmart.' : 'Install the app for faster access and offline capabilities.'}
                 </p>
                 <div className="flex gap-2 mt-4">
                    {!isIOS && (
@@ -235,16 +237,16 @@ const App: React.FC = () => {
                      </button>
                    )}
                    {isIOS && (
-                     <div className="flex items-center gap-2 text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-3 py-2 rounded-xl">
-                        <Share size={14} /> Share Menu
+                     <div className="flex items-center gap-2 text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-3 py-2 rounded-xl border border-blue-100">
+                        <Share size={14} /> iOS Menu
                      </div>
                    )}
-                   <button onClick={() => setShowInstallPop(false)} className="bg-gray-100 text-gray-500 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest">
-                     Close
+                   <button onClick={() => setShowInstallPop(false)} className="bg-gray-100 text-gray-500 px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-colors">
+                     Dismiss
                    </button>
                 </div>
              </div>
-             <button onClick={() => setShowInstallPop(false)} className="absolute top-4 right-4 text-gray-300 hover:text-gray-500"><X size={18} /></button>
+             <button onClick={() => setShowInstallPop(false)} className="absolute top-4 right-4 text-gray-300 hover:text-red-500 transition-colors"><X size={18} /></button>
           </div>
         </div>
       )}
