@@ -21,7 +21,8 @@ import {
   LayoutGrid,
   Type,
   Layers,
-  GraduationCap
+  GraduationCap,
+  UserX
 } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { Exam, MarkEntry, CBCGrade, KENYAN_CLASSES, SCHOOL_STREAMS, Student, ExamResult } from '../types';
@@ -50,7 +51,7 @@ interface AcademicsProps {
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
 }
 
-export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students, setStudents }) => {
+export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [], setStudents }) => {
   const t = translations[lang];
   const [view, setView] = useState<'exams' | 'mark-entry' | 'subjects'>('exams');
   
@@ -83,7 +84,7 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students, setS
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [selectedSubject, setSelectedSubject] = useState('Mathematics');
   const [selectedClass, setSelectedClass] = useState('Grade 7');
-  const [selectedStream, setSelectedStream] = useState('Eagle');
+  const [selectedStream, setSelectedStream] = useState(''); // Default to empty (All Streams)
   const [marks, setMarks] = useState<MarkEntry[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingRemarks, setIsGeneratingRemarks] = useState<string | null>(null);
@@ -95,6 +96,29 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students, setS
   useEffect(() => {
     localStorage.setItem('elimusmart_curriculum', JSON.stringify(subjects));
   }, [subjects]);
+
+  // Sync marks whenever filters change while in mark-entry mode
+  useEffect(() => {
+    if (view === 'mark-entry' && selectedExam) {
+      const classStudents = students.filter(s => 
+        s.class.toLowerCase() === selectedClass.toLowerCase() && 
+        (selectedStream === '' || s.stream.toLowerCase() === selectedStream.toLowerCase())
+      );
+      
+      const entries: MarkEntry[] = classStudents.map(s => {
+        const existing = s.results?.find(r => r.examId === selectedExam.id && r.subject === selectedSubject);
+        return {
+          studentId: s.id,
+          studentName: `${s.firstName} ${s.lastName}`,
+          admissionNumber: s.admissionNumber,
+          score: existing?.score || 0,
+          competency: existing?.competency || CBCGrade.BE,
+          remarks: existing?.remarks || ''
+        };
+      });
+      setMarks(entries);
+    }
+  }, [selectedClass, selectedStream, selectedSubject, selectedExam, view, students]);
 
   const filteredExams = useMemo(() => {
     return exams.filter(ex => 
@@ -112,25 +136,6 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students, setS
 
   const handleOpenMarkEntry = (exam: Exam) => {
     setSelectedExam(exam);
-    // Dynamic Class/Stream filtering based on flexible inputs
-    const classStudents = students.filter(s => 
-      s.class.toLowerCase() === selectedClass.toLowerCase() && 
-      (selectedStream === '' || s.stream.toLowerCase() === selectedStream.toLowerCase())
-    );
-    
-    const entries: MarkEntry[] = classStudents.map(s => {
-      const existing = s.results?.find(r => r.examId === exam.id && r.subject === selectedSubject);
-      return {
-        studentId: s.id,
-        studentName: `${s.firstName} ${s.lastName}`,
-        admissionNumber: s.admissionNumber,
-        score: existing?.score || 0,
-        competency: existing?.competency || CBCGrade.BE,
-        remarks: existing?.remarks || ''
-      };
-    });
-    
-    setMarks(entries);
     setView('mark-entry');
   };
 
@@ -262,10 +267,14 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students, setS
   };
 
   const saveMarks = async () => {
+    if (marks.length === 0) {
+      alert("No student marks to commit.");
+      return;
+    }
+    
     setIsSaving(true);
     await new Promise(r => setTimeout(r, 1200));
 
-    // Update the global students list with results
     setStudents(prev => prev.map(student => {
       const markEntry = marks.find(m => m.studentId === student.id);
       if (markEntry && selectedExam) {
@@ -300,6 +309,7 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students, setS
         {KENYAN_CLASSES.map(c => <option key={c} value={c} />)}
       </datalist>
       <datalist id="school-streams">
+        <option value="">All Streams</option>
         {SCHOOL_STREAMS.map(s => <option key={s} value={s} />)}
       </datalist>
 
@@ -352,50 +362,51 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students, setS
         </div>
       </div>
 
-      {view === 'exams' && (
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-[32px] border-2 border-gray-50 flex flex-col xl:flex-row items-center gap-6 no-print shadow-xl">
-             <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Academic Target</label>
-                   <div className="flex items-center bg-gray-50 border-2 border-gray-100 rounded-2xl focus-within:border-blue-500 transition-all px-4 py-1 shadow-inner">
-                     <Type size={16} className="text-gray-400 mr-2" />
-                     <input 
-                       list="kenyan-classes"
-                       value={selectedClass}
-                       placeholder="Select Grade..."
-                       onChange={e => setSelectedClass(e.target.value)}
-                       className="w-full bg-transparent py-2.5 font-black uppercase text-[11px] outline-none placeholder:text-gray-300"
-                     />
-                   </div>
-                </div>
+      {/* GLOBAL FILTERS: Visible in both Exams and Mark Entry views */}
+      {view !== 'subjects' && (
+        <div className="bg-white p-6 rounded-[32px] border-2 border-gray-50 flex flex-col xl:flex-row items-center gap-6 no-print shadow-xl">
+           <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Academic Target (Class)</label>
+                 <div className="flex items-center bg-gray-50 border-2 border-gray-100 rounded-2xl focus-within:border-blue-500 transition-all px-4 py-1 shadow-inner">
+                   <Type size={16} className="text-gray-400 mr-2" />
+                   <input 
+                     list="kenyan-classes"
+                     value={selectedClass}
+                     placeholder="Select Grade..."
+                     onChange={e => setSelectedClass(e.target.value)}
+                     className="w-full bg-transparent py-2.5 font-black uppercase text-[11px] outline-none placeholder:text-gray-300"
+                   />
+                 </div>
+              </div>
 
-                <div className="space-y-2">
-                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Section / Stream</label>
-                   <div className="flex items-center bg-gray-50 border-2 border-gray-100 rounded-2xl focus-within:border-blue-500 transition-all px-4 py-1 shadow-inner">
-                     <Layers size={16} className="text-gray-400 mr-2" />
-                     <input 
-                       list="school-streams"
-                       value={selectedStream}
-                       placeholder="Select Stream..."
-                       onChange={e => setSelectedStream(e.target.value)}
-                       className="w-full bg-transparent py-2.5 font-black uppercase text-[11px] outline-none placeholder:text-gray-300"
-                     />
-                   </div>
-                </div>
-                
-                <div className="space-y-2">
-                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Learning Area</label>
-                   <select 
-                     value={selectedSubject} 
-                     onChange={e => setSelectedSubject(e.target.value)}
-                     className="w-full p-3.5 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black uppercase text-[11px] focus:border-blue-500 outline-none transition-all shadow-inner"
-                   >
-                     {subjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
-                   </select>
-                </div>
-             </div>
+              <div className="space-y-2">
+                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Section / Stream</label>
+                 <div className="flex items-center bg-gray-50 border-2 border-gray-100 rounded-2xl focus-within:border-blue-500 transition-all px-4 py-1 shadow-inner">
+                   <Layers size={16} className="text-gray-400 mr-2" />
+                   <input 
+                     list="school-streams"
+                     value={selectedStream}
+                     placeholder="All Streams"
+                     onChange={e => setSelectedStream(e.target.value)}
+                     className="w-full bg-transparent py-2.5 font-black uppercase text-[11px] outline-none placeholder:text-gray-300"
+                   />
+                 </div>
+              </div>
+              
+              <div className="space-y-2">
+                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Learning Area</label>
+                 <select 
+                   value={selectedSubject} 
+                   onChange={e => setSelectedSubject(e.target.value)}
+                   className="w-full p-3.5 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black uppercase text-[11px] focus:border-blue-500 outline-none transition-all shadow-inner"
+                 >
+                   {subjects.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                 </select>
+              </div>
+           </div>
 
+           {view === 'exams' && (
              <div className="w-full xl:w-64 self-end">
                 <div className="relative">
                     <input 
@@ -408,49 +419,57 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students, setS
                     <Filter className="absolute left-3 top-4 w-4 h-4 text-gray-300" />
                 </div>
              </div>
-          </div>
+           )}
+        </div>
+      )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredExams.map(exam => (
-              <div key={exam.id} className="bg-white p-8 rounded-[40px] border-2 border-gray-50 shadow-sm hover:shadow-2xl transition-all group relative overflow-hidden">
-                <div className="absolute -top-4 -right-4 p-8 opacity-5 group-hover:scale-110 transition-transform">
-                  <GraduationCap className="w-32 h-32" />
+      {view === 'exams' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredExams.map(exam => (
+            <div key={exam.id} className="bg-white p-8 rounded-[40px] border-2 border-gray-50 shadow-sm hover:shadow-2xl transition-all group relative overflow-hidden">
+              <div className="absolute -top-4 -right-4 p-8 opacity-5 group-hover:scale-110 transition-transform">
+                <GraduationCap className="w-32 h-32" />
+              </div>
+              
+              <div className="flex justify-between items-start mb-8">
+                <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl border-2 border-white shadow-sm">
+                  <BookOpen className="w-6 h-6" />
                 </div>
-                
-                <div className="flex justify-between items-start mb-8">
-                  <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl border-2 border-white shadow-sm">
-                    <BookOpen className="w-6 h-6" />
-                  </div>
-                  <div className="flex gap-2 no-print opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
-                    <button onClick={() => openExamModal(exam)} className="p-3 bg-white text-gray-400 hover:text-blue-600 rounded-xl transition-all border-2 border-gray-50 hover:border-blue-100 shadow-sm"><Edit3 className="w-5 h-5" /></button>
-                    <button onClick={() => handleDeleteExam(exam.id)} className="p-3 bg-white text-gray-400 hover:text-red-600 rounded-xl transition-all border-2 border-gray-50 hover:border-red-100 shadow-sm"><Trash2 className="w-5 h-5" /></button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <h3 className="text-2xl font-black text-gray-900 tracking-tighter leading-none uppercase italic">{exam.title}</h3>
-                  <div className="flex items-center gap-3 text-[10px] font-black text-blue-500 uppercase tracking-widest">
-                    <span className="bg-blue-50 px-2 py-0.5 rounded-md">Term {exam.term} • {exam.year}</span>
-                    <span className="w-1.5 h-1.5 bg-gray-200 rounded-full"></span>
-                    <span className="text-gray-400">{exam.type}</span>
-                  </div>
-                </div>
-
-                <div className="mt-10 flex items-center justify-between gap-4">
-                  <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
-                    <CalendarDays className="w-4 h-4 text-blue-500" />
-                    {new Date(exam.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
-                  </div>
-                  <button 
-                    onClick={() => handleOpenMarkEntry(exam)}
-                    className="flex items-center gap-3 bg-gray-900 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl active:scale-95 border-b-4 border-black"
-                  >
-                    Enter Marks <ChevronRight className="w-4 h-4" />
-                  </button>
+                <div className="flex gap-2 no-print opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
+                  <button onClick={() => openExamModal(exam)} className="p-3 bg-white text-gray-400 hover:text-blue-600 rounded-xl transition-all border-2 border-gray-50 hover:border-blue-100 shadow-sm"><Edit3 className="w-5 h-5" /></button>
+                  <button onClick={() => handleDeleteExam(exam.id)} className="p-3 bg-white text-gray-400 hover:text-red-600 rounded-xl transition-all border-2 border-gray-50 hover:border-red-100 shadow-sm"><Trash2 className="w-5 h-5" /></button>
                 </div>
               </div>
-            ))}
-          </div>
+
+              <div className="space-y-2">
+                <h3 className="text-2xl font-black text-gray-900 tracking-tighter leading-none uppercase italic">{exam.title}</h3>
+                <div className="flex items-center gap-3 text-[10px] font-black text-blue-500 uppercase tracking-widest">
+                  <span className="bg-blue-50 px-2 py-0.5 rounded-md">Term {exam.term} • {exam.year}</span>
+                  <span className="w-1.5 h-1.5 bg-gray-200 rounded-full"></span>
+                  <span className="text-gray-400">{exam.type}</span>
+                </div>
+              </div>
+
+              <div className="mt-10 flex items-center justify-between gap-4">
+                <div className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-blue-500" />
+                  {new Date(exam.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                </div>
+                <button 
+                  onClick={() => handleOpenMarkEntry(exam)}
+                  className="flex items-center gap-3 bg-gray-900 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl active:scale-95 border-b-4 border-black"
+                >
+                  Enter Marks <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+          {filteredExams.length === 0 && (
+            <div className="col-span-full py-24 text-center bg-white rounded-[48px] border-2 border-dashed border-gray-100">
+               <CalendarDays className="w-16 h-16 text-gray-100 mx-auto mb-6" />
+               <p className="text-[12px] font-black uppercase text-gray-400 tracking-[0.4em] italic">No scheduled assessments matching your filters.</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -525,14 +544,14 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students, setS
               <div>
                 <h3 className="font-black text-3xl tracking-tighter text-gray-900 leading-none uppercase italic">{selectedExam.title}</h3>
                 <p className="text-[10px] text-blue-600 uppercase font-black tracking-[0.4em] mt-3 flex items-center gap-2">
-                   <CheckCircle2 size={12} /> Live Entry • {selectedClass} {selectedStream} • {selectedSubject}
+                   <CheckCircle2 size={12} /> Live Entry • {selectedClass} {selectedStream || 'All Streams'} • {selectedSubject}
                 </p>
               </div>
             </div>
             
             <button 
               onClick={saveMarks}
-              disabled={isSaving}
+              disabled={isSaving || marks.length === 0}
               className="w-full lg:w-auto flex items-center justify-center gap-4 bg-blue-600 text-white px-10 py-5 rounded-[32px] hover:bg-blue-700 transition-all font-black uppercase text-xs tracking-[0.2em] disabled:opacity-50 shadow-2xl shadow-blue-100 border-b-4 border-blue-800 active:scale-95"
             >
               {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
@@ -601,6 +620,19 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students, setS
                       </td>
                     </tr>
                   ))}
+                  {marks.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="py-32 text-center">
+                        <div className="max-w-xs mx-auto">
+                          <UserX className="w-20 h-20 text-gray-100 mx-auto mb-6" />
+                          <h4 className="text-xl font-black text-gray-900 tracking-tight uppercase mb-2">No Students Found</h4>
+                          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest leading-relaxed">
+                            No learners match the selected target: <span className="text-blue-500">{selectedClass} {selectedStream}</span>. Please verify your filters in the control panel above.
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -608,7 +640,7 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students, setS
         </div>
       )}
 
-      {/* Curriculum Modal (Add/Edit Subject) */}
+      {/* Modals remain same but use standard sizing */}
       {isSubjectModalOpen && (
         <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-xl animate-in fade-in duration-300">
           <div className="bg-white rounded-[56px] w-full max-w-xl shadow-2xl relative overflow-hidden animate-in zoom-in duration-500 max-h-[95vh] flex flex-col border-8 border-gray-50">

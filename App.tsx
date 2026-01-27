@@ -16,8 +16,11 @@ import { Language, translations } from './services/localizationService';
 import { Smartphone, Check, X, Share, ShieldCheck, DownloadCloud } from 'lucide-react';
 
 const INITIAL_STUDENTS: Student[] = [
-  { id: '1', admissionNumber: 'ADM001', firstName: 'Kamau', lastName: 'Njoroge', class: 'Grade 7', stream: 'Oak', gender: 'Male', dob: '2011-04-12', guardianPhone: '0712345678', guardianName: 'Sarah Njoroge', totalFee: 45000, paidFee: 32500, feeBalance: 12500, prepaidFee: 0, photo: 'https://picsum.photos/100/100?random=1' },
-  { id: '2', admissionNumber: 'ADM002', firstName: 'Amara', lastName: 'Kiprono', class: 'Grade 8', stream: 'Palm', gender: 'Female', dob: '2010-08-25', guardianPhone: '0722000111', guardianName: 'David Kiprono', totalFee: 45000, paidFee: 45000, feeBalance: 0, prepaidFee: 2500, photo: 'https://picsum.photos/100/100?random=2' },
+  { id: '1', admissionNumber: 'ADM001', firstName: 'Kamau', lastName: 'Njoroge', class: 'Grade 7', stream: 'Oak', gender: 'Male', dob: '2011-04-12', guardianPhone: '0712345678', guardianName: 'Sarah Njoroge', totalFee: 45000, paidFee: 32500, feeBalance: 12500, prepaidFee: 0, photo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Kamau' },
+  { id: '2', admissionNumber: 'ADM002', firstName: 'Amara', lastName: 'Kiprono', class: 'Grade 8', stream: 'Palm', gender: 'Female', dob: '2010-08-25', guardianPhone: '0722000111', guardianName: 'David Kiprono', totalFee: 45000, paidFee: 45000, feeBalance: 0, prepaidFee: 2500, photo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Amara' },
+  { id: '3', admissionNumber: 'ADM003', firstName: 'Zuri', lastName: 'Achieng', class: 'Grade 7', stream: 'Oak', gender: 'Female', dob: '2011-11-02', guardianPhone: '0733111222', guardianName: 'Grace Achieng', totalFee: 45000, paidFee: 15000, feeBalance: 30000, prepaidFee: 0, photo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Zuri' },
+  { id: '4', admissionNumber: 'ADM004', firstName: 'Jabari', lastName: 'Omondi', class: 'Grade 9', stream: 'Acacia', gender: 'Male', dob: '2009-03-15', guardianPhone: '0744999888', guardianName: 'Peter Omondi', totalFee: 48000, paidFee: 48000, feeBalance: 0, prepaidFee: 0, photo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jabari' },
+  { id: '5', admissionNumber: 'ADM005', firstName: 'Mwikali', lastName: 'Musyoka', class: 'Grade 8', stream: 'Willow', gender: 'Female', dob: '2010-05-20', guardianPhone: '0755666777', guardianName: 'Ruth Musyoka', totalFee: 45000, paidFee: 40000, feeBalance: 5000, prepaidFee: 0, photo: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Mwikali' },
 ];
 
 const INITIAL_USERS: User[] = [
@@ -108,24 +111,18 @@ const App: React.FC = () => {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
-    // 1. Detect if it's already installed (Standalone Mode)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
-    
-    // 2. Detect iOS
     const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
     setIsIOS(ios);
 
-    // 3. Proactive Trigger for iOS (No event exists)
     if (ios && !isStandalone) {
       const timer = setTimeout(() => setShowInstallPop(true), 8000);
       return () => clearTimeout(timer);
     }
 
-    // 4. Handle Android/Desktop Install Prompt
     const handleBeforeInstallPrompt = (e: any) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // Auto-show after user engagement (8 seconds) if not installed
       if (!isStandalone) {
         setTimeout(() => setShowInstallPop(true), 8000);
       }
