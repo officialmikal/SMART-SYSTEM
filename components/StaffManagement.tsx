@@ -1,17 +1,18 @@
 
 import React, { useState } from 'react';
-import { Plus, Search, Filter, Mail, Phone, X, Camera, Trash2, Edit2, UserSquare2, BookOpen } from 'lucide-react';
+import { Plus, Search, Filter, Mail, Phone, X, Camera, Trash2, Edit2, UserSquare2, BookOpen, AlertTriangle } from 'lucide-react';
 import { Staff } from '../types';
 
-const MOCK_STAFF: Staff[] = [
-  { id: 't1', staffId: 'TS001', name: 'James Otieno', email: 'jotieno@elimusmart.co.ke', phone: '0711122233', role: 'Subject Teacher', subjects: ['Mathematics', 'Physics'], photo: 'https://picsum.photos/100/100?random=20' },
-  { id: 't2', staffId: 'TS002', name: 'Mary Wambui', email: 'mwambui@elimusmart.co.ke', phone: '0722233344', role: 'Class Teacher', subjects: ['Kiswahili', 'Social Studies'], photo: 'https://picsum.photos/100/100?random=21' },
-];
+interface StaffManagementProps {
+  staffList: Staff[];
+  setStaffList: React.Dispatch<React.SetStateAction<Staff[]>>;
+}
 
-export const StaffManagement: React.FC = () => {
-  const [staffList, setStaffList] = useState<Staff[]>(MOCK_STAFF);
+export const StaffManagement: React.FC<StaffManagementProps> = ({ staffList, setStaffList }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
+  const [staffToDelete, setStaffToDelete] = useState<Staff | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const [formData, setFormData] = useState<Partial<Staff>>({
@@ -49,16 +50,23 @@ export const StaffManagement: React.FC = () => {
       const newStaff = {
         ...formData,
         id: Math.random().toString(36).substr(2, 9),
-        photo: `https://picsum.photos/100/100?random=${Math.floor(Math.random() * 100)}`
+        photo: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.name}${Date.now()}`
       } as Staff;
       setStaffList([...staffList, newStaff]);
     }
     setIsModalOpen(false);
   };
 
-  const handleDelete = (id: string) => {
-    if (window.confirm('Remove this staff member from the records?')) {
-      setStaffList(staffList.filter(s => s.id !== id));
+  const openDeleteModal = (staff: Staff) => {
+    setStaffToDelete(staff);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (staffToDelete) {
+      setStaffList(prev => prev.filter(s => s.id !== staffToDelete.id));
+      setIsDeleteModalOpen(false);
+      setStaffToDelete(null);
     }
   };
 
@@ -68,92 +76,87 @@ export const StaffManagement: React.FC = () => {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Staff Management</h1>
-          <p className="text-gray-500">View and manage {staffList.length} faculty members.</p>
+          <h1 className="text-2xl font-black text-gray-800 uppercase tracking-tight">Staff Registry</h1>
+          <p className="text-gray-500 font-medium">Manage {staffList.length} registered institutional faculty.</p>
         </div>
         <button 
           onClick={() => openModal()}
-          className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition font-bold"
+          className="flex items-center justify-center space-x-2 bg-blue-600 text-white px-8 py-3 rounded-2xl hover:bg-blue-700 transition-all font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-100 active:scale-95"
         >
           <Plus className="w-5 h-5" />
-          <span>Add Staff Member</span>
+          <span>Register Faculty</span>
         </button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
-        <div className="p-4 border-b bg-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-2.5 w-5 h-5 text-gray-400" />
+      <div className="bg-white rounded-[40px] shadow-sm border border-gray-100 overflow-hidden">
+        <div className="p-6 border-b bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="relative flex-1 max-md:w-full">
+            <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
             <input 
               type="text" 
               placeholder="Search by name or Staff ID..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500" 
+              className="w-full pl-12 pr-4 py-3 bg-white border-2 border-gray-100 rounded-2xl focus:border-blue-500 outline-none font-medium shadow-inner" 
             />
-          </div>
-          <div className="flex items-center space-x-2">
-            <button className="flex items-center space-x-2 px-4 py-2 border rounded-lg hover:bg-gray-100">
-              <Filter className="w-4 h-4" />
-              <span>Filters</span>
-            </button>
           </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50 border-b text-sm text-gray-500 uppercase font-medium">
-                <th className="px-6 py-4">Staff Member</th>
-                <th className="px-6 py-4">ID / Role</th>
-                <th className="px-6 py-4">Subjects</th>
-                <th className="px-6 py-4">Contact</th>
-                <th className="px-6 py-4 text-right">Actions</th>
+              <tr className="bg-gray-50/50 border-b text-[10px] text-gray-400 uppercase font-black tracking-widest">
+                <th className="px-8 py-6">Faculty Profile</th>
+                <th className="px-8 py-6">ID / Designation</th>
+                <th className="px-8 py-6">Learning Areas</th>
+                <th className="px-8 py-6">Contact Channels</th>
+                <th className="px-8 py-6 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y">
+            <tbody className="divide-y divide-gray-100">
               {filteredStaff.map((staff) => (
-                <tr key={staff.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center space-x-3">
-                      <img src={staff.photo} className="w-10 h-10 rounded-full border bg-blue-50" alt={staff.name} />
+                <tr key={staff.id} className="hover:bg-blue-50/10 transition-colors group">
+                  <td className="px-8 py-6">
+                    <div className="flex items-center space-x-4">
+                      <img src={staff.photo} className="w-12 h-12 rounded-xl border border-gray-100 shadow-sm bg-blue-50 object-cover" alt={staff.name} />
                       <div>
-                        <div className="font-bold text-gray-800">{staff.name}</div>
-                        <div className="text-xs text-blue-600 font-medium">{staff.role}</div>
+                        <div className="font-black text-gray-900 group-hover:text-blue-600 transition-colors">{staff.name}</div>
+                        <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-0.5">{staff.role}</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="font-mono text-sm">{staff.staffId}</div>
+                  <td className="px-8 py-6">
+                    <div className="font-mono font-black text-blue-600 tracking-tighter text-sm uppercase">{staff.staffId}</div>
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1">
+                  <td className="px-8 py-6">
+                    <div className="flex flex-wrap gap-2">
                       {staff.subjects.map(sub => (
-                        <span key={sub} className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-[10px] font-bold uppercase tracking-wider">{sub}</span>
+                        <span key={sub} className="px-2.5 py-1 bg-gray-100 text-gray-500 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-200">{sub}</span>
                       ))}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-8 py-6">
                     <div className="flex flex-col text-xs space-y-1">
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <Mail className="w-3 h-3" />
+                      <div className="flex items-center gap-2 text-gray-600 font-bold">
+                        <Mail className="w-3 h-3 text-blue-400" />
                         <span>{staff.email}</span>
                       </div>
-                      <div className="flex items-center gap-1 text-gray-600">
+                      <div className="flex items-center gap-2 text-gray-400 font-medium">
                         <Phone className="w-3 h-3" />
                         <span>{staff.phone}</span>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end space-x-2">
-                      <button onClick={() => openModal(staff)} className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg">
+                  <td className="px-8 py-6 text-right">
+                    <div className="flex justify-end gap-3">
+                      <button onClick={() => openModal(staff)} className="flex items-center gap-2 px-4 py-2.5 text-blue-600 bg-white hover:bg-blue-600 hover:text-white rounded-xl transition-all border-2 border-gray-50 hover:border-blue-600 active:scale-95 shadow-sm">
                         <Edit2 className="w-4 h-4" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Edit</span>
                       </button>
-                      <button onClick={() => handleDelete(staff.id)} className="p-2 text-red-600 hover:bg-red-50 rounded-lg">
+                      <button onClick={() => openDeleteModal(staff)} className="flex items-center gap-2 px-4 py-2.5 text-red-600 bg-white hover:bg-red-600 hover:text-white rounded-xl transition-all border-2 border-gray-50 hover:border-red-600 active:scale-95 shadow-sm">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -162,8 +165,9 @@ export const StaffManagement: React.FC = () => {
               ))}
               {filteredStaff.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                    No staff records found.
+                  <td colSpan={5} className="px-8 py-20 text-center text-gray-400">
+                    <UserSquare2 className="w-16 h-16 mx-auto mb-4 opacity-20" />
+                    <p className="font-black uppercase text-xs tracking-widest">No faculty records detected.</p>
                   </td>
                 </tr>
               )}
@@ -174,75 +178,50 @@ export const StaffManagement: React.FC = () => {
 
       {/* Staff Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 overflow-y-auto">
-          <div className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl relative animate-in fade-in zoom-in duration-200">
-            <div className="p-6 border-b flex items-center justify-between">
-              <h2 className="text-xl font-bold">{editingStaff ? 'Edit Staff Profile' : 'New Staff Registration'}</h2>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white rounded-[40px] w-full max-w-2xl shadow-2xl relative animate-in zoom-in duration-300 max-h-[90vh] flex flex-col">
+            <div className="p-8 border-b bg-gray-50/50 flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-black uppercase tracking-tighter text-gray-900 leading-none">{editingStaff ? 'Edit Profile' : 'Staff Enrollment'}</h2>
+                <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.3em] mt-3">Official Institutional Identity</p>
+              </div>
+              <button onClick={() => setIsModalOpen(false)} className="p-4 hover:bg-red-50 text-gray-400 hover:text-red-600 rounded-full transition-all">
                 <X className="w-6 h-6" />
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="p-6 space-y-6">
+            <form onSubmit={handleSave} className="p-8 space-y-8 overflow-y-auto">
               <div className="flex flex-col items-center space-y-4">
-                <div className="relative">
-                  <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center border-2 border-dashed border-gray-300">
-                    {formData.photo ? <img src={formData.photo} className="w-full h-full rounded-full object-cover" /> : <Camera className="w-8 h-8 text-gray-400" />}
+                <div className="relative group">
+                  <div className="w-28 h-28 rounded-[32px] bg-gray-50 flex items-center justify-center border-4 border-white shadow-xl overflow-hidden group-hover:ring-4 ring-blue-100 transition-all">
+                    {formData.photo ? <img src={formData.photo} className="w-full h-full object-cover" /> : <Camera className="w-10 h-10 text-gray-300" />}
                   </div>
-                  <button type="button" className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full shadow-lg">
+                  <div className="absolute -bottom-2 -right-2 bg-blue-600 text-white p-3 rounded-2xl shadow-xl border-4 border-white">
                     <Plus className="w-4 h-4" />
-                  </button>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Full Name</label>
-                  <input 
-                    required 
-                    type="text" 
-                    value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
-                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" 
-                  />
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Official Name</label>
+                  <input required type="text" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-blue-500 shadow-inner" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Staff ID</label>
-                  <input 
-                    required 
-                    type="text" 
-                    value={formData.staffId}
-                    onChange={e => setFormData({...formData, staffId: e.target.value})}
-                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500 font-mono" 
-                  />
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Institutional ID</label>
+                  <input required type="text" value={formData.staffId} onChange={e => setFormData({...formData, staffId: e.target.value.toUpperCase()})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black text-blue-600 outline-none focus:border-blue-500 shadow-inner" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Work Email</label>
-                  <input 
-                    required 
-                    type="email" 
-                    value={formData.email}
-                    onChange={e => setFormData({...formData, email: e.target.value})}
-                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" 
-                  />
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Digital Mail</label>
+                  <input required type="email" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-blue-500 shadow-inner" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Phone Number</label>
-                  <input 
-                    required 
-                    type="tel" 
-                    value={formData.phone}
-                    onChange={e => setFormData({...formData, phone: e.target.value})}
-                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" 
-                  />
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Mobile Number</label>
+                  <input required type="tel" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-blue-500 shadow-inner" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Role</label>
-                  <select 
-                    value={formData.role}
-                    onChange={e => setFormData({...formData, role: e.target.value})}
-                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-                  >
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Designation</label>
+                  <select value={formData.role} onChange={e => setFormData({...formData, role: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black uppercase text-xs outline-none focus:border-blue-500 shadow-inner">
                     <option>Subject Teacher</option>
                     <option>Class Teacher</option>
                     <option>HOD</option>
@@ -251,34 +230,44 @@ export const StaffManagement: React.FC = () => {
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Subjects (Comma separated)</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Specializations (Comma separated)</label>
                   <input 
                     type="text" 
                     placeholder="Math, English, etc."
                     value={formData.subjects?.join(', ')}
-                    onChange={e => setFormData({...formData, subjects: e.target.value.split(',').map(s => s.trim())})}
-                    className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" 
+                    onChange={e => setFormData({...formData, subjects: e.target.value.split(',').map(s => s.trim()).filter(Boolean)})}
+                    className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-blue-500 shadow-inner" 
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 pt-4 border-t">
-                <button 
-                  type="button" 
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-6 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  className="px-6 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
-                >
-                  {editingStaff ? 'Update Profile' : 'Register Staff'}
+              <div className="flex gap-4 pt-6 border-t">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-5 text-gray-400 font-black uppercase tracking-widest hover:bg-gray-50 rounded-3xl transition-all">Discard</button>
+                <button type="submit" className="flex-1 py-5 bg-blue-600 text-white font-black uppercase tracking-widest rounded-3xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95 border-b-4 border-blue-800">
+                  {editingStaff ? 'Commit Updates' : 'Authorize Enrollment'}
                 </button>
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && staffToDelete && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-sm animate-in fade-in duration-200">
+           <div className="bg-white rounded-[40px] w-full max-w-md shadow-2xl p-10 animate-in zoom-in duration-300 text-center">
+              <div className="w-24 h-24 bg-red-50 text-red-600 rounded-[32px] flex items-center justify-center mx-auto mb-8 shadow-xl shadow-red-100">
+                 <AlertTriangle size={48} />
+              </div>
+              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-4 leading-none">Authorize Deletion?</h2>
+              <p className="text-sm font-medium text-gray-500 leading-relaxed mb-8">
+                You are about to permanently remove <strong className="text-gray-900">{staffToDelete.name}</strong> ({staffToDelete.staffId}) from the staff registry. This action cannot be undone.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                 <button onClick={() => setIsDeleteModalOpen(false)} className="py-4 bg-gray-100 text-gray-400 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-200 transition-all">Cancel</button>
+                 <button onClick={confirmDelete} className="py-4 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-red-100 hover:bg-red-700 transition-all active:scale-95 border-b-4 border-red-800">Confirm Delete</button>
+              </div>
+           </div>
         </div>
       )}
     </div>

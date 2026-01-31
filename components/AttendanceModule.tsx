@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Calendar, 
   UserCheck, 
@@ -12,44 +12,81 @@ import {
   Loader2, 
   CheckCircle2, 
   MoreHorizontal,
-  FileText
+  FileText,
+  Users
 } from 'lucide-react';
 import { smsService } from '../services/smsService';
 import { schoolService } from '../services/schoolService';
 import { Language, translations } from '../services/localizationService';
-import { KENYAN_CLASSES, SCHOOL_STREAMS } from '../types';
+import { KENYAN_CLASSES, Student } from '../types';
 
-const MOCK_ATTENDANCE_STUDENTS = [
-  { id: '1', name: 'Kamau Njoroge', adm: 'ADM001', status: 'present', phone: '0711111111' },
-  { id: '2', name: 'Amara Kiprono', adm: 'ADM002', status: 'absent', phone: '0722222222' },
-  { id: '3', name: 'Zuri Achieng', adm: 'ADM003', status: 'present', phone: '0733333333' },
-  { id: '4', name: 'Sifa Otieno', adm: 'ADM004', status: 'present', phone: '0744444444' },
-  { id: '5', name: 'Baraka Ali', adm: 'ADM005', status: 'late', phone: '0755555555' },
-  { id: '6', name: 'Mwikali Musyoka', adm: 'ADM006', status: 'present', phone: '0766666666' },
-  { id: '7', name: 'Jabari Omondi', adm: 'ADM007', status: 'absent', phone: '0777777777' },
-];
+interface AttendanceModuleProps {
+  lang: Language;
+  students: Student[];
+}
 
-export const AttendanceModule: React.FC<{ lang: Language }> = ({ lang }) => {
+export const AttendanceModule: React.FC<AttendanceModuleProps> = ({ lang, students = [] }) => {
   const t = translations[lang];
-  const [attendance, setAttendance] = useState(MOCK_ATTENDANCE_STUDENTS);
+  
+  // Selection criteria
   const [classSelected, setClassSelected] = useState('Grade 7');
-  const [streamSelected, setStreamSelected] = useState('Oak');
+  const [streamSelected, setStreamSelected] = useState(''); // Custom Stream entry
+  const [searchQuery, setSearchQuery] = useState('');
+  
+  // Tracking statuses for the active group
+  const [markedStatuses, setMarkedStatuses] = useState<Record<string, string>>({});
+  
   const [sendSMS, setSendSMS] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+
+  // Filter students based on Class and Custom Stream
+  const filteredStudents = useMemo(() => {
+    return (students || []).filter(s => {
+      const matchesClass = s.class.toLowerCase() === classSelected.toLowerCase();
+      const matchesStream = streamSelected === '' || s.stream.toLowerCase().includes(streamSelected.toLowerCase());
+      const matchesSearch = s.firstName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            s.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            s.admissionNumber.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesClass && matchesStream && matchesSearch;
+    });
+  }, [students, classSelected, streamSelected, searchQuery]);
+
+  const stats = useMemo(() => {
+    let present = 0;
+    let absent = 0;
+    let late = 0;
+
+    filteredStudents.forEach(s => {
+      const status = markedStatuses[s.id] || 'present'; // Default to present if not marked
+      if (status === 'present') present++;
+      else if (status === 'absent') absent++;
+      else if (status === 'late') late++;
+    });
+
+    return { present, absent, late, total: filteredStudents.length };
+  }, [filteredStudents, markedStatuses]);
 
   const updateStatus = (id: string, newStatus: string) => {
-    setAttendance(prev => prev.map(s => s.id === id ? { ...s, status: newStatus } : s));
+    setMarkedStatuses(prev => ({ ...prev, [id]: newStatus }));
   };
 
   const setBulkStatus = (status: 'present' | 'absent') => {
-    setAttendance(prev => prev.map(s => ({ ...s, status })));
+    const next: Record<string, string> = { ...markedStatuses };
+    filteredStudents.forEach(s => {
+      next[s.id] = status;
+    });
+    setMarkedStatuses(next);
   };
 
   const handleExportCSV = () => {
     const headers = ['Name', 'Admission No', 'Status', 'Date'];
     const date = new Date().toLocaleDateString();
-    const rows = attendance.map(s => [s.name, s.adm, s.status, date]);
+    const rows = filteredStudents.map(s => [
+      `${s.firstName} ${s.lastName}`, 
+      s.admissionNumber, 
+      markedStatuses[s.id] || 'present', 
+      date
+    ]);
     
     const csvContent = [
       headers.join(','),
@@ -60,24 +97,36 @@ export const AttendanceModule: React.FC<{ lang: Language }> = ({ lang }) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `Attendance_${classSelected}_${streamSelected}_${date}.csv`);
+    link.setAttribute('download', `Attendance_${classSelected}_${streamSelected || 'All'}_${date}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   const handleSubmit = async () => {
+    if (filteredStudents.length === 0) {
+      alert("No students in the current view to mark.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      await schoolService.saveAttendance(`${classSelected} ${streamSelected}`, attendance);
+      const records = filteredStudents.map(s => ({
+        id: s.id,
+        name: `${s.firstName} ${s.lastName}`,
+        status: markedStatuses[s.id] || 'present',
+        phone: s.guardianPhone
+      }));
+
+      await schoolService.saveAttendance(`${classSelected} ${streamSelected}`, records);
       
       if (sendSMS) {
-        const absents = attendance.filter(s => s.status === 'absent');
+        const absents = records.filter(r => r.status === 'absent');
         if (absents.length > 0) {
           await smsService.sendBulkAbsenceAlerts(absents.map(a => ({ name: a.name, phone: a.phone })));
         }
       }
-      alert('Attendance records submitted successfully!');
+      alert(`Success: Attendance for ${records.length} learners committed to registry.`);
     } catch (error) {
       console.error(error);
       alert('Failed to save attendance.');
@@ -86,47 +135,35 @@ export const AttendanceModule: React.FC<{ lang: Language }> = ({ lang }) => {
     }
   };
 
-  const filteredStudents = attendance.filter(s => 
-    s.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    s.adm.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  const stats = {
-    present: attendance.filter(s => s.status === 'present').length,
-    absent: attendance.filter(s => s.status === 'absent').length,
-    late: attendance.filter(s => s.status === 'late').length,
-    total: attendance.length
-  };
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800 tracking-tight">{t.attendance}</h1>
-          <p className="text-gray-500">Daily roll call for {classSelected} {streamSelected}.</p>
+          <h1 className="text-2xl font-black text-gray-800 tracking-tight uppercase">{t.attendance}</h1>
+          <p className="text-gray-500 font-medium">Daily register for {classSelected} {streamSelected || '(All Streams)'}.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <button 
             onClick={handleExportCSV}
-            className="flex items-center space-x-2 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition font-bold text-sm text-gray-700"
+            className="flex items-center space-x-2 bg-white border-2 border-gray-100 px-5 py-2.5 rounded-xl hover:bg-gray-50 transition font-black text-[10px] uppercase tracking-widest text-gray-600 shadow-sm"
           >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>CSV</span>
+            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+            <span>Export CSV</span>
           </button>
           <button 
             onClick={() => window.print()}
-            className="flex items-center space-x-2 border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition font-bold text-sm text-gray-700"
+            className="flex items-center space-x-2 bg-white border-2 border-gray-100 px-5 py-2.5 rounded-xl hover:bg-gray-50 transition font-black text-[10px] uppercase tracking-widest text-gray-600 shadow-sm"
           >
-            <Printer className="w-4 h-4" />
-            <span>PDF</span>
+            <Printer className="w-4 h-4 text-blue-600" />
+            <span>Print List</span>
           </button>
           <button 
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="flex items-center space-x-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 font-bold transition shadow-lg disabled:opacity-50"
+            className="flex items-center space-x-2 bg-blue-600 text-white px-8 py-3 rounded-2xl hover:bg-blue-700 font-black uppercase text-xs tracking-widest transition shadow-xl shadow-blue-100 disabled:opacity-50 active:scale-95"
           >
             {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            <span>{isSubmitting ? 'Submitting...' : 'Finalize Attendance'}</span>
+            <span>{isSubmitting ? 'Processing...' : 'Finalize Ledger'}</span>
           </button>
         </div>
       </div>
@@ -134,45 +171,45 @@ export const AttendanceModule: React.FC<{ lang: Language }> = ({ lang }) => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Controls Panel */}
         <div className="md:col-span-1 space-y-6 no-print">
-          <div className="bg-white p-5 rounded-xl border border-gray-100 shadow-sm space-y-4">
+          <div className="bg-white p-6 rounded-[32px] border-2 border-gray-50 shadow-sm space-y-6">
             <div>
-              <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-2">Class Selection</label>
-              <div className="grid grid-cols-1 gap-2">
-                <select 
-                  value={classSelected} 
-                  onChange={(e) => setClassSelected(e.target.value)}
-                  className="w-full p-2.5 border rounded-lg bg-gray-50 font-bold focus:ring-2 focus:ring-blue-500"
-                >
-                  {KENYAN_CLASSES.map(cls => (
-                    <option key={cls} value={cls}>{cls}</option>
-                  ))}
-                </select>
-                <select 
-                  value={streamSelected} 
-                  onChange={(e) => setStreamSelected(e.target.value)}
-                  className="w-full p-2.5 border rounded-lg bg-gray-50 font-bold focus:ring-2 focus:ring-blue-500"
-                >
-                  {SCHOOL_STREAMS.map(stream => (
-                    <option key={stream} value={stream}>{stream}</option>
-                  ))}
-                </select>
-              </div>
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Target Class</label>
+              <select 
+                value={classSelected} 
+                onChange={(e) => setClassSelected(e.target.value)}
+                className="w-full p-3.5 border-2 border-gray-100 rounded-2xl bg-gray-50 font-black text-xs uppercase focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all shadow-inner"
+              >
+                {KENYAN_CLASSES.map(cls => (
+                  <option key={cls} value={cls}>{cls}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Custom Stream</label>
+              <input 
+                type="text"
+                placeholder="e.g. Oak, Eagle..."
+                value={streamSelected} 
+                onChange={(e) => setStreamSelected(e.target.value)}
+                className="w-full p-3.5 border-2 border-gray-100 rounded-2xl bg-gray-50 font-black text-xs uppercase focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all shadow-inner"
+              />
             </div>
 
             <div className="pt-4 border-t space-y-3">
-               <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mb-1">Bulk Marking</label>
-               <div className="flex flex-col gap-2">
+               <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Bulk Marking</label>
+               <div className="grid grid-cols-1 gap-2">
                  <button 
                    onClick={() => setBulkStatus('present')}
-                   className="w-full py-2 bg-green-50 text-green-700 rounded-lg text-sm font-bold hover:bg-green-100 transition"
+                   className="w-full py-3 bg-green-50 text-green-700 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-green-100 transition border border-green-100"
                  >
-                   {t.mark_all_present}
+                   All Present
                  </button>
                  <button 
                    onClick={() => setBulkStatus('absent')}
-                   className="w-full py-2 bg-red-50 text-red-700 rounded-lg text-sm font-bold hover:bg-red-100 transition"
+                   className="w-full py-3 bg-red-50 text-red-700 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-red-100 transition border border-red-100"
                  >
-                   {t.mark_all_absent}
+                   All Absent
                  </button>
                </div>
             </div>
@@ -188,105 +225,114 @@ export const AttendanceModule: React.FC<{ lang: Language }> = ({ lang }) => {
                   />
                   <div className={`absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-200 ${sendSMS ? 'translate-x-6' : 'translate-x-0'}`}></div>
                 </div>
-                <span className="text-sm font-black text-gray-700 uppercase tracking-tighter">{t.sms_alerts}</span>
+                <span className="text-[10px] font-black text-gray-700 uppercase tracking-widest">{t.sms_alerts}</span>
               </label>
-              <p className="text-[10px] text-gray-500 mt-2 font-medium italic">{t.absent_alert}</p>
+              <p className="text-[10px] text-gray-400 mt-3 font-bold italic leading-relaxed uppercase tracking-tighter">Absentee notifications will be dispatched to guardians via Africa's Talking Gateway.</p>
             </div>
           </div>
 
-          <div className="bg-blue-900 p-6 rounded-xl text-white shadow-2xl shadow-blue-200 relative overflow-hidden">
+          <div className="bg-blue-900 p-8 rounded-[40px] text-white shadow-2xl shadow-blue-200 relative overflow-hidden group">
             <div className="relative z-10">
-              <h4 className="text-[10px] font-black uppercase opacity-70 tracking-widest mb-1">Today's Presence</h4>
-              <div className="text-4xl font-black mb-4">{stats.present} <span className="text-xl opacity-60">/ {stats.total}</span></div>
-              <div className="space-y-2">
-                <div className="h-1.5 w-full bg-blue-800 rounded-full overflow-hidden">
+              <h4 className="text-[10px] font-black uppercase opacity-50 tracking-widest mb-2">Live Session Presence</h4>
+              <div className="text-5xl font-black tracking-tighter mb-6">{stats.present} <span className="text-2xl opacity-40">/ {stats.total}</span></div>
+              <div className="space-y-3">
+                <div className="h-3 w-full bg-blue-800/50 rounded-full overflow-hidden border border-blue-700/50">
                   <div 
-                    className="h-full bg-white rounded-full transition-all duration-1000" 
-                    style={{ width: `${(stats.present / stats.total) * 100}%` }}
+                    className="h-full bg-green-400 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(74,222,128,0.5)]" 
+                    style={{ width: `${stats.total > 0 ? (stats.present / stats.total) * 100 : 0}%` }}
                   ></div>
                 </div>
-                <div className="flex justify-between text-[10px] font-black uppercase tracking-tighter">
-                  <span className="text-green-300">{stats.present} Present</span>
-                  <span className="text-red-300">{stats.absent} Absent</span>
-                  <span className="text-amber-300">{stats.late} Late</span>
+                <div className="grid grid-cols-3 text-[9px] font-black uppercase tracking-tighter gap-1">
+                  <div className="text-green-300 bg-white/5 px-2 py-1 rounded-lg text-center">{stats.present} Present</div>
+                  <div className="text-red-300 bg-white/5 px-2 py-1 rounded-lg text-center">{stats.absent} Absent</div>
+                  <div className="text-amber-300 bg-white/5 px-2 py-1 rounded-lg text-center">{stats.late} Late</div>
                 </div>
               </div>
             </div>
-            <div className="absolute -right-4 -bottom-4 opacity-10">
-               <UserCheck className="w-32 h-32" />
+            <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:scale-110 transition-transform duration-700">
+               <UserCheck size={160} />
             </div>
           </div>
         </div>
 
         {/* Student List */}
         <div className="md:col-span-3 space-y-4">
-          <div className="bg-white rounded-xl border shadow-sm overflow-hidden flex flex-col h-full">
-            <div className="p-4 border-b bg-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
+          <div className="bg-white rounded-[40px] border-2 border-gray-50 shadow-xl overflow-hidden flex flex-col h-full">
+            <div className="p-6 border-b bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4 no-print">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-4 top-3.5 w-5 h-5 text-gray-400" />
                 <input 
                   type="text" 
-                  placeholder={t.search} 
+                  placeholder="Search current list..." 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-100 rounded-2xl text-sm font-bold focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all shadow-inner"
                 />
               </div>
-              <div className="flex items-center space-x-2 text-xs font-bold text-gray-500">
-                <Calendar className="w-4 h-4" />
+              <div className="flex items-center space-x-3 px-4 py-2.5 bg-white border-2 border-gray-100 rounded-2xl text-[10px] font-black text-gray-500 uppercase tracking-widest shadow-sm">
+                <Calendar className="w-4 h-4 text-blue-500" />
                 <span>{new Date().toDateString()}</span>
               </div>
             </div>
 
-            <div className="divide-y overflow-y-auto max-h-[600px]">
-              {filteredStudents.map((student) => (
-                <div key={student.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-gray-50 transition gap-4">
-                  <div className="flex items-center space-x-4">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-black uppercase border-2 shadow-sm ${
-                      student.status === 'present' ? 'bg-green-50 text-green-600 border-green-100' : 
-                      student.status === 'absent' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-600 border-amber-100'
-                    }`}>
-                      {student.name[0]}
+            <div className="divide-y-2 divide-gray-50 overflow-y-auto max-h-[700px]">
+              {filteredStudents.map((student) => {
+                const status = markedStatuses[student.id] || 'present';
+                return (
+                  <div key={student.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-blue-50/20 transition-all gap-4 group">
+                    <div className="flex items-center space-x-5">
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black uppercase border-2 shadow-sm transition-all overflow-hidden ${
+                        status === 'present' ? 'bg-white text-green-600 border-green-100 shadow-green-100' : 
+                        status === 'absent' ? 'bg-white text-red-600 border-red-100 shadow-red-100' : 'bg-white text-amber-600 border-amber-100 shadow-amber-100'
+                      }`}>
+                        {student.photo ? (
+                          <img src={student.photo} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xl">{student.firstName[0]}</span>
+                        )}
+                      </div>
+                      <div>
+                        <div className="font-black text-gray-900 text-lg tracking-tight leading-none">{student.firstName} {student.lastName}</div>
+                        <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-2">{student.admissionNumber} • {student.stream} • {student.gender}</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-black text-gray-900">{student.name}</div>
-                      <div className="text-[10px] text-gray-500 font-mono tracking-tighter uppercase">{student.adm} • {student.phone}</div>
+                    
+                    <div className="flex items-center bg-gray-50 p-1.5 rounded-[20px] no-print border-2 border-gray-100 shadow-inner">
+                      {[
+                        { id: 'present', label: t.present, icon: UserCheck, color: 'text-green-600', activeBg: 'bg-white shadow-lg border-green-100' },
+                        { id: 'late', label: t.late, icon: Clock, color: 'text-amber-600', activeBg: 'bg-white shadow-lg border-amber-100' },
+                        { id: 'absent', label: t.absent, icon: UserX, color: 'text-red-600', activeBg: 'bg-white shadow-lg border-red-100' }
+                      ].map(s => {
+                        const Icon = s.icon;
+                        const isActive = status === s.id;
+                        return (
+                          <button 
+                            key={s.id}
+                            onClick={() => updateStatus(student.id, s.id)}
+                            className={`
+                              flex items-center gap-2 px-5 py-2.5 rounded-[14px] text-[10px] font-black uppercase tracking-widest transition-all border-2
+                              ${isActive ? `${s.activeBg} ${s.color}` : 'text-gray-400 border-transparent hover:text-gray-600'}
+                            `}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">{s.label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center bg-gray-100 p-1 rounded-xl no-print">
-                    {[
-                      { id: 'present', label: t.present, icon: UserCheck, color: 'text-green-600', bg: 'bg-green-100' },
-                      { id: 'late', label: t.late, icon: Clock, color: 'text-amber-600', bg: 'bg-amber-100' },
-                      { id: 'absent', label: t.absent, icon: UserX, color: 'text-red-600', bg: 'bg-red-100' }
-                    ].map(status => {
-                      const Icon = status.icon;
-                      return (
-                        <button 
-                          key={status.id}
-                          onClick={() => updateStatus(student.id, status.id)}
-                          className={`
-                            flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all
-                            ${student.status === status.id ? `${status.bg} ${status.color} shadow-sm ring-1 ring-white` : 'text-gray-400 hover:text-gray-600'}
-                          `}
-                        >
-                          <Icon className="w-3 h-3" />
-                          <span className="hidden sm:inline">{status.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
 
-                  {/* Print Only Status */}
-                  <div className="hidden print-only font-bold text-sm uppercase">
-                    {student.status}
+                    {/* Print Only Status */}
+                    <div className="hidden print-only font-black text-[10px] uppercase tracking-widest bg-gray-100 px-3 py-1 rounded-lg">
+                      {status}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
               {filteredStudents.length === 0 && (
-                <div className="py-20 text-center text-gray-400">
-                  <UserX className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                  <p className="font-bold">No students found matching "{searchQuery}"</p>
+                <div className="py-32 text-center">
+                  <Users className="w-16 h-16 text-gray-100 mx-auto mb-4" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-gray-400 italic">No learners found in {classSelected} {streamSelected}</p>
+                  <button onClick={() => { setClassSelected('Grade 7'); setStreamSelected(''); }} className="mt-6 text-blue-600 font-black uppercase text-[9px] tracking-widest border-b-2 border-blue-600 hover:text-blue-700 transition-colors">Reset Marking Target</button>
                 </div>
               )}
             </div>
@@ -295,10 +341,14 @@ export const AttendanceModule: React.FC<{ lang: Language }> = ({ lang }) => {
       </div>
       
       {/* Print Footer */}
-      <div className="hidden print-only mt-10 pt-10 border-t border-gray-200">
-         <div className="flex justify-between text-xs font-bold text-gray-500">
-            <div>Generated by ElimuSmart Cloud SMS</div>
-            <div>Sign: __________________________</div>
+      <div className="hidden print-only mt-20 pt-10 border-t-4 border-blue-900 flex justify-between items-end px-10">
+         <div className="space-y-2">
+            <p className="text-[10px] font-black uppercase tracking-widest text-blue-900">System Certified Ledger</p>
+            <p className="text-[8px] font-medium text-gray-400 italic">Generated by ElimuSmart Cloud SMS Engine</p>
+         </div>
+         <div className="text-center">
+            <div className="w-64 h-[1px] bg-gray-300 mb-2"></div>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-900">Official Seal & Signature</p>
          </div>
       </div>
     </div>

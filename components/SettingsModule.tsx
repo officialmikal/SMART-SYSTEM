@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Settings as SettingsIcon, 
   School, 
@@ -25,7 +25,9 @@ import {
   Edit3,
   X,
   ShieldCheck,
-  UserPlus
+  UserPlus,
+  RefreshCw,
+  Clock as ClockIcon
 } from 'lucide-react';
 import { UserRole, User as UserType } from '../types';
 
@@ -76,6 +78,17 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
 
   const isAdmin = currentUser.role === UserRole.ADMIN;
   const isAdminOrPrincipal = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.PRINCIPAL;
+
+  // Auto Term Calculation for Preview
+  const sysTime = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    let term = 1;
+    if (month >= 4 && month <= 7) term = 2;
+    else if (month >= 8) term = 3;
+    return { year, term };
+  }, []);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -167,6 +180,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
     setSchoolConfig(editableConfig);
     setIsSaving(false);
     alert('School configuration updated successfully!');
+  };
+
+  const syncAcademicClock = () => {
+    setEditableConfig({ ...editableConfig, year: sysTime.year, term: sysTime.term });
+    alert(`System synchronized to: ${sysTime.year} Term ${sysTime.term}`);
   };
 
   return (
@@ -397,16 +415,85 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
             )}
 
             {activeSection === 'academic' && isAdminOrPrincipal && (
-              <div className="p-8 space-y-6 animate-in fade-in duration-300">
-                <h3 className="text-lg font-black border-b pb-4 text-indigo-900 uppercase tracking-tight">Active Session</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                   <div className="p-6 bg-indigo-50 rounded-2xl border border-indigo-100">
-                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Current Year</p>
-                      <p className="text-3xl font-black text-indigo-900 leading-none">{schoolConfig?.year || new Date().getFullYear()}</p>
+              <div className="p-8 space-y-10 animate-in fade-in duration-300">
+                <div className="flex items-center justify-between border-b pb-6">
+                   <div>
+                      <h3 className="text-xl font-black text-indigo-900 uppercase tracking-tight">Academic Timeline</h3>
+                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Configure active year and term logic</p>
                    </div>
-                   <div className="p-6 bg-indigo-50 rounded-2xl border border-indigo-100">
-                      <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Active Term</p>
-                      <p className="text-3xl font-black text-indigo-900 leading-none">Term {schoolConfig?.term || 1}</p>
+                   <div className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-full border border-indigo-100">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
+                      <span className="text-[9px] font-black text-indigo-600 uppercase tracking-[0.2em]">Automated Timezone Sync Active</span>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                   <div className="p-8 bg-indigo-50/50 rounded-[40px] border-2 border-indigo-100 relative group overflow-hidden">
+                      <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:scale-110 transition-transform"><ClockIcon size={120} /></div>
+                      <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-6">Current Active Cycle</h4>
+                      <div className="flex gap-10">
+                         <div>
+                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 opacity-60">Year</p>
+                            <p className="text-5xl font-black text-indigo-900 tracking-tighter leading-none">{editableConfig?.year}</p>
+                         </div>
+                         <div className="w-[2px] bg-indigo-200/50"></div>
+                         <div>
+                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 opacity-60">Session</p>
+                            <p className="text-5xl font-black text-indigo-900 tracking-tighter leading-none">Term {editableConfig?.term}</p>
+                         </div>
+                      </div>
+                      <button 
+                        onClick={syncAcademicClock}
+                        className="mt-10 w-full flex items-center justify-center gap-3 bg-white border-2 border-indigo-100 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-lg shadow-indigo-100/50"
+                      >
+                         <RefreshCw size={14} className="animate-spin-slow" /> Reset to System Clock
+                      </button>
+                   </div>
+
+                   <div className="space-y-6">
+                      <div className="p-8 bg-gray-50 rounded-[40px] border-2 border-gray-100 space-y-6">
+                         <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Manual Session Override</h4>
+                         <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Academic Year</label>
+                               <select 
+                                  value={editableConfig?.year} 
+                                  onChange={e => setEditableConfig({...editableConfig, year: parseInt(e.target.value)})}
+                                  className="w-full p-4 bg-white border-2 border-gray-100 rounded-2xl font-black text-xl outline-none focus:border-indigo-500 shadow-sm"
+                               >
+                                  {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+                               </select>
+                            </div>
+                            <div className="space-y-1">
+                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Current Term</label>
+                               <select 
+                                  value={editableConfig?.term} 
+                                  onChange={e => setEditableConfig({...editableConfig, term: parseInt(e.target.value)})}
+                                  className="w-full p-4 bg-white border-2 border-gray-100 rounded-2xl font-black text-xl outline-none focus:border-indigo-500 shadow-sm"
+                               >
+                                  {[1, 2, 3].map(t => <option key={t} value={t}>Term {t}</option>)}
+                               </select>
+                            </div>
+                         </div>
+                         <button 
+                           onClick={handleSaveSchoolInfo}
+                           disabled={isSaving}
+                           className="w-full bg-indigo-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] shadow-2xl hover:bg-black transition-all flex items-center justify-center gap-3 border-b-4 border-black"
+                         >
+                            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                            Update Global Timeline
+                         </button>
+                      </div>
+                   </div>
+                </div>
+
+                <div className="p-8 bg-blue-50/50 rounded-[40px] border-2 border-blue-100 flex items-start gap-6">
+                   <div className="p-4 bg-white rounded-3xl shadow-sm border border-blue-50"><RefreshCw className="text-blue-600 w-6 h-6" /></div>
+                   <div>
+                      <p className="text-xs font-black text-blue-900 uppercase tracking-widest mb-1 italic">Propagated Syncing</p>
+                      <p className="text-[11px] font-medium text-blue-800 leading-relaxed">
+                        Updating the Global Academic Cycle will automatically set defaults for all new exams, report card generations, and financial fee invoicing across the platform. Current system detected: <strong className="uppercase">Nairobi/Kenyan Timezone Standard</strong>.
+                      </p>
                    </div>
                 </div>
               </div>

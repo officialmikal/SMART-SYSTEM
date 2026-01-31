@@ -57,7 +57,8 @@ export interface Student {
   guardianPhone: string;
   guardianName: string;
   feeBalance: number;
-  totalFee: number;
+  totalFee: number; // This is the Grade Default Fee
+  agreedFee?: number; // Optional negotiated amount
   paidFee: number;
   prepaidFee: number;
   photo?: string;
@@ -100,6 +101,18 @@ export interface Payment {
   method: 'M-PESA' | 'CASH' | 'BANK';
   transactionId: string;
   description: string;
+  studentId?: string;
+  parentPhone?: string; // For multi-student payments
+  allocations?: { studentId: string; amount: number }[];
+}
+
+export interface Expenditure {
+  id: string;
+  amount: number;
+  category: 'Salaries' | 'Food/Supplies' | 'Utilities' | 'Maintenance' | 'Exams' | 'Other';
+  date: string;
+  description: string;
+  approvedBy?: string;
 }
 
 export interface User {

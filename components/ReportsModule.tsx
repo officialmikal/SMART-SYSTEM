@@ -16,13 +16,14 @@ import {
 } from 'lucide-react';
 import { TranscriptModule } from './TranscriptModule';
 import { Language, translations } from '../services/localizationService';
-import { KENYAN_CLASSES, SCHOOL_STREAMS, Student } from '../types';
+import { KENYAN_CLASSES, SCHOOL_STREAMS, Student, User, UserRole } from '../types';
 
 type ReportView = 'selection' | 'transcript' | 'attendance' | 'fees';
 type ReportType = 'academic' | 'attendance' | 'finance';
 
 interface Props {
   students?: Student[];
+  users: User[];
   schoolLogo: string | null;
   schoolConfig: any;
 }
@@ -40,7 +41,7 @@ const ReportCard: React.FC<{ title: string; desc: string; icon: any; onClick: ()
   </button>
 );
 
-export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, students = [], schoolLogo, schoolConfig }) => {
+export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, students = [], users, schoolLogo, schoolConfig }) => {
   const t = translations[lang];
   const [view, setView] = useState<ReportView>('selection');
   const [reportType, setReportType] = useState<ReportType>('academic');
@@ -48,6 +49,12 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
   const [selectedStream, setSelectedStream] = useState(''); // Default to empty (All Streams) to ensure students show up
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Identify principal from users list for signatures
+  const principalName = useMemo(() => {
+    const p = users.find(u => u.role === UserRole.PRINCIPAL);
+    return p ? p.name : 'The Principal';
+  }, [users]);
 
   const filteredStudents = useMemo(() => {
     return (students || []).filter(s => {
@@ -70,7 +77,12 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
         <button onClick={() => setView('selection')} className="flex items-center gap-2 text-gray-900 font-black uppercase text-[10px] tracking-[0.3em] bg-white px-6 py-3 rounded-2xl border-2 border-gray-100 hover:border-blue-500 transition-all shadow-sm">
           <ArrowLeft className="w-5 h-5 text-blue-600" /> Back to Directory
         </button>
-        <TranscriptModule student={selectedStudent} schoolLogo={schoolLogo} schoolConfig={schoolConfig} />
+        <TranscriptModule 
+          student={selectedStudent} 
+          schoolLogo={schoolLogo} 
+          schoolConfig={schoolConfig} 
+          principalName={principalName} 
+        />
       </div>
     );
   }

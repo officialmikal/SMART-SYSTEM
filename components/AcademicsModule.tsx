@@ -45,24 +45,36 @@ const INITIAL_SUBJECTS: Subject[] = [
   { id: 'sub6', name: 'Pre-Technical Studies', category: 'Technical', gradeRange: 'Grade 7 - Grade 9' },
 ];
 
+const DEFAULT_EXAMS: Exam[] = [
+  { id: 'ex1', title: 'Term 1 Opening CAT', term: 1, year: 2025, type: 'CAT', date: '2025-01-15' },
+  { id: 'ex2', title: 'Mid-Term Assessments', term: 1, year: 2025, type: 'CAT', date: '2025-02-20' },
+];
+
 interface AcademicsProps {
   lang: Language;
   students: Student[];
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
+  schoolConfig?: any;
 }
 
-export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [], setStudents }) => {
+export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [], setStudents, schoolConfig }) => {
   const t = translations[lang];
   const [view, setView] = useState<'exams' | 'mark-entry' | 'subjects'>('exams');
   
-  const [exams, setExams] = useState<Exam[]>([]);
+  // Persistent Exam State
+  const [exams, setExams] = useState<Exam[]>(() => {
+    const saved = localStorage.getItem('elimusmart_exams');
+    return saved ? JSON.parse(saved) : DEFAULT_EXAMS;
+  });
+
   const [isExamModalOpen, setIsExamModalOpen] = useState(false);
   const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [examSearch, setExamSearch] = useState('');
+  
   const [examFormData, setExamFormData] = useState<Partial<Exam>>({
     title: '',
-    term: 1,
-    year: new Date().getFullYear(),
+    term: schoolConfig?.term || 1,
+    year: schoolConfig?.year || new Date().getFullYear(),
     type: 'CAT',
     date: new Date().toISOString().split('T')[0]
   });
@@ -84,14 +96,15 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
   const [selectedExam, setSelectedExam] = useState<Exam | null>(null);
   const [selectedSubject, setSelectedSubject] = useState('Mathematics');
   const [selectedClass, setSelectedClass] = useState('Grade 7');
-  const [selectedStream, setSelectedStream] = useState(''); // Default to empty (All Streams)
+  const [selectedStream, setSelectedStream] = useState('');
   const [marks, setMarks] = useState<MarkEntry[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [isGeneratingRemarks, setIsGeneratingRemarks] = useState<string | null>(null);
 
+  // Persistence Effects
   useEffect(() => {
-    schoolService.getExams().then(setExams);
-  }, []);
+    localStorage.setItem('elimusmart_exams', JSON.stringify(exams));
+  }, [exams]);
 
   useEffect(() => {
     localStorage.setItem('elimusmart_curriculum', JSON.stringify(subjects));
@@ -153,8 +166,8 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
       setEditingExam(null);
       setExamFormData({
         title: '',
-        term: 1,
-        year: new Date().getFullYear(),
+        term: schoolConfig?.term || 1,
+        year: schoolConfig?.year || new Date().getFullYear(),
         type: 'CAT',
         date: new Date().toISOString().split('T')[0]
       });
@@ -168,6 +181,7 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
       setExams(prev => prev.map(ex => 
         ex.id === editingExam.id ? { ...ex, ...examFormData } as Exam : ex
       ));
+      alert(`Success: ${examFormData.title} updated in institutional records.`);
     } else {
       const newExam: Exam = {
         id: `ex${Date.now()}`,
@@ -178,13 +192,16 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
         date: examFormData.date || new Date().toISOString().split('T')[0]
       };
       setExams(prev => [newExam, ...prev]);
+      alert('Success: New assessment scheduled.');
     }
     setIsExamModalOpen(false);
   };
 
-  const handleDeleteExam = (id: string) => {
-    if (confirm('Are you sure you want to delete this exam and all associated records?')) {
+  const handleDeleteExam = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation(); // Prevent card click triggers
+    if (confirm('CRITICAL ACTION: Are you sure you want to permanently delete this exam and all associated learner marks?')) {
       setExams(prev => prev.filter(ex => ex.id !== id));
+      alert('Exam record purged successfully.');
     }
   };
 
@@ -362,7 +379,6 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
         </div>
       </div>
 
-      {/* GLOBAL FILTERS: Visible in both Exams and Mark Entry views */}
       {view !== 'subjects' && (
         <div className="bg-white p-6 rounded-[32px] border-2 border-gray-50 flex flex-col xl:flex-row items-center gap-6 no-print shadow-xl">
            <div className="flex-1 w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -435,9 +451,13 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
                 <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl border-2 border-white shadow-sm">
                   <BookOpen className="w-6 h-6" />
                 </div>
-                <div className="flex gap-2 no-print opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0">
-                  <button onClick={() => openExamModal(exam)} className="p-3 bg-white text-gray-400 hover:text-blue-600 rounded-xl transition-all border-2 border-gray-50 hover:border-blue-100 shadow-sm"><Edit3 className="w-5 h-5" /></button>
-                  <button onClick={() => handleDeleteExam(exam.id)} className="p-3 bg-white text-gray-400 hover:text-red-600 rounded-xl transition-all border-2 border-gray-50 hover:border-red-100 shadow-sm"><Trash2 className="w-5 h-5" /></button>
+                <div className="flex gap-2 no-print opacity-0 group-hover:opacity-100 transition-all translate-x-4 group-hover:translate-x-0 relative z-10">
+                  <button onClick={() => openExamModal(exam)} className="p-3 bg-white text-gray-400 hover:text-blue-600 rounded-xl transition-all border-2 border-gray-50 hover:border-blue-100 shadow-sm">
+                    <Edit3 className="w-5 h-5" />
+                  </button>
+                  <button onClick={(e) => handleDeleteExam(e, exam.id)} className="p-3 bg-white text-gray-400 hover:text-red-600 rounded-xl transition-all border-2 border-gray-50 hover:border-red-100 shadow-sm">
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 
@@ -710,17 +730,31 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
                 <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Academic Term</label>
-                    <select value={examFormData.term} onChange={e => setExamFormData({...examFormData, term: parseInt(e.target.value)})} className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl font-black uppercase text-xs focus:border-blue-500 outline-none shadow-inner"><option value="1">Term 1</option><option value="2">Term 2</option><option value="3">Term 3</option></select>
+                    <select value={examFormData.term} onChange={e => setExamFormData({...examFormData, term: parseInt(e.target.value)})} className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl font-black uppercase text-xs focus:border-blue-500 outline-none shadow-inner">
+                      <option value="1">Term 1</option>
+                      <option value="2">Term 2</option>
+                      <option value="3">Term 3</option>
+                    </select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Exam Type</label>
-                    <select value={examFormData.type} onChange={e => setExamFormData({...examFormData, type: e.target.value as any})} className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl font-black uppercase text-xs focus:border-blue-500 outline-none shadow-inner"><option value="CAT">Continuous (CAT)</option><option value="End of Term">End of Term</option><option value="Initial Assessment">Initial Entry</option></select>
+                    <select value={examFormData.type} onChange={e => setExamFormData({...examFormData, type: e.target.value as any})} className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl font-black uppercase text-xs focus:border-blue-500 outline-none shadow-inner">
+                      <option value="CAT">Continuous (CAT)</option>
+                      <option value="End of Term">End of Term</option>
+                      <option value="Initial Assessment">Initial Entry</option>
+                    </select>
                   </div>
                 </div>
-                
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Official Date</label>
-                  <input type="date" value={examFormData.date} onChange={e => setExamFormData({...examFormData, date: e.target.value})} className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl font-black text-gray-900 focus:border-blue-500 outline-none shadow-inner" />
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Official Date</label>
+                    <input type="date" value={examFormData.date} onChange={e => setExamFormData({...examFormData, date: e.target.value})} className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl font-black text-gray-900 focus:border-blue-500 outline-none shadow-inner" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Academic Year</label>
+                    <input type="number" value={examFormData.year} onChange={e => setExamFormData({...examFormData, year: parseInt(e.target.value)})} className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl font-black text-gray-900 focus:border-blue-500 outline-none shadow-inner" />
+                  </div>
                 </div>
               </div>
 

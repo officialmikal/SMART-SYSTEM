@@ -9,9 +9,16 @@ interface TranscriptModuleProps {
   hideControls?: boolean;
   schoolLogo: string | null;
   schoolConfig: any;
+  principalName?: string;
 }
 
-export const TranscriptModule: React.FC<TranscriptModuleProps> = ({ student, hideControls = false, schoolLogo, schoolConfig }) => {
+export const TranscriptModule: React.FC<TranscriptModuleProps> = ({ 
+  student, 
+  hideControls = false, 
+  schoolLogo, 
+  schoolConfig,
+  principalName = 'Principal Maina'
+}) => {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const activeStudent = student || {
@@ -179,7 +186,7 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({ student, hid
         <div className="relative z-10 mt-auto pt-16 border-t-8 border-blue-900">
           <div className="flex justify-between items-end mb-12">
             <div className="text-center space-y-4">
-               <div className="font-serif italic text-4xl text-blue-900">Principal Maina</div>
+               <div className="font-serif italic text-4xl text-blue-900">{principalName}</div>
                <div className="w-72 h-[2px] bg-blue-900 shadow-sm"></div>
                <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.5em]">Executive Signature</p>
             </div>
