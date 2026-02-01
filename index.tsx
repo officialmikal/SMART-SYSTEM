@@ -11,16 +11,13 @@ if (!rootElement) {
 // Service Worker Registration for PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Construct path relative to current URL to prevent origin mismatch errors in preview environments
-    const swPath = new URL('./sw.js', window.location.href).href;
-    
-    navigator.serviceWorker.register(swPath)
+    // Simple relative path is the most robust way to register a service worker
+    // across different hosting environments and prevents "Invalid URL" errors.
+    navigator.serviceWorker.register('./sw.js')
       .then(reg => console.log('ElimuSmart PWA: Service Worker Active', reg.scope))
       .catch(err => {
-        // Silently fail in restricted sandbox environments to prevent console clutter
-        if (err.name !== 'SecurityError') {
-           console.log('ElimuSmart PWA: SW Registration Failed', err);
-        }
+        // Log as debug to avoid cluttering production consoles while allowing diagnosis
+        console.debug('ElimuSmart PWA: SW Registration skipped', err);
       });
   });
 }
