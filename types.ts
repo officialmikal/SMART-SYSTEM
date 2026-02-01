@@ -31,6 +31,20 @@ export const KENYAN_CLASSES = [
 
 export const SCHOOL_STREAMS = ['Oak', 'Palm', 'Eagle', 'Willow', 'Acacia'];
 
+export enum SMSProvider {
+  AFRICAS_TALKING = 'AFRICAS_TALKING',
+  TWILIO = 'TWILIO',
+  Safaricom = 'SAFARICOM'
+}
+
+export interface SMSSettings {
+  provider: SMSProvider;
+  username: string;
+  apiKey: string;
+  senderId: string;
+  enabled: boolean;
+}
+
 export interface ClassFee {
   className: string;
   amount: number;

@@ -11,7 +11,7 @@ import { AcademicsModule } from './components/AcademicsModule';
 import { SettingsModule } from './components/SettingsModule';
 import { TimetableModule } from './components/TimetableModule';
 import { MessagingModule } from './components/MessagingModule';
-import { UserRole, User, Student, ClassFee, KENYAN_CLASSES, Expenditure, Staff } from './types';
+import { UserRole, User, Student, ClassFee, KENYAN_CLASSES, Expenditure, Staff, SMSProvider } from './types';
 import { Language } from './services/localizationService';
 
 // Utility to determine the current academic period in the Kenyan school system
@@ -63,7 +63,14 @@ const INITIAL_SCHOOL_CONFIG = {
   mpesaPaybill: '522522',
   mpesaTill: '',
   bankName: 'KCB Bank',
-  bankAccountNumber: '1100223344'
+  bankAccountNumber: '1100223344',
+  smsSettings: {
+    provider: SMSProvider.AFRICAS_TALKING,
+    username: 'elimusmart_admin',
+    apiKey: '***',
+    senderId: 'ELIMUSMART',
+    enabled: true
+  }
 };
 
 // Main application component containing routing logic and global state
@@ -124,12 +131,24 @@ const App: React.FC = () => {
 
   const [schoolConfig, setSchoolConfig] = useState(() => {
     try {
-      const saved = localStorage.getItem('elimusmart_config');
-      const config = saved ? JSON.parse(saved) : INITIAL_SCHOOL_CONFIG;
-      if (!config.year || config.year < autoYear) {
-         return { ...config, year: autoYear, term: autoTerm };
+      const savedStr = localStorage.getItem('elimusmart_config');
+      if (!savedStr) return INITIAL_SCHOOL_CONFIG;
+      
+      const saved = JSON.parse(savedStr);
+      // Merge saved data with defaults to ensure all fields (like smsSettings) exist
+      const merged = {
+        ...INITIAL_SCHOOL_CONFIG,
+        ...saved,
+        smsSettings: {
+          ...INITIAL_SCHOOL_CONFIG.smsSettings,
+          ...(saved.smsSettings || {})
+        }
+      };
+
+      if (!merged.year || merged.year < autoYear) {
+         return { ...merged, year: autoYear, term: autoTerm };
       }
-      return config;
+      return merged;
     } catch (e) {
       return INITIAL_SCHOOL_CONFIG;
     }
@@ -210,7 +229,7 @@ const App: React.FC = () => {
         {currentTab === 'academics' && <AcademicsModule lang={lang} students={students} setStudents={setStudents} schoolConfig={schoolConfig} />}
         {currentTab === 'reports' && <ReportsModule lang={lang} students={students} users={users} schoolLogo={schoolLogo} schoolConfig={schoolConfig} />}
         {currentTab === 'timetable' && <TimetableModule lang={lang} />}
-        {currentTab === 'messaging' && <MessagingModule lang={lang} students={students} />}
+        {currentTab === 'messaging' && <MessagingModule lang={lang} user={user} students={students} schoolConfig={schoolConfig} setSchoolConfig={setSchoolConfig} />}
         {currentTab === 'settings' && <SettingsModule currentUser={user} users={users} setUsers={setUsers} schoolLogo={schoolLogo} setSchoolLogo={setSchoolLogo} schoolConfig={schoolConfig} setSchoolConfig={setSchoolConfig} />}
       </div>
     </Layout>
