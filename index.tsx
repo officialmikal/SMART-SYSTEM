@@ -11,10 +11,17 @@ if (!rootElement) {
 // Service Worker Registration for PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Registering without explicit scope to allow default root scope
-    navigator.serviceWorker.register('./sw.js')
+    // Construct path relative to current URL to prevent origin mismatch errors in preview environments
+    const swPath = new URL('./sw.js', window.location.href).href;
+    
+    navigator.serviceWorker.register(swPath)
       .then(reg => console.log('ElimuSmart PWA: Service Worker Active', reg.scope))
-      .catch(err => console.log('ElimuSmart PWA: SW Registration Failed', err));
+      .catch(err => {
+        // Silently fail in restricted sandbox environments to prevent console clutter
+        if (err.name !== 'SecurityError') {
+           console.log('ElimuSmart PWA: SW Registration Failed', err);
+        }
+      });
   });
 }
 

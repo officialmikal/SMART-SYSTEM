@@ -26,7 +26,8 @@ export const smsService = {
     if (!settings || !settings.enabled) return false;
     // Simulate API handshake
     await new Promise(r => setTimeout(r, 600));
-    return settings.username.length > 3 && settings.apiKey.length > 5;
+    // Valid if username and api key are present (allowing masked keys like '***' for testing)
+    return settings.username.trim().length > 0 && settings.apiKey.trim().length > 0;
   },
 
   /**

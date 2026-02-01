@@ -26,7 +26,10 @@ import {
   Wand2,
   Settings,
   Eye,
-  EyeOff
+  EyeOff,
+  // Added missing icons RefreshCw and Save
+  RefreshCw,
+  Save
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { GoogleGenAI } from '@google/genai';
@@ -70,6 +73,7 @@ export const MessagingModule: React.FC<MessagingModuleProps> = ({ lang, user, st
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [isTestingLink, setIsTestingLink] = useState(false);
+  const [isSavingConfig, setIsSavingConfig] = useState(false);
 
   // Local buffer for SMS settings to prevent Keystroke-lag and unsaved persistence
   const [localSmsSettings, setLocalSmsSettings] = useState<SMSSettings>(() => {
@@ -81,6 +85,11 @@ export const MessagingModule: React.FC<MessagingModuleProps> = ({ lang, user, st
       enabled: true
     };
   });
+
+  // Sync gateway health on config change
+  useEffect(() => {
+    smsService.checkConnection(schoolConfig.smsSettings).then(setGatewayConnected);
+  }, [schoolConfig.smsSettings]);
   
   const [selectedStudentIds, setSelectedStudentIds] = useState<Set<string>>(new Set());
 
@@ -88,10 +97,6 @@ export const MessagingModule: React.FC<MessagingModuleProps> = ({ lang, user, st
     { id: '1', type: 'Fee Reminder', recipients: 45, date: '2024-05-10', status: 'Delivered', cost: 45, sampleMessage: "Dear Parent, your child Kamau's outstanding balance is KES 12,500.", providerResponse: "Delivered to Safaricom network." },
     { id: '2', type: 'Opening Date', recipients: 482, date: '2024-05-01', status: 'Delivered', cost: 482, sampleMessage: "School reopens on Monday, 6th May.", providerResponse: "Accepted by Gateway." },
   ]);
-
-  useEffect(() => {
-    smsService.checkConnection(schoolConfig.smsSettings).then(setGatewayConnected);
-  }, [schoolConfig.smsSettings]);
 
   const templates = {
     fee: "Dear Parent, your child {StudentName}'s outstanding balance is KES {Balance}. Please clear to ensure smooth operations.",
@@ -203,7 +208,13 @@ export const MessagingModule: React.FC<MessagingModuleProps> = ({ lang, user, st
     setIsTestingLink(true);
     try {
       const isOk = await smsService.checkConnection(localSmsSettings);
-      alert(isOk ? "Connection Verified: Gateway handshake successful." : "Connection Failed: Invalid Username or API Key.");
+      if (isOk) {
+        setGatewayConnected(true);
+        alert("Connection Verified: Gateway handshake successful.");
+      } else {
+        setGatewayConnected(false);
+        alert("Connection Failed: Invalid Username or API Key.");
+      }
     } catch (e) {
       alert("Error testing gateway: Network failure.");
     } finally {
@@ -211,11 +222,16 @@ export const MessagingModule: React.FC<MessagingModuleProps> = ({ lang, user, st
     }
   };
 
-  const handleSaveConfig = () => {
+  const handleSaveConfig = async () => {
+    setIsSavingConfig(true);
+    await new Promise(r => setTimeout(r, 800)); // Visual feedback
+    
     setSchoolConfig({
       ...schoolConfig,
       smsSettings: { ...localSmsSettings }
     });
+    
+    setIsSavingConfig(false);
     alert("System Update: SMS Gateway settings saved and persistent.");
   };
 
@@ -227,7 +243,7 @@ export const MessagingModule: React.FC<MessagingModuleProps> = ({ lang, user, st
         <div>
           <h1 className="text-4xl font-black text-gray-900 tracking-tighter uppercase leading-none italic">Communication</h1>
           <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.3em] mt-3 flex items-center gap-3">
-             <span className={`w-2.5 h-2.5 rounded-full ${gatewayConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`}></span>
+             <span className={`w-2.5 h-2.5 rounded-full ${gatewayConnected ? 'bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]' : 'bg-gray-300'}`}></span>
              {schoolConfig.smsSettings.provider.replace('_', ' ')} GATEWAY • {gatewayConnected ? 'READY' : 'OFFLINE'}
           </p>
         </div>
@@ -236,7 +252,7 @@ export const MessagingModule: React.FC<MessagingModuleProps> = ({ lang, user, st
               <p className="text-[9px] font-black text-gray-400 uppercase">Balance</p>
               <p className="text-xl font-black text-gray-900">{smsBalance.toLocaleString()} <span className="text-[10px] opacity-30">Units</span></p>
            </div>
-           <button onClick={() => setIsTopUpModalOpen(true)} className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all">Top Up</button>
+           <button onClick={() => setIsTopUpModalOpen(true)} className="bg-blue-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-lg active:scale-95">Top Up</button>
         </div>
       </div>
 
@@ -297,8 +313,11 @@ export const MessagingModule: React.FC<MessagingModuleProps> = ({ lang, user, st
                                     setSelectedStudentIds(next);
                                   }} className="rounded-md" />
                                   <span className="text-[10px] font-bold text-gray-600 uppercase">{s.firstName} {s.lastName}</span>
-                               </label>
+                                </label>
                              ))}
+                             {filteredRecipients.length === 0 && (
+                               <div className="py-4 text-center text-gray-400 text-[10px] font-bold uppercase italic">No students match filter.</div>
+                             )}
                           </div>
                        </div>
                     </div>
@@ -313,7 +332,7 @@ export const MessagingModule: React.FC<MessagingModuleProps> = ({ lang, user, st
                     )}
                  </div>
 
-                 <button onClick={handleSendBulk} disabled={isSending || selectedStudentIds.size === 0 || !schoolConfig.smsSettings.enabled} className="w-full bg-blue-600 text-white py-6 rounded-[32px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center gap-4">
+                 <button onClick={handleSendBulk} disabled={isSending || (selectedType === 'custom' && !customMessage) || selectedStudentIds.size === 0 || !schoolConfig.smsSettings.enabled} className="w-full bg-blue-600 text-white py-6 rounded-[32px] font-black uppercase tracking-[0.2em] shadow-2xl hover:bg-blue-700 transition-all disabled:opacity-50 flex items-center justify-center gap-4 active:scale-95">
                    {isSending ? <Loader2 className="w-6 h-6 animate-spin" /> : <Zap className="w-6 h-6" />}
                    {isSending ? 'PROCESSING...' : 'Commit Gateway Dispatch'}
                  </button>
@@ -372,12 +391,13 @@ export const MessagingModule: React.FC<MessagingModuleProps> = ({ lang, user, st
                   </div>
                   
                   <div className="flex gap-4">
-                     <button onClick={handleTestLink} disabled={isTestingLink} className="flex-1 py-5 bg-white border-2 rounded-3xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2">
-                        {isTestingLink ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                     <button onClick={handleTestLink} disabled={isTestingLink} className="flex-1 py-5 bg-white border-2 rounded-3xl font-black uppercase text-[10px] tracking-widest flex items-center justify-center gap-2 hover:bg-gray-50 active:scale-95 transition-all">
+                        {isTestingLink ? <Loader2 className="w-4 h-4 animate-spin text-blue-600" /> : <RefreshCw size={14} className="text-blue-600" />}
                         {isTestingLink ? 'Testing...' : 'Test Link'}
                      </button>
-                     <button onClick={handleSaveConfig} className="flex-[2] py-5 bg-gray-900 text-white rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl">
-                        Save Config
+                     <button onClick={handleSaveConfig} disabled={isSavingConfig} className="flex-[2] py-5 bg-gray-900 text-white rounded-3xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
+                        {isSavingConfig ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save size={14} />}
+                        {isSavingConfig ? 'Saving...' : 'Save Config'}
                      </button>
                   </div>
                </div>
