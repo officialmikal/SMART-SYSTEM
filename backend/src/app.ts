@@ -1,7 +1,9 @@
-import express, { Request, Response, RequestHandler } from 'express';
+
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import { config } from './config/env';
 import authRoutes from './routes/authRoutes';
 import studentRoutes from './routes/studentRoutes';
 import classRoutes from './routes/classRoutes';
@@ -15,9 +17,16 @@ import mpesaRoutes from './routes/mpesaRoutes';
 const app = express();
 
 // Standard express middleware initialization with proper typing
-// Fix: Use 'as any' to avoid PathParams overload mismatch errors with standard middleware
 app.use(helmet() as any);
-app.use(cors() as any);
+
+// Production-ready CORS
+app.use(cors({
+  origin: config.FRONTEND_URL,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}) as any);
+
 app.use(morgan('dev') as any);
 app.use(express.json() as any);
 
@@ -33,7 +42,6 @@ app.use('/api/marks', markRoutes);
 app.use('/api/mpesa', mpesaRoutes);
 
 // Simple health check endpoint
-// Fix: Use any for req and res to bypass missing 'status' property error reported by compiler
 app.get('/health', (req: any, res: any) => {
   res.status(200).send('API is healthy');
 });

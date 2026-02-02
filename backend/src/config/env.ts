@@ -1,3 +1,4 @@
+
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -11,9 +12,10 @@ dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 export const config = {
   NODE_ENV: process.env.NODE_ENV || 'development',
-  PORT: parseInt(process.env.PORT || '5000', 10),
+  PORT: parseInt(process.env.PORT || '10000', 10), // Render default is 10000
   JWT_SECRET: process.env.JWT_SECRET || 'elimusmart_secret_key_2024_production',
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || '24h',
+  FRONTEND_URL: process.env.FRONTEND_URL || '*',
   DB: {
     HOST: process.env.DB_HOST || 'localhost',
     USER: process.env.DB_USER || 'postgres',
