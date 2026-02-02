@@ -1,4 +1,3 @@
-
 import React from 'react';
 import * as ReactDOMClient from 'react-dom/client';
 import App from './App';
@@ -11,14 +10,22 @@ if (!rootElement) {
 // Service Worker Registration for PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Simple relative path is the most robust way to register a service worker
-    // across different hosting environments and prevents "Invalid URL" errors.
-    navigator.serviceWorker.register('./sw.js')
-      .then(reg => console.log('ElimuSmart PWA: Service Worker Active', reg.scope))
-      .catch(err => {
-        // Log as debug to avoid cluttering production consoles while allowing diagnosis
-        console.debug('ElimuSmart PWA: SW Registration skipped', err);
-      });
+    // Only attempt registration in secure contexts (HTTPS or Localhost)
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const isHttps = window.location.protocol === 'https:';
+
+    if (isHttps || isLocalhost) {
+      // Use direct relative path to avoid "Invalid URL" construction errors
+      // and ensure registration stays within the same origin scope
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => {
+          console.log('ElimuSmart PWA: Service Worker Active', reg.scope);
+        })
+        .catch(err => {
+          // Failure to register a SW should not crash the main app
+          console.debug('ElimuSmart PWA: SW Registration skipped', err.message);
+        });
+    }
   });
 }
 

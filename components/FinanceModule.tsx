@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { 
   AlertCircle, 
@@ -26,7 +25,10 @@ import {
   ChevronRight,
   Plus,
   Settings2,
-  FileText
+  FileText,
+  Edit3,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { Language, translations } from '../services/localizationService';
 import { KENYAN_CLASSES, Student, ClassFee, Expenditure } from '../types';
@@ -70,8 +72,11 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
   const [selectedStudentForBilling, setSelectedStudentForBilling] = useState<Student | null>(null);
   const [billingFormData, setBillingFormData] = useState({ agreedFee: 0, paidFee: 0 });
 
-  // New Expenditure States
+  // Expenditure States
   const [showExpModal, setShowExpModal] = useState(false);
+  const [isExpDeleteModalOpen, setIsExpDeleteModalOpen] = useState(false);
+  const [expToDelete, setExpToDelete] = useState<Expenditure | null>(null);
+  const [editingExpId, setEditingExpId] = useState<string | null>(null);
   const [expForm, setExpForm] = useState<Partial<Expenditure>>({
     amount: 0,
     category: 'Other',
@@ -246,16 +251,62 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
     setParentPhone('');
   };
 
+  const openExpModal = (exp?: Expenditure) => {
+    if (exp) {
+      setEditingExpId(exp.id);
+      setExpForm({
+        amount: exp.amount,
+        category: exp.category,
+        date: exp.date,
+        description: exp.description
+      });
+    } else {
+      setEditingExpId(null);
+      setExpForm({
+        amount: 0,
+        category: 'Other',
+        date: new Date().toISOString().split('T')[0],
+        description: ''
+      });
+    }
+    setShowExpModal(true);
+  };
+
   const handleSaveExpenditure = (e: React.FormEvent) => {
     e.preventDefault();
-    const newExp: Expenditure = {
-      ...expForm,
-      id: `exp-${Date.now()}`,
-      amount: parseFloat(expForm.amount as any) || 0
-    } as Expenditure;
-    setExpenditures(prev => [newExp, ...prev]);
+    const amount = parseFloat(expForm.amount as any) || 0;
+    
+    if (editingExpId) {
+      setExpenditures(prev => prev.map(exp => 
+        exp.id === editingExpId ? { ...exp, ...expForm, id: editingExpId, amount } : exp
+      ));
+      alert("Expenditure voucher updated successfully.");
+    } else {
+      const newExp: Expenditure = {
+        ...expForm,
+        id: `exp-${Date.now()}`,
+        amount
+      } as Expenditure;
+      setExpenditures(prev => [newExp, ...prev]);
+      alert("New expenditure voucher committed to records.");
+    }
+    
     setShowExpModal(false);
+    setEditingExpId(null);
     setExpForm({ amount: 0, category: 'Other', date: new Date().toISOString().split('T')[0], description: '' });
+  };
+
+  const triggerDeleteExp = (exp: Expenditure) => {
+    setExpToDelete(exp);
+    setIsExpDeleteModalOpen(true);
+  };
+
+  const confirmDeleteExp = () => {
+    if (expToDelete) {
+      setExpenditures(prev => prev.filter(e => e.id !== expToDelete.id));
+      setIsExpDeleteModalOpen(false);
+      setExpToDelete(null);
+    }
   };
 
   const exportToPDF = (elementId: string, fileName: string) => {
@@ -405,7 +456,7 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
         <div className="space-y-6 animate-in fade-in duration-300">
           <div className="flex justify-between items-center">
              <h3 className="text-xl font-black uppercase tracking-tighter text-gray-800">Operational Expenditure</h3>
-             <button onClick={() => setShowExpModal(true)} className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-100">
+             <button onClick={() => openExpModal()} className="flex items-center gap-2 bg-red-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-100">
                 <Plus size={16} /> Record Expense
              </button>
           </div>
@@ -418,22 +469,41 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                       <th className="px-8 py-6">Category</th>
                       <th className="px-8 py-6">Description</th>
                       <th className="px-8 py-6">Date</th>
-                      <th className="px-8 py-6 text-right">Amount (KES)</th>
+                      <th className="px-8 py-6 text-center">Amount (KES)</th>
+                      <th className="px-8 py-6 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {expenditures.map(exp => (
-                      <tr key={exp.id} className="hover:bg-red-50/10">
+                      <tr key={exp.id} className="hover:bg-red-50/10 group">
                         <td className="px-8 py-6">
                            <span className="px-3 py-1 bg-red-50 text-red-600 rounded-lg text-[9px] font-black uppercase tracking-widest">{exp.category}</span>
                         </td>
                         <td className="px-8 py-6 font-medium text-gray-700 italic">{exp.description}</td>
                         <td className="px-8 py-6 text-xs text-gray-400 font-bold">{exp.date}</td>
-                        <td className="px-8 py-6 text-right font-black text-gray-900 text-lg">KES {exp.amount.toLocaleString()}</td>
+                        <td className="px-8 py-6 text-center font-black text-gray-900 text-lg">KES {exp.amount.toLocaleString()}</td>
+                        <td className="px-8 py-6 text-right">
+                           <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all pointer-events-auto">
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); openExpModal(exp); }}
+                                className="p-3 bg-white border border-gray-100 rounded-xl text-gray-400 hover:text-blue-600 hover:border-blue-200 shadow-sm hover:scale-110 active:scale-95 transition-all"
+                                title="Edit Voucher"
+                              >
+                                <Edit3 size={16} />
+                              </button>
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); triggerDeleteExp(exp); }}
+                                className="p-3 bg-white border border-gray-100 rounded-xl text-gray-400 hover:text-red-600 hover:border-red-200 shadow-sm hover:scale-110 active:scale-90 transition-all"
+                                title="Delete Voucher"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                           </div>
+                        </td>
                       </tr>
                     ))}
                     {expenditures.length === 0 && (
-                      <tr><td colSpan={4} className="py-20 text-center text-gray-400 font-bold uppercase text-[10px]">No expenditures logged yet.</td></tr>
+                      <tr><td colSpan={5} className="py-20 text-center text-gray-400 font-bold uppercase text-[10px]">No expenditures logged yet.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -544,12 +614,19 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
         </div>
       )}
 
-      {/* MODAL: Add Expenditure */}
+      {/* MODAL: Record/Edit Expenditure */}
       {showExpModal && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-xl animate-in fade-in duration-300">
            <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl relative overflow-hidden animate-in zoom-in duration-300">
               <div className="p-8 border-b bg-gray-50/50 flex items-center justify-between">
-                 <h2 className="text-2xl font-black uppercase tracking-tighter text-gray-900 leading-none">Record School Expense</h2>
+                 <div>
+                    <h2 className="text-2xl font-black uppercase tracking-tighter text-gray-900 leading-none">
+                      {editingExpId ? 'Edit Expense Voucher' : 'Record School Expense'}
+                    </h2>
+                    <p className="text-[10px] text-red-600 font-bold uppercase mt-2">
+                       {editingExpId ? `Updating Voucher ID: ${editingExpId.slice(-8)}` : 'Operational Outflow Registry'}
+                    </p>
+                 </div>
                  <button onClick={() => setShowExpModal(false)} className="p-2 hover:bg-red-50 text-gray-400 rounded-full transition-all"><X size={24} /></button>
               </div>
               <form onSubmit={handleSaveExpenditure} className="p-8 space-y-6">
@@ -570,14 +647,37 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                        </select>
                     </div>
                     <div className="space-y-1">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Date of Transaction</label>
+                       <input required type="date" value={expForm.date} onChange={e => setExpForm({...expForm, date: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-red-500 shadow-inner" />
+                    </div>
+                    <div className="space-y-1">
                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Voucher Description</label>
                        <textarea value={expForm.description} onChange={e => setExpForm({...expForm, description: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-medium outline-none focus:border-red-500 h-24" placeholder="Briefly explain the outflow..." />
                     </div>
                  </div>
-                 <button type="submit" className="w-full py-5 bg-red-600 text-white font-black uppercase tracking-widest rounded-3xl hover:bg-red-700 transition-all shadow-xl shadow-red-100 flex items-center justify-center gap-3">
-                   <Save className="w-5 h-5" /> Commit Voucher
+                 <button type="submit" className="w-full py-5 bg-red-600 text-white font-black uppercase tracking-widest rounded-3xl hover:bg-red-700 transition-all shadow-xl shadow-red-100 flex items-center justify-center gap-3 active:scale-95 border-b-4 border-red-800">
+                   <Save className="w-5 h-5" /> {editingExpId ? 'Apply Update' : 'Commit Voucher'}
                  </button>
               </form>
+           </div>
+        </div>
+      )}
+
+      {/* MODAL: Expenditure Delete Confirmation */}
+      {isExpDeleteModalOpen && expToDelete && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-sm animate-in fade-in duration-200">
+           <div className="bg-white rounded-[40px] w-full max-w-md shadow-2xl p-10 animate-in zoom-in duration-300 text-center">
+              <div className="w-24 h-24 bg-red-50 text-red-600 rounded-[32px] flex items-center justify-center mx-auto mb-8 shadow-xl shadow-red-100">
+                 <AlertTriangle size={48} />
+              </div>
+              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-4 leading-tight">Authorize Void?</h2>
+              <p className="text-sm font-medium text-gray-500 leading-relaxed mb-8">
+                You are about to permanently delete this expenditure record for <strong className="text-gray-900">KES {expToDelete.amount.toLocaleString()}</strong> ({expToDelete.category}). This will immediately update school net balance reports and cannot be undone.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                 <button onClick={() => setIsExpDeleteModalOpen(false)} className="py-4 bg-gray-100 text-gray-400 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-200 transition-all">Cancel</button>
+                 <button onClick={confirmDeleteExp} className="py-4 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-red-100 hover:bg-red-700 transition-all active:scale-95 border-b-4 border-red-800">Confirm Void</button>
+              </div>
            </div>
         </div>
       )}

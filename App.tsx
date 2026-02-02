@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
@@ -73,12 +72,12 @@ const INITIAL_SCHOOL_CONFIG = {
   }
 };
 
-// Main application component containing routing logic and global state
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [currentTab, setCurrentTab] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [lang, setLang] = useState<Language>('en');
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   
   const [users, setUsers] = useState<User[]>(() => {
     try {
@@ -135,7 +134,6 @@ const App: React.FC = () => {
       if (!savedStr) return INITIAL_SCHOOL_CONFIG;
       
       const saved = JSON.parse(savedStr);
-      // Merge saved data with defaults to ensure all fields (like smsSettings) exist
       const merged = {
         ...INITIAL_SCHOOL_CONFIG,
         ...saved,
@@ -154,7 +152,29 @@ const App: React.FC = () => {
     }
   });
 
-  // Sync data to localStorage for persistence
+  // PWA Install Logic
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
+
   useEffect(() => {
     localStorage.setItem('elimusmart_users', JSON.stringify(users));
     localStorage.setItem('elimusmart_students', JSON.stringify(students));
@@ -179,7 +199,6 @@ const App: React.FC = () => {
     if (found) setUser(found);
   };
 
-  // Render Login screen if no active session
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -207,7 +226,6 @@ const App: React.FC = () => {
     );
   }
 
-  // Main portal layout and module switching
   return (
     <Layout 
       user={user} 
@@ -219,6 +237,7 @@ const App: React.FC = () => {
       lang={lang}
       setLang={setLang}
       switchRole={switchRole}
+      installApp={deferredPrompt ? handleInstallClick : undefined}
     >
       <div className="p-4 md:p-8">
         {currentTab === 'dashboard' && <Dashboard user={user} lang={lang} students={students} />}

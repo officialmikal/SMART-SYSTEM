@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState, useEffect } from 'react';
 import { 
   Users, 
@@ -194,7 +193,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [] 
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 overflow-hidden flex flex-col group hover:shadow-2xl transition-all duration-500">
+        <div className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 overflow-hidden flex flex-col group hover:shadow-2xl transition-all duration-500 min-w-0">
           <div className="flex items-center justify-between mb-8">
             <div>
               <h3 className="text-xl font-black text-gray-800 uppercase tracking-tighter">Collection Velocity</h3>
@@ -204,8 +203,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [] 
               <TrendingUp className="w-3.5 h-3.5" /> Growth Trend
             </div>
           </div>
-          <div className="w-full h-[350px] relative">
-            <ResponsiveContainer width="100%" height="100%">
+          {/* 
+              Fix: Adding explicit dimensions, min-width, and overflow-hidden to the container.
+              Also using minWidth={0} on ResponsiveContainer to prevent layout calculation loops.
+          */}
+          <div className="w-full h-[350px] relative min-h-[350px] min-w-0 overflow-hidden bg-gray-50/30 rounded-3xl">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorColl" x1="0" y1="0" x2="0" y2="1">
