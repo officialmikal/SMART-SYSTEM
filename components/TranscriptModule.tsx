@@ -21,7 +21,7 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({
 }) => {
   const [isDownloading, setIsDownloading] = useState(false);
 
-  const activeStudent = student || {
+  const activeStudent = student || ({
     id: 's1',
     admissionNumber: 'ADM/2024/048',
     firstName: 'System',
@@ -33,8 +33,11 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({
     guardianPhone: '0711222333',
     guardianName: 'Robert Kipruto',
     feeBalance: 0,
+    totalFee: 0,
+    paidFee: 0,
+    prepaidFee: 0,
     results: []
-  } as Student;
+  } as Student);
 
   const displayResults = useMemo(() => {
     // Priority: Real Data -> Empty Array (don't show mock if student is real but has no marks)
