@@ -1,11 +1,11 @@
-
 import { Request, Response } from 'express';
 import { Exam } from '../models';
 
 // Retrieve all exams scheduled in the system
 export const getExams = async (req: any, res: any): Promise<void> => {
   try {
-    const exams = await Exam.findAll({ order: [['date', 'DESC']] });
+    // Fix: Cast Exam to any for static method findAll
+    const exams = await (Exam as any).findAll({ order: [['date', 'DESC']] });
     res.json(exams);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching exams', error });
@@ -15,7 +15,8 @@ export const getExams = async (req: any, res: any): Promise<void> => {
 // Register a new academic examination session
 export const createExam = async (req: any, res: any): Promise<void> => {
   try {
-    const exam = await Exam.create(req.body);
+    // Fix: Cast Exam to any for static method create
+    const exam = await (Exam as any).create(req.body);
     res.status(201).json(exam);
   } catch (error) {
     res.status(500).json({ message: 'Error creating exam', error });
@@ -25,7 +26,8 @@ export const createExam = async (req: any, res: any): Promise<void> => {
 // Update details for an existing examination session
 export const updateExam = async (req: any, res: any): Promise<void> => {
   try {
-    const exam = await Exam.findByPk(req.params.id);
+    // Fix: Cast Exam to any for static method findByPk
+    const exam = await (Exam as any).findByPk(req.params.id);
     if (!exam) {
       res.status(404).json({ message: 'Exam not found' });
       return;
@@ -40,7 +42,8 @@ export const updateExam = async (req: any, res: any): Promise<void> => {
 // Delete an examination session record
 export const deleteExam = async (req: any, res: any): Promise<void> => {
   try {
-    const exam = await Exam.findByPk(req.params.id);
+    // Fix: Cast Exam to any for static method findByPk
+    const exam = await (Exam as any).findByPk(req.params.id);
     if (!exam) {
       res.status(404).json({ message: 'Exam not found' });
       return;

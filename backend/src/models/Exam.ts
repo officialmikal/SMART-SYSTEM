@@ -24,7 +24,8 @@ export class Exam extends Model<ExamAttributes, ExamCreationAttributes> implemen
   public readonly updatedAt!: Date;
 }
 
-Exam.init({
+// Fix: Cast Exam to any to bypass static method check on subclass in this environment
+(Exam as any).init({
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,

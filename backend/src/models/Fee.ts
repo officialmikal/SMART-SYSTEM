@@ -18,7 +18,8 @@ export class Fee extends Model<FeeAttributes, FeeCreationAttributes> implements 
   public readonly updatedAt!: Date;
 }
 
-Fee.init({
+// Fix: Cast Fee to any to bypass static method check on subclass in this environment
+(Fee as any).init({
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,

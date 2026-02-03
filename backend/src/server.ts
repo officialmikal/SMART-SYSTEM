@@ -13,10 +13,11 @@ const start = async () => {
     await sequelize.sync({ force: false });
     console.log('Models synchronized.');
 
-    const adminExists = await User.findOne({ where: { role: 'ADMIN' } });
+    // Fix: Cast User to any for static methods findOne and create
+    const adminExists = await (User as any).findOne({ where: { role: 'ADMIN' } });
     if (!adminExists) {
       const hashedPassword = await bcrypt.hash('adminpassword', 10);
-      await User.create({
+      await (User as any).create({
         name: 'System Admin',
         email: 'admin@school.ac.ke',
         password: hashedPassword,

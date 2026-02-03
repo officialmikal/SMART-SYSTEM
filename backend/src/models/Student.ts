@@ -36,7 +36,8 @@ export class Student extends Model<StudentAttributes, StudentCreationAttributes>
   public readonly updatedAt!: Date;
 }
 
-Student.init({
+// Fix: Cast Student to any to bypass static method check on subclass in this environment
+(Student as any).init({
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,

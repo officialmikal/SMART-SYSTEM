@@ -34,7 +34,8 @@ export const protect = async (req: any, res: any, next: NextFunction): Promise<v
 
   try {
     const decoded = jwt.verify(token, config.JWT_SECRET) as JwtPayload;
-    const user = await User.findByPk(decoded.id);
+    // Fix: Cast User to any to bypass missing static method findByPk error
+    const user = await (User as any).findByPk(decoded.id);
 
     if (!user) {
       // Fix: Explicitly use res as any if status property is not detected

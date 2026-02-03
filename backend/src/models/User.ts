@@ -22,7 +22,8 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public readonly updatedAt!: Date;
 }
 
-User.init({
+// Fix: Cast User to any to bypass static method check on subclass in this environment
+(User as any).init({
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,

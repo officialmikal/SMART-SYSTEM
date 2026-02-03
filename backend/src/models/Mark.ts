@@ -26,7 +26,8 @@ export class Mark extends Model<MarkAttributes, MarkCreationAttributes> implemen
   public readonly updatedAt!: Date;
 }
 
-Mark.init({
+// Fix: Cast Mark to any to bypass static method check on subclass in this environment
+(Mark as any).init({
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,

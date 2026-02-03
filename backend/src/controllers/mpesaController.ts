@@ -1,4 +1,3 @@
-
 import { Request, Response } from 'express';
 import { initiateStkPush } from '../services/mpesaService';
 import { Payment, Student } from '../models';
@@ -7,7 +6,8 @@ import { Payment, Student } from '../models';
 export const stkPush = async (req: any, res: any): Promise<void> => {
   const { phone, amount, studentId } = req.body;
   try {
-    const student = await Student.findByPk(studentId);
+    // Fix: Cast Student to any for static method findByPk
+    const student = await (Student as any).findByPk(studentId);
     if (!student) {
       res.status(404).json({ message: 'Student not found' });
       return;
@@ -48,9 +48,11 @@ export const mpesaCallback = async (req: any, res: any): Promise<void> => {
     const receipt = metadata.find(i => i.Name === 'MpesaReceiptNumber')?.Value as string;
     const phone = metadata.find(i => i.Name === 'PhoneNumber')?.Value;
 
-    const student = await Student.findOne({ where: { guardianPhone: phone?.toString().slice(-9) } });
+    // Fix: Cast Student to any for static method findOne
+    const student = await (Student as any).findOne({ where: { guardianPhone: phone?.toString().slice(-9) } });
     if (student) {
-      await Payment.create({
+      // Fix: Cast Payment to any for static method create
+      await (Payment as any).create({
         studentId: student.id,
         amount,
         method: 'M-PESA',

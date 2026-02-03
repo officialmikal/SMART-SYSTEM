@@ -1,4 +1,3 @@
-
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
@@ -16,7 +15,8 @@ export const login = async (req: any, res: any): Promise<void> => {
   const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ where: { email } });
+    // Fix: Cast User to any to bypass missing static method findOne error
+    const user = await (User as any).findOne({ where: { email } });
 
     if (user && (await bcrypt.compare(password, user.password))) {
       res.json({

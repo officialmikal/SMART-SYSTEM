@@ -1,4 +1,3 @@
-
 import { Request, Response } from 'express';
 import { Mark, Student } from '../models';
 import { WhereOptions } from 'sequelize';
@@ -30,7 +29,8 @@ export const bulkUpsertMarks = async (req: any, res: any): Promise<void> => {
 
     const markPromises = entries.map(entry => {
       const score = Number(entry.score);
-      return Mark.upsert({
+      // Fix: Cast Mark to any for static method upsert
+      return (Mark as any).upsert({
         studentId: entry.studentId,
         examId,
         subject,
@@ -56,7 +56,8 @@ export const getStudentResults = async (req: any, res: any): Promise<void> => {
     const where: WhereOptions = { studentId };
     if (examId) where.examId = examId;
 
-    const marks = await Mark.findAll({
+    // Fix: Cast Mark to any for static method findAll
+    const marks = await (Mark as any).findAll({
       where,
       order: [['subject', 'ASC']]
     });
@@ -73,7 +74,8 @@ export const getClassResults = async (req: any, res: any): Promise<void> => {
     const subject = req.query.subject as string;
     const { classId } = req.params;
 
-    const marks = await Mark.findAll({
+    // Fix: Cast Mark to any for static method findAll
+    const marks = await (Mark as any).findAll({
       where: { examId, subject },
       include: [{
         model: Student,

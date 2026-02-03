@@ -1,4 +1,3 @@
-
 import { Request, Response } from 'express';
 import { Attendance, Student } from '../models';
 
@@ -19,7 +18,8 @@ export const bulkRecordAttendance = async (req: any, res: any): Promise<void> =>
     }
 
     const attendancePromises = records.map(record => 
-      Attendance.upsert({
+      // Fix: Cast Attendance to any for static method upsert
+      (Attendance as any).upsert({
         studentId: record.studentId,
         date,
         status: record.status,
@@ -38,7 +38,8 @@ export const bulkRecordAttendance = async (req: any, res: any): Promise<void> =>
 export const getStudentAttendance = async (req: any, res: any): Promise<void> => {
   try {
     const { studentId } = req.params;
-    const history = await Attendance.findAll({
+    // Fix: Cast Attendance to any for static method findAll
+    const history = await (Attendance as any).findAll({
       where: { studentId },
       order: [['date', 'DESC']]
     });
@@ -54,7 +55,8 @@ export const getClassAttendance = async (req: any, res: any): Promise<void> => {
     const { classId } = req.params;
     const date = req.query.date as string;
 
-    const history = await Attendance.findAll({
+    // Fix: Cast Attendance to any for static method findAll
+    const history = await (Attendance as any).findAll({
       where: { date },
       include: [{
         model: Student,

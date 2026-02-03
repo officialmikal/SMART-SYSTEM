@@ -26,7 +26,8 @@ export class Payment extends Model<PaymentAttributes, PaymentCreationAttributes>
   public readonly updatedAt!: Date;
 }
 
-Payment.init({
+// Fix: Cast Payment to any to bypass static method check on subclass in this environment
+(Payment as any).init({
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,

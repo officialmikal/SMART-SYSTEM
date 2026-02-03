@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Buffer } from 'buffer'; // Fix: Import Buffer for environments where it is not globally available
 import { config } from '../config/env';
 
 export interface StkPushResponse {

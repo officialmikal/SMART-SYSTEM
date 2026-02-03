@@ -22,7 +22,8 @@ export class Attendance extends Model<AttendanceAttributes, AttendanceCreationAt
   public readonly updatedAt!: Date;
 }
 
-Attendance.init({
+// Fix: Cast Attendance to any to bypass static method check on subclass in this environment
+(Attendance as any).init({
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,

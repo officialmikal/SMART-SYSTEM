@@ -9,23 +9,24 @@ import Exam from './Exam';
 import Mark from './Mark';
 
 // Associations
-Class.hasMany(Student, { foreignKey: 'classId', as: 'students' });
-Student.belongsTo(Class, { foreignKey: 'classId', as: 'class' });
+// Fix: Use any casting to satisfy the compiler for association static methods
+(Class as any).hasMany(Student, { foreignKey: 'classId', as: 'students' });
+(Student as any).belongsTo(Class, { foreignKey: 'classId', as: 'class' });
 
-Class.hasOne(Fee, { foreignKey: 'classId', as: 'feeStructure' });
-Fee.belongsTo(Class, { foreignKey: 'classId' });
+(Class as any).hasOne(Fee, { foreignKey: 'classId', as: 'feeStructure' });
+(Fee as any).belongsTo(Class, { foreignKey: 'classId' });
 
-Student.hasMany(Payment, { foreignKey: 'studentId', as: 'payments' });
-Payment.belongsTo(Student, { foreignKey: 'studentId', as: 'student' });
+(Student as any).hasMany(Payment, { foreignKey: 'studentId', as: 'payments' });
+(Payment as any).belongsTo(Student, { foreignKey: 'studentId', as: 'student' });
 
-Student.hasMany(Attendance, { foreignKey: 'studentId', as: 'attendance' });
-Attendance.belongsTo(Student, { foreignKey: 'studentId', as: 'student' });
+(Student as any).hasMany(Attendance, { foreignKey: 'studentId', as: 'attendance' });
+(Attendance as any).belongsTo(Student, { foreignKey: 'studentId', as: 'student' });
 
-Student.hasMany(Mark, { foreignKey: 'studentId', as: 'marks' });
-Mark.belongsTo(Student, { foreignKey: 'studentId', as: 'student' });
+(Student as any).hasMany(Mark, { foreignKey: 'studentId', as: 'marks' });
+(Mark as any).belongsTo(Student, { foreignKey: 'studentId', as: 'student' });
 
-Exam.hasMany(Mark, { foreignKey: 'examId', as: 'marks' });
-Mark.belongsTo(Exam, { foreignKey: 'examId', as: 'exam' });
+(Exam as any).hasMany(Mark, { foreignKey: 'examId', as: 'marks' });
+(Mark as any).belongsTo(Exam, { foreignKey: 'examId', as: 'exam' });
 
 export {
   User,

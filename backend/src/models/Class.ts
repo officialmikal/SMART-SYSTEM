@@ -16,7 +16,8 @@ export class Class extends Model<ClassAttributes, ClassCreationAttributes> imple
   public readonly updatedAt!: Date;
 }
 
-Class.init({
+// Fix: Cast Class to any to bypass static method check on subclass in this environment
+(Class as any).init({
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,

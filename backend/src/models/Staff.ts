@@ -28,7 +28,8 @@ export class Staff extends Model<StaffAttributes, StaffCreationAttributes> imple
   public readonly updatedAt!: Date;
 }
 
-Staff.init({
+// Fix: Cast Staff to any to bypass static method check on subclass in this environment
+(Staff as any).init({
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,

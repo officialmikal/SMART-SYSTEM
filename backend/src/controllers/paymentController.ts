@@ -1,11 +1,11 @@
-
 import { Request, Response } from 'express';
 import { Payment, Student } from '../models';
 
 // Fetch all historical payments recorded in the system
 export const getPayments = async (req: any, res: any): Promise<void> => {
   try {
-    const payments = await Payment.findAll({
+    // Fix: Cast Payment to any for static method findAll
+    const payments = await (Payment as any).findAll({
       include: [{ model: Student, as: 'student' }],
       order: [['date', 'DESC']]
     });
@@ -20,13 +20,15 @@ export const recordPayment = async (req: any, res: any): Promise<void> => {
   try {
     const { studentId, amount, method, transactionId, description } = req.body;
 
-    const existing = await Payment.findOne({ where: { transactionId } });
+    // Fix: Cast Payment to any for static method findOne
+    const existing = await (Payment as any).findOne({ where: { transactionId } });
     if (existing) {
       res.status(400).json({ message: 'Transaction ID already recorded' });
       return;
     }
 
-    const payment = await Payment.create({
+    // Fix: Cast Payment to any for static method create
+    const payment = await (Payment as any).create({
       studentId,
       amount: Number(amount),
       method,
@@ -44,7 +46,8 @@ export const recordPayment = async (req: any, res: any): Promise<void> => {
 export const getStudentPayments = async (req: any, res: any): Promise<void> => {
   try {
     const { studentId } = req.params;
-    const payments = await Payment.findAll({
+    // Fix: Cast Payment to any for static method findAll
+    const payments = await (Payment as any).findAll({
       where: { studentId },
       order: [['date', 'DESC']]
     });
