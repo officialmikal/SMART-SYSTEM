@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,7 +17,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- Stable html2pdf.js CDN Bundle - Accessed via window.html2pdf in components -->
+    <!-- Stable html2pdf.js CDN Bundle -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
@@ -31,11 +30,10 @@
         }
         .print-only { display: none; }
         
-        /* Fixed: Render-ready offscreen container */
         .offscreen-template {
             position: fixed;
             top: 0;
-            left: -5000px; /* Hidden from user but exists in render tree */
+            left: -5000px;
             width: 210mm;
             min-height: 297mm;
             background: white;
@@ -54,33 +52,35 @@
 <script type="importmap">
 {
   "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.37.0",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "recharts": "https://esm.sh/recharts@^3.6.0",
-    "xlsx": "https://esm.sh/xlsx@0.18.5",
-    "path": "https://esm.sh/path@^0.12.7",
-    "url": "https://esm.sh/url@^0.11.4",
-    "dotenv": "https://esm.sh/dotenv@^17.2.3",
-    "sequelize": "https://esm.sh/sequelize@^6.37.7",
+    "buffer": "https://esm.sh/buffer@^6.0.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "vite": "https://esm.sh/vite@^7.3.1",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.3",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "express": "https://esm.sh/express@^5.2.1",
-    "helmet": "https://esm.sh/helmet@^8.1.0",
-    "morgan": "https://esm.sh/morgan@^1.10.1",
-    "jsonwebtoken": "https://esm.sh/jsonwebtoken@^9.0.3",
+    "@google/genai": "https://esm.sh/@google/genai@^1.39.0",
+    "recharts": "https://esm.sh/recharts@^3.7.0",
+    "dotenv": "https://esm.sh/dotenv@^17.2.3",
+    "path": "https://esm.sh/path@^0.12.7",
+    "xlsx": "https://esm.sh/xlsx@^0.18.5",
     "process": "https://esm.sh/process@^0.11.10",
-    "cors": "https://esm.sh/cors@^2.8.6",
-    "bcryptjs": "https://esm.sh/bcryptjs@^3.0.3",
+    "jsonwebtoken": "https://esm.sh/jsonwebtoken@^9.0.3",
+    "helmet": "https://esm.sh/helmet@^8.1.0",
     "axios": "https://esm.sh/axios@^1.13.4",
-    "buffer": "https://esm.sh/buffer@^6.0.3"
+    "bcryptjs": "https://esm.sh/bcryptjs@^3.0.3",
+    "cors": "https://esm.sh/cors@^2.8.6",
+    "url": "https://esm.sh/url@^0.11.4",
+    "morgan": "https://esm.sh/morgan@^1.10.1",
+    "sequelize": "https://esm.sh/sequelize@^6.37.7"
   }
 }
 </script>
 </head>
 <body class="bg-gray-50 text-gray-900">
     <div id="root"></div>
-    <!-- Entry point -->
-    <script type="module" src="./index.tsx"></script>
+    <!-- Script tag now points to index.tsx; Vite handles the rest -->
+    <script type="module" src="/index.tsx"></script>
 </body>
 </html>
