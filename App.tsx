@@ -76,16 +76,31 @@ const App: React.FC = () => {
           console.debug("Auth session expired");
         }
       } else {
-        // Fallback to local storage for prototype/offline
         loadLocalData();
       }
     };
     checkConnection();
 
+    // PWA Install Prompt Listener
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      console.log('ElimuSmart: Installation prompt ready');
+    });
+
     window.addEventListener('unauthorized', () => {
       setUser(null);
     });
   }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
 
   const loadLocalData = () => {
     try {
@@ -113,7 +128,6 @@ const App: React.FC = () => {
       ]);
       if (cloudStudents) setStudents(cloudStudents);
       if (cloudStaff) setStaff(cloudStaff);
-      // Map cloud fees back to ClassFee format
       if (cloudClasses) {
         const fees = cloudClasses.map((c: any) => ({
           className: c.name,
@@ -146,7 +160,6 @@ const App: React.FC = () => {
         alert(err.message || "Invalid credentials");
       }
     } else {
-      // Mock login for offline prototype
       if (email === 'admin@school.ac.ke' && password === 'adminpassword') {
         setUser({ id: 'local-1', name: 'Admin (Offline)', email, role: UserRole.ADMIN });
         loadLocalData();
@@ -161,7 +174,6 @@ const App: React.FC = () => {
     setUser(null);
   };
 
-  // Sync state to local storage for persistence
   useEffect(() => {
     if (students.length > 0) localStorage.setItem('elimusmart_students', JSON.stringify(students));
     if (staff.length > 0) localStorage.setItem('elimusmart_staff', JSON.stringify(staff));
@@ -196,6 +208,11 @@ const App: React.FC = () => {
               Authorize Access
             </button>
           </form>
+          {deferredPrompt && (
+            <button onClick={handleInstallApp} className="mt-8 w-full flex items-center justify-center gap-2 text-[10px] font-black uppercase text-blue-600 tracking-widest border-2 border-blue-50 py-3 rounded-2xl hover:bg-blue-50 transition-all">
+              Install ElimuSmart App
+            </button>
+          )}
         </div>
       </div>
     );
@@ -213,6 +230,7 @@ const App: React.FC = () => {
       setLang={setLang}
       isBackendLive={isBackendLive}
       isSyncing={isSyncing}
+      installApp={deferredPrompt ? handleInstallApp : undefined}
     >
       <div className="p-4 md:p-8">
         {currentTab === 'dashboard' && <Dashboard user={user} lang={lang} students={students} />}

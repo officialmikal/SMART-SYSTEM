@@ -30,7 +30,8 @@ import {
   Edit3,
   Trash2,
   AlertTriangle,
-  ArrowRight
+  ArrowRight,
+  Wallet
 } from 'lucide-react';
 import { Language, translations } from '../services/localizationService';
 import { KENYAN_CLASSES, Student, ClassFee, Expenditure } from '../types';
@@ -69,6 +70,11 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
   const [financeSearch, setFinanceSearch] = useState('');
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<TransactionReceipt | null>(null);
+
+  // Payment Recording states
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<Student | null>(null);
+  const [paymentFormData, setPaymentFormData] = useState({ amount: '', method: 'CASH' as 'CASH' | 'BANK', reference: '' });
 
   // STK Push states
   const [isStkModalOpen, setIsStkModalOpen] = useState(false);
@@ -118,6 +124,47 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
     setStkAmount(student.feeBalance.toString());
     setStkPhone(student.guardianPhone);
     setIsStkModalOpen(true);
+  };
+
+  const openPaymentModal = (student: Student) => {
+    setSelectedStudentForPayment(student);
+    setPaymentFormData({ amount: '', method: 'CASH', reference: '' });
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleSavePayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudentForPayment || !paymentFormData.amount) return;
+
+    const amountToAdd = parseFloat(paymentFormData.amount);
+    setStudents(prev => prev.map(s => {
+      if (s.id === selectedStudentForPayment.id) {
+        const totalPaid = (s.paidFee || 0) + amountToAdd;
+        const target = s.agreedFee ?? s.totalFee;
+        const balance = Math.max(0, target - totalPaid);
+        const prepaid = totalPaid > target ? totalPaid - target : 0;
+        
+        // Generate receipt
+        setLastReceipt({
+          receiptNo: `RCT-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+          studentName: `${s.firstName} ${s.lastName}`,
+          adm: s.admissionNumber,
+          class: s.class,
+          amount: amountToAdd,
+          method: paymentFormData.method as any,
+          reference: paymentFormData.reference || 'DIRECT COLLECTION',
+          date: new Date().toLocaleString(),
+          balance: balance,
+          servedBy: 'Institutional Finance'
+        });
+        
+        return { ...s, paidFee: totalPaid, feeBalance: balance, prepaidFee: prepaid };
+      }
+      return s;
+    }));
+
+    setIsPaymentModalOpen(false);
+    setShowReceipt(true);
   };
 
   const handleConfirmStk = async () => {
@@ -321,13 +368,19 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                          <td className="py-4 px-2 text-right">
                             <div className="flex justify-end gap-2">
                                <button 
+                                 onClick={() => openPaymentModal(student)} 
+                                 className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-[9px] font-black uppercase tracking-widest border border-blue-100 hover:bg-blue-100 transition-all shadow-sm"
+                               >
+                                  <CreditCard size={12} /> Record Payment
+                               </button>
+                               <button 
                                  onClick={() => initiateStkPush(student)} 
                                  className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-[9px] font-black uppercase tracking-widest border border-green-100 hover:bg-green-100 transition-all shadow-sm"
                                >
                                   <Smartphone size={12} /> STK Push
                                </button>
-                               <button onClick={() => openBillingEditor(student)} className="p-2 text-gray-400 hover:text-blue-600"><Edit3 size={16} /></button>
-                               <button onClick={() => generateStudentReceipt(student)} className="p-2 text-gray-400 hover:text-green-600"><Printer size={16} /></button>
+                               <button onClick={() => openBillingEditor(student)} className="p-2 text-gray-400 hover:text-blue-600" title="Adjust Billing"><Settings2 size={16} /></button>
+                               <button onClick={() => generateStudentReceipt(student)} className="p-2 text-gray-400 hover:text-green-600" title="Print Statement"><Printer size={16} /></button>
                             </div>
                          </td>
                        </tr>
@@ -405,6 +458,45 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
           )}
         </div>
       </div>
+
+      {/* Manual Payment Collection Modal */}
+      {isPaymentModalOpen && selectedStudentForPayment && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md">
+           <div className="bg-white rounded-[40px] w-full max-w-md shadow-2xl p-10 animate-in zoom-in duration-300">
+              <div className="flex justify-between items-center mb-6">
+                 <div>
+                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Collect Fee</h2>
+                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">{selectedStudentForPayment.firstName} {selectedStudentForPayment.lastName}</p>
+                 </div>
+                 <button onClick={() => setIsPaymentModalOpen(false)} className="text-gray-400 hover:text-red-600"><X size={24} /></button>
+              </div>
+              <form onSubmit={handleSavePayment} className="space-y-6">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Payment Amount (KES)</label>
+                    <input required autoFocus type="number" value={paymentFormData.amount} onChange={e => setPaymentFormData({...paymentFormData, amount: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-black text-2xl focus:border-blue-500 transition-all outline-none shadow-inner" placeholder="0.00" />
+                    <p className="text-[9px] text-gray-400 font-bold uppercase ml-1 italic">Current Balance: KES {selectedStudentForPayment.feeBalance.toLocaleString()}</p>
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Channel / Method</label>
+                    <div className="grid grid-cols-2 gap-2">
+                       <button type="button" onClick={() => setPaymentFormData({...paymentFormData, method: 'CASH'})} className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${paymentFormData.method === 'CASH' ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}>Cash Payment</button>
+                       <button type="button" onClick={() => setPaymentFormData({...paymentFormData, method: 'BANK'})} className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${paymentFormData.method === 'BANK' ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}>Bank Deposit</button>
+                    </div>
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Transaction Ref (Optional)</label>
+                    <input type="text" value={paymentFormData.reference} onChange={e => setPaymentFormData({...paymentFormData, reference: e.target.value.toUpperCase()})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold uppercase outline-none focus:border-blue-500 shadow-inner" placeholder="E.G. BANK SLIP ID" />
+                 </div>
+                 <div className="flex gap-4 pt-4">
+                    <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest">Discard</button>
+                    <button type="submit" className="flex-[2] py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-black transition-all active:scale-95">
+                       <Wallet size={16} /> Finalize Collection
+                    </button>
+                 </div>
+              </form>
+           </div>
+        </div>
+      )}
 
       {/* Expenditure Modal */}
       {showExpModal && (
@@ -509,7 +601,7 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
       )}
 
       {showReceipt && lastReceipt && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-md">
+        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-md">
            <div className="bg-white rounded-[32px] w-full max-w-sm shadow-2xl p-10 animate-in zoom-in duration-300 text-center relative overflow-hidden">
               <div className="absolute top-0 right-0 p-8 opacity-5">
                  <ShieldCheck size={120} />

@@ -24,7 +24,8 @@ import {
   AlertCircle,
   Cloud,
   CloudOff,
-  RefreshCw
+  RefreshCw,
+  Download
 } from 'lucide-react';
 import { User, UserRole } from '../types';
 import { Language, translations } from '../services/localizationService';
@@ -56,13 +57,11 @@ export const Layout: React.FC<LayoutProps> = ({
   setLang,
   isBackendLive,
   isSyncing,
-  switchRole,
   installApp,
   children 
 }) => {
   const t = translations[lang];
   const [searchTerm, setSearchTerm] = useState('');
-  const [showNotifications, setShowNotifications] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const searchRef = useRef<HTMLDivElement>(null);
 
@@ -139,8 +138,18 @@ export const Layout: React.FC<LayoutProps> = ({
           })}
         </nav>
 
-        <div className="p-4 border-t bg-gray-50/50 shrink-0">
-          <div className="mb-4 px-4 flex items-center justify-between">
+        <div className="p-4 border-t bg-gray-50/50 shrink-0 space-y-3">
+          {installApp && (
+            <button 
+              onClick={installApp}
+              className="w-full flex items-center space-x-3 px-4 py-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest border border-indigo-100 shadow-sm"
+            >
+              <Smartphone className="w-4 h-4" />
+              <span>Install Desktop App</span>
+            </button>
+          )}
+
+          <div className="px-4 flex items-center justify-between">
              <div className="flex flex-col">
                 <div className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Network</div>
                 <div className="flex items-center gap-1.5 mt-1">
@@ -161,6 +170,7 @@ export const Layout: React.FC<LayoutProps> = ({
                <RefreshCw className="w-3 h-3 text-blue-500 animate-spin" />
              )}
           </div>
+          
           <button 
             onClick={logout}
             className="w-full flex items-center space-x-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-all font-bold text-sm"
