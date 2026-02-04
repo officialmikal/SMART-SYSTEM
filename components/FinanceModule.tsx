@@ -221,7 +221,7 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
         </div>
         <div className="flex gap-2">
            <button 
-             onClick={() => setActiveTab('expenditures')}
+             onClick={() => openExpEditor()}
              className="flex items-center gap-2 bg-white border-2 border-gray-100 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all shadow-sm"
            >
              <TrendingDown className="w-4 h-4 text-red-600" /> New Expense
@@ -369,6 +369,11 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                          </td>
                        </tr>
                      ))}
+                     {expenditures.length === 0 && (
+                       <tr>
+                         <td colSpan={5} className="py-12 text-center text-gray-400 font-bold uppercase text-[10px]">No expenditure records found.</td>
+                       </tr>
+                     )}
                    </tbody>
                  </table>
                </div>
@@ -400,6 +405,49 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
           )}
         </div>
       </div>
+
+      {/* Expenditure Modal */}
+      {showExpModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md">
+           <div className="bg-white rounded-[40px] w-full max-w-md shadow-2xl p-10 animate-in zoom-in duration-300">
+              <div className="flex justify-between items-center mb-8">
+                 <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">{editingExpId ? 'Edit Expense' : 'Add Expense'}</h2>
+                 <button onClick={() => setShowExpModal(false)} className="text-gray-400 hover:text-red-600"><X size={24} /></button>
+              </div>
+              <form onSubmit={handleSaveExpenditure} className="space-y-6">
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Amount (KES)</label>
+                    <input required type="number" value={expForm.amount} onChange={e => setExpForm({...expForm, amount: Number(e.target.value)})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-black outline-none focus:border-red-500 transition-all" />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Category</label>
+                    <select value={expForm.category} onChange={e => setExpForm({...expForm, category: e.target.value as any})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-black uppercase text-xs outline-none focus:border-red-500 transition-all">
+                       <option value="Salaries">Salaries</option>
+                       <option value="Food/Supplies">Food/Supplies</option>
+                       <option value="Utilities">Utilities</option>
+                       <option value="Maintenance">Maintenance</option>
+                       <option value="Exams">Exams</option>
+                       <option value="Other">Other</option>
+                    </select>
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Date</label>
+                    <input required type="date" value={expForm.date} onChange={e => setExpForm({...expForm, date: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-black outline-none focus:border-red-500 transition-all" />
+                 </div>
+                 <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Description</label>
+                    <textarea required value={expForm.description} onChange={e => setExpForm({...expForm, description: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-red-500 transition-all h-24" />
+                 </div>
+                 <div className="flex gap-4 pt-6">
+                    <button type="button" onClick={() => setShowExpModal(false)} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest">Cancel</button>
+                    <button type="submit" className="flex-2 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2">
+                       <Save size={16} /> {editingExpId ? 'Update Record' : 'Save Record'}
+                    </button>
+                 </div>
+              </form>
+           </div>
+        </div>
+      )}
 
       {/* M-Pesa STK Modal */}
       {isStkModalOpen && stkStudent && (
@@ -437,7 +485,6 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
         </div>
       )}
 
-      {/* Other modals remain unchanged but provided for consistency */}
       {isBillingModalOpen && selectedStudentForBilling && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md">
            <div className="bg-white rounded-[40px] w-full max-w-md shadow-2xl p-10 animate-in zoom-in duration-300">

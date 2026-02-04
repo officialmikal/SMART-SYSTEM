@@ -196,11 +196,6 @@ const App: React.FC = () => {
               Authorize Access
             </button>
           </form>
-          {!isBackendLive && (
-            <p className="mt-6 text-[10px] text-center text-amber-600 font-bold uppercase tracking-tight bg-amber-50 p-4 rounded-2xl border border-amber-100">
-              The backend is taking a moment to wake up on Render. You can login with "admin@school.ac.ke" / "adminpassword" to browse in offline mode.
-            </p>
-          )}
         </div>
       </div>
     );
