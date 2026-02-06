@@ -31,7 +31,8 @@ import {
   Trash2,
   AlertTriangle,
   ArrowRight,
-  Wallet
+  Wallet,
+  UserSearch
 } from 'lucide-react';
 import { Language, translations } from '../services/localizationService';
 import { KENYAN_CLASSES, Student, ClassFee, Expenditure } from '../types';
@@ -71,6 +72,10 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<TransactionReceipt | null>(null);
 
+  // Global Collection States
+  const [isQuickCollectOpen, setIsQuickCollectOpen] = useState(false);
+  const [quickSearchTerm, setQuickSearchTerm] = useState('');
+
   // Payment Recording states
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<Student | null>(null);
@@ -106,6 +111,15 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
     });
   }, [students, selectedClass, financeSearch]);
 
+  const quickFilterStudents = useMemo(() => {
+    if (!quickSearchTerm) return [];
+    return (students || []).filter(s => 
+      s.firstName.toLowerCase().includes(quickSearchTerm.toLowerCase()) || 
+      s.lastName.toLowerCase().includes(quickSearchTerm.toLowerCase()) || 
+      s.admissionNumber.toLowerCase().includes(quickSearchTerm.toLowerCase())
+    ).slice(0, 5);
+  }, [students, quickSearchTerm]);
+
   const financeStats = useMemo(() => {
     const totalCollected = students.reduce((sum, s) => sum + (s.paidFee || 0), 0);
     const totalExp = expenditures.reduce((sum, e) => sum + e.amount, 0);
@@ -130,6 +144,7 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
     setSelectedStudentForPayment(student);
     setPaymentFormData({ amount: '', method: 'CASH', reference: '' });
     setIsPaymentModalOpen(true);
+    setIsQuickCollectOpen(false); // Close search if it was open
   };
 
   const handleSavePayment = (e: React.FormEvent) => {
@@ -274,8 +289,8 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
              <TrendingDown className="w-4 h-4 text-red-600" /> New Expense
            </button>
            <button 
-             onClick={() => setActiveTab('class-summary')}
-             className="flex items-center gap-2 bg-blue-600 text-white px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-100"
+             onClick={() => setIsQuickCollectOpen(true)}
+             className="flex items-center gap-2 bg-blue-600 text-white px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 animate-pulse-install"
            >
              <Banknote className="w-4 h-4" /> Collect Fee
            </button>
@@ -459,13 +474,71 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
         </div>
       </div>
 
+      {/* Global Quick Collect Modal */}
+      {isQuickCollectOpen && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md">
+           <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl p-10 animate-in zoom-in duration-300">
+              <div className="flex justify-between items-center mb-8">
+                 <div>
+                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Quick Collect</h2>
+                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">Search for a Learner</p>
+                 </div>
+                 <button onClick={() => setIsQuickCollectOpen(false)} className="text-gray-400 hover:text-red-600"><X size={24} /></button>
+              </div>
+              <div className="space-y-6">
+                 <div className="relative">
+                    <UserSearch className="absolute left-4 top-4 text-gray-400" />
+                    <input 
+                      autoFocus
+                      type="text" 
+                      placeholder="Type Learner Name or ADM No..." 
+                      value={quickSearchTerm}
+                      onChange={e => setQuickSearchTerm(e.target.value)}
+                      className="w-full pl-12 pr-4 py-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold focus:border-blue-500 outline-none shadow-inner"
+                    />
+                 </div>
+                 <div className="space-y-2">
+                    {quickFilterStudents.map(s => (
+                       <button 
+                        key={s.id} 
+                        onClick={() => openPaymentModal(s)}
+                        className="w-full flex items-center justify-between p-4 bg-white border-2 border-gray-100 rounded-2xl hover:border-blue-500 hover:bg-blue-50 transition-all group"
+                       >
+                          <div className="text-left">
+                             <p className="font-black text-gray-900 uppercase italic">{s.firstName} {s.lastName}</p>
+                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{s.admissionNumber} • {s.class}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                             <div className="text-right">
+                                <p className="text-[9px] font-black text-gray-300 uppercase">Balance</p>
+                                <p className="font-black text-red-600">KES {s.feeBalance.toLocaleString()}</p>
+                             </div>
+                             <ChevronRight className="text-blue-500 group-hover:translate-x-1 transition-transform" />
+                          </div>
+                       </button>
+                    ))}
+                    {quickSearchTerm && quickFilterStudents.length === 0 && (
+                       <div className="py-8 text-center text-gray-400 font-bold uppercase text-[10px] italic tracking-widest">No matching learners found.</div>
+                    )}
+                    {!quickSearchTerm && (
+                       <div className="py-12 text-center">
+                          <AlertCircle className="w-10 h-10 text-gray-100 mx-auto mb-3" />
+                          <p className="text-[10px] text-gray-300 font-black uppercase tracking-[0.3em]">Start typing to find accounts</p>
+                       </div>
+                    )}
+                 </div>
+              </div>
+           </div>
+        </div>
+      )}
+
       {/* Manual Payment Collection Modal */}
       {isPaymentModalOpen && selectedStudentForPayment && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md">
            <div className="bg-white rounded-[40px] w-full max-w-md shadow-2xl p-10 animate-in zoom-in duration-300">
               <div className="flex justify-between items-center mb-6">
                  <div>
-                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Collect Fee</h2>
+                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Recording Entry</h2>
                     <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">{selectedStudentForPayment.firstName} {selectedStudentForPayment.lastName}</p>
                  </div>
                  <button onClick={() => setIsPaymentModalOpen(false)} className="text-gray-400 hover:text-red-600"><X size={24} /></button>
@@ -601,7 +674,7 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
       )}
 
       {showReceipt && lastReceipt && (
-        <div className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-md">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-md">
            <div className="bg-white rounded-[32px] w-full max-w-sm shadow-2xl p-10 animate-in zoom-in duration-300 text-center relative overflow-hidden">
               <div className="absolute top-0 right-0 p-8 opacity-5">
                  <ShieldCheck size={120} />

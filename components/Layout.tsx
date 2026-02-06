@@ -142,7 +142,7 @@ export const Layout: React.FC<LayoutProps> = ({
           {installApp && (
             <button 
               onClick={installApp}
-              className="w-full flex items-center space-x-3 px-4 py-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest border border-indigo-100 shadow-sm"
+              className="pwa-hide w-full flex items-center space-x-3 px-4 py-3 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest border border-indigo-100 shadow-sm animate-pulse-install"
             >
               <Smartphone className="w-4 h-4" />
               <span>Install Desktop App</span>

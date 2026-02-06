@@ -4,10 +4,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ElimuSmart | Kenyan School Management</title>
+    <title>ElimuSmart | School Management</title>
     
     <!-- Favicon & Branding -->
-    <link rel="icon" type="image/png" href="https://api.dicebear.com/7.x/initials/png?seed=ES&backgroundColor=1e3a8a&fontFamily=Inter&fontSize=45&bold=true&size=32">
+    <link rel="icon" type="image/png" href="https://api.dicebear.com/7.x/initials/png?seed=ES&backgroundColor=1e3a8a&fontFamily=Inter&fontSize=45&bold=true&size=64">
     <link rel="apple-touch-icon" href="https://api.dicebear.com/7.x/initials/png?seed=ES&backgroundColor=1e3a8a&fontFamily=Inter&fontSize=45&bold=true&size=192">
 
     <!-- PWA Primary Tags -->
@@ -35,10 +35,10 @@
         .print-only { display: none; }
         
         @keyframes pulse-indigo {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
-          50% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
+          0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.6); transform: scale(1); }
+          50% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); transform: scale(1.02); }
         }
-        .animate-pulse-indigo {
+        .animate-pulse-install {
           animation: pulse-indigo 2s infinite;
         }
 
@@ -54,11 +54,7 @@
         }
 
         @media (display-mode: standalone) {
-          body {
-            -webkit-user-select: none;
-            user-select: none;
-            padding-bottom: env(safe-area-inset-bottom);
-          }
+          .pwa-hide { display: none !important; }
         }
     </style>
 <script type="importmap">
