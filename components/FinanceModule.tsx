@@ -32,7 +32,8 @@ import {
   AlertTriangle,
   ArrowRight,
   Wallet,
-  UserSearch
+  UserSearch,
+  FileBadge
 } from 'lucide-react';
 import { Language, translations } from '../services/localizationService';
 import { KENYAN_CLASSES, Student, ClassFee, Expenditure } from '../types';
@@ -70,6 +71,7 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
   const [selectedClass, setSelectedClass] = useState<string>('All Classes');
   const [financeSearch, setFinanceSearch] = useState('');
   const [showReceipt, setShowReceipt] = useState(false);
+  const [isReceiptDownloading, setIsReceiptDownloading] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<TransactionReceipt | null>(null);
 
   // Global Collection States
@@ -79,7 +81,7 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
   // Payment Recording states
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<Student | null>(null);
-  const [paymentFormData, setPaymentFormData] = useState({ amount: '', method: 'CASH' as 'CASH' | 'BANK', reference: '' });
+  const [paymentFormData, setPaymentFormData] = useState({ amount: '', method: 'CASH' as 'CASH' | 'BANK' | 'M-PESA', reference: '' });
 
   // STK Push states
   const [isStkModalOpen, setIsStkModalOpen] = useState(false);
@@ -167,7 +169,7 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
           class: s.class,
           amount: amountToAdd,
           method: paymentFormData.method as any,
-          reference: paymentFormData.reference || 'DIRECT COLLECTION',
+          reference: paymentFormData.reference || (paymentFormData.method === 'M-PESA' ? 'M-PESA MANUAL ENTRY' : 'DIRECT COLLECTION'),
           date: new Date().toLocaleString(),
           balance: balance,
           servedBy: 'Institutional Finance'
@@ -180,6 +182,30 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
 
     setIsPaymentModalOpen(false);
     setShowReceipt(true);
+  };
+
+  const downloadReceiptPDF = (elementId: string, fileName: string) => {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    setIsReceiptDownloading(true);
+    const opt = {
+      margin: 0.5,
+      filename: fileName,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    };
+
+    const h2p = (window as any).html2pdf;
+    if (typeof h2p === 'function') {
+      h2p().set(opt).from(element).save()
+        .then(() => setIsReceiptDownloading(false))
+        .catch(() => setIsReceiptDownloading(false));
+    } else {
+      setIsReceiptDownloading(false);
+      window.print();
+    }
   };
 
   const handleConfirmStk = async () => {
@@ -476,7 +502,7 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
 
       {/* Global Quick Collect Modal */}
       {isQuickCollectOpen && (
-        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md no-print">
            <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl p-10 animate-in zoom-in duration-300">
               <div className="flex justify-between items-center mb-8">
                  <div>
@@ -534,7 +560,7 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
 
       {/* Manual Payment Collection Modal */}
       {isPaymentModalOpen && selectedStudentForPayment && (
-        <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md no-print">
            <div className="bg-white rounded-[40px] w-full max-w-md shadow-2xl p-10 animate-in zoom-in duration-300">
               <div className="flex justify-between items-center mb-6">
                  <div>
@@ -551,14 +577,15 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                  </div>
                  <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Channel / Method</label>
-                    <div className="grid grid-cols-2 gap-2">
-                       <button type="button" onClick={() => setPaymentFormData({...paymentFormData, method: 'CASH'})} className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${paymentFormData.method === 'CASH' ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}>Cash Payment</button>
-                       <button type="button" onClick={() => setPaymentFormData({...paymentFormData, method: 'BANK'})} className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all border-2 ${paymentFormData.method === 'BANK' ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}>Bank Deposit</button>
+                    <div className="grid grid-cols-3 gap-2">
+                       <button type="button" onClick={() => setPaymentFormData({...paymentFormData, method: 'CASH'})} className={`py-3 rounded-xl text-[9px] font-black uppercase transition-all border-2 ${paymentFormData.method === 'CASH' ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}>Cash</button>
+                       <button type="button" onClick={() => setPaymentFormData({...paymentFormData, method: 'M-PESA'})} className={`py-3 rounded-xl text-[9px] font-black uppercase transition-all border-2 ${paymentFormData.method === 'M-PESA' ? 'bg-green-600 border-green-600 text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}>M-Pesa</button>
+                       <button type="button" onClick={() => setPaymentFormData({...paymentFormData, method: 'BANK'})} className={`py-3 rounded-xl text-[9px] font-black uppercase transition-all border-2 ${paymentFormData.method === 'BANK' ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}>Bank</button>
                     </div>
                  </div>
                  <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Transaction Ref (Optional)</label>
-                    <input type="text" value={paymentFormData.reference} onChange={e => setPaymentFormData({...paymentFormData, reference: e.target.value.toUpperCase()})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold uppercase outline-none focus:border-blue-500 shadow-inner" placeholder="E.G. BANK SLIP ID" />
+                    <input type="text" value={paymentFormData.reference} onChange={e => setPaymentFormData({...paymentFormData, reference: e.target.value.toUpperCase()})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold uppercase outline-none focus:border-blue-500 shadow-inner" placeholder="E.G. BANK SLIP OR M-PESA CODE" />
                  </div>
                  <div className="flex gap-4 pt-4">
                     <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest">Discard</button>
@@ -573,7 +600,7 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
 
       {/* Expenditure Modal */}
       {showExpModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md no-print">
            <div className="bg-white rounded-[40px] w-full max-w-md shadow-2xl p-10 animate-in zoom-in duration-300">
               <div className="flex justify-between items-center mb-8">
                  <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">{editingExpId ? 'Edit Expense' : 'Add Expense'}</h2>
@@ -614,86 +641,74 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
         </div>
       )}
 
-      {/* M-Pesa STK Modal */}
-      {isStkModalOpen && stkStudent && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md">
-           <div className="bg-white rounded-[40px] w-full max-w-sm shadow-2xl overflow-hidden animate-in zoom-in duration-300">
-              <div className="bg-green-600 p-8 text-white text-center">
-                 <Smartphone className="w-12 h-12 mx-auto mb-4" />
-                 <h2 className="text-2xl font-black uppercase tracking-tighter">Lipa Na M-Pesa</h2>
-                 <p className="text-[10px] font-black uppercase opacity-70 tracking-widest mt-1">Direct STK Push Prompt</p>
-              </div>
-              <div className="p-8 space-y-6">
-                 <div>
-                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Learner ADM: {stkStudent.admissionNumber}</p>
-                    <p className="font-black text-gray-900 text-lg">{stkStudent.firstName} {stkStudent.lastName}</p>
-                 </div>
-                 <div className="space-y-4">
-                    <div className="space-y-1">
-                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Payment Amount (KES)</label>
-                       <input type="number" value={stkAmount} onChange={e => setStkAmount(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black text-2xl text-green-700 focus:border-green-500 outline-none transition-all shadow-inner" />
-                    </div>
-                    <div className="space-y-1">
-                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Parent Phone Number</label>
-                       <input type="tel" value={stkPhone} onChange={e => setStkPhone(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black focus:border-green-500 outline-none transition-all shadow-inner" placeholder="07XX..." />
-                    </div>
-                 </div>
-                 <div className="flex gap-4 pt-4">
-                    <button type="button" onClick={() => setIsStkModalOpen(false)} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest">Cancel</button>
-                    <button onClick={handleConfirmStk} disabled={isStkProcessing} className="flex-2 py-4 bg-green-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2">
-                       {isStkProcessing ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
-                       {isStkProcessing ? 'Requesting PIN...' : 'Trigger Push'}
-                    </button>
-                 </div>
-              </div>
-           </div>
-        </div>
-      )}
-
-      {isBillingModalOpen && selectedStudentForBilling && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md">
-           <div className="bg-white rounded-[40px] w-full max-w-md shadow-2xl p-10 animate-in zoom-in duration-300">
-              <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter mb-2">Billing Override</h2>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-8">{selectedStudentForBilling.firstName} {selectedStudentForBilling.lastName}</p>
-              <form onSubmit={handleSaveBilling} className="space-y-6">
-                 <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Negotiated Fee</label>
-                    <input type="number" value={billingFormData.agreedFee} onChange={e => setBillingFormData({...billingFormData, agreedFee: Number(e.target.value)})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-black outline-none focus:border-blue-500 transition-all" />
-                 </div>
-                 <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Total Paid</label>
-                    <input type="number" value={billingFormData.paidFee} onChange={e => setBillingFormData({...billingFormData, paidFee: Number(e.target.value)})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-black outline-none focus:border-blue-500 transition-all" />
-                 </div>
-                 <div className="flex gap-4 pt-6">
-                    <button type="button" onClick={() => setIsBillingModalOpen(false)} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest">Discard</button>
-                    <button type="submit" className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl">Apply Changes</button>
-                 </div>
-              </form>
-           </div>
-        </div>
-      )}
-
+      {/* Official Receipt Modal - FIXED FOR PRINTING AND SAVING */}
       {showReceipt && lastReceipt && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-md">
-           <div className="bg-white rounded-[32px] w-full max-w-sm shadow-2xl p-10 animate-in zoom-in duration-300 text-center relative overflow-hidden">
+           <div className="bg-white rounded-[32px] w-full max-w-sm shadow-2xl p-10 animate-in zoom-in duration-300 text-center relative overflow-hidden" id="official-receipt-print">
               <div className="absolute top-0 right-0 p-8 opacity-5">
                  <ShieldCheck size={120} />
               </div>
-              <div className="border-b pb-6 mb-6">
-                 <h2 className="text-xl font-black text-gray-900 uppercase tracking-tighter">{schoolConfig.schoolName}</h2>
-                 <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Official Receipt</p>
+              <div className="border-b-2 border-gray-100 pb-6 mb-6">
+                 <h2 className="text-xl font-black text-gray-900 uppercase tracking-tighter leading-tight">{schoolConfig.schoolName}</h2>
+                 <p className="text-[9px] font-black text-blue-600 uppercase tracking-[0.2em] mt-2 italic">Institutional Revenue Department</p>
+                 <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest mt-1">Official Fee Receipt</p>
               </div>
-              <div className="space-y-4">
-                 <div className="flex justify-between text-xs"><span className="text-gray-400 font-bold uppercase tracking-widest">Receipt No</span><span className="font-mono font-black">{lastReceipt.receiptNo}</span></div>
-                 <div className="flex justify-between text-xs"><span className="text-gray-400 font-bold uppercase tracking-widest">Learner</span><span className="font-black">{lastReceipt.studentName}</span></div>
-                 <div className="flex justify-between text-xs"><span className="text-gray-400 font-bold uppercase tracking-widest">Paid</span><span className="font-black text-green-600">KES {lastReceipt.amount.toLocaleString()}</span></div>
-                 <div className="flex justify-between text-xs border-t pt-4"><span className="text-gray-400 font-bold uppercase tracking-widest">Balance</span><span className="font-black text-red-600">KES {lastReceipt.balance.toLocaleString()}</span></div>
+              
+              <div className="space-y-5 text-left mb-10">
+                 <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-gray-400 font-bold uppercase tracking-widest">Receipt No:</span>
+                    <span className="font-mono font-black text-gray-900">{lastReceipt.receiptNo}</span>
+                 </div>
+                 <div className="flex justify-between items-center text-[10px]">
+                    <span className="text-gray-400 font-bold uppercase tracking-widest">Date / Time:</span>
+                    <span className="font-bold text-gray-700">{lastReceipt.date}</span>
+                 </div>
+                 <div className="py-3 border-y border-gray-50 space-y-2">
+                    <div className="flex justify-between items-center">
+                       <span className="text-[9px] text-gray-400 font-black uppercase">Learner Name</span>
+                       <span className="text-xs font-black text-gray-900">{lastReceipt.studentName}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                       <span className="text-[9px] text-gray-400 font-black uppercase">ADM Number</span>
+                       <span className="text-xs font-mono font-black text-blue-600">{lastReceipt.adm}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                       <span className="text-[9px] text-gray-400 font-black uppercase">Grade</span>
+                       <span className="text-xs font-black text-gray-900">{lastReceipt.class}</span>
+                    </div>
+                 </div>
+                 <div className="space-y-1">
+                    <div className="flex justify-between items-center">
+                       <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Amount Paid</span>
+                       <span className="text-lg font-black text-green-600">KES {lastReceipt.amount.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[9px] text-gray-400">
+                       <span className="italic uppercase">via {lastReceipt.method}</span>
+                       <span className="font-mono uppercase">{lastReceipt.reference}</span>
+                    </div>
+                 </div>
+                 <div className="flex justify-between items-center border-t-2 border-dashed border-gray-100 pt-5">
+                    <span className="text-[11px] text-gray-900 font-black uppercase tracking-widest">Closing Balance</span>
+                    <span className="text-xl font-black text-red-600">KES {lastReceipt.balance.toLocaleString()}</span>
+                 </div>
               </div>
-              <div className="mt-8 flex gap-3">
-                 <button onClick={() => setShowReceipt(false)} className="flex-1 py-3 bg-gray-100 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">Close</button>
-                 <button onClick={() => window.print()} className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 shadow-lg shadow-blue-100 flex items-center justify-center gap-2">
+
+              <div className="mt-8 flex flex-col sm:flex-row gap-3 no-print">
+                 <button onClick={() => setShowReceipt(false)} className="flex-1 py-3.5 bg-gray-100 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">Dismiss</button>
+                 <button 
+                  onClick={() => downloadReceiptPDF('official-receipt-print', `Receipt_${lastReceipt.receiptNo}.pdf`)} 
+                  disabled={isReceiptDownloading}
+                  className="flex-1 py-3.5 bg-white border-2 border-blue-100 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
+                 >
+                    {isReceiptDownloading ? <Loader2 size={12} className="animate-spin" /> : <FileBadge size={12} />} Save PDF
+                 </button>
+                 <button onClick={() => window.print()} className="flex-1 py-3.5 bg-gray-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black shadow-lg shadow-gray-200 flex items-center justify-center gap-2">
                     <Printer size={12} /> Print
                  </button>
+              </div>
+
+              <div className="mt-10 pt-6 border-t border-gray-50 print-only text-center">
+                 <p className="text-[8px] font-black text-gray-300 uppercase tracking-[0.3em]">Verified Digital Instrument • ElimuSmart Cloud</p>
               </div>
            </div>
         </div>

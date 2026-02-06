@@ -209,7 +209,7 @@ const App: React.FC = () => {
             </button>
           </form>
           {deferredPrompt && (
-            <button onClick={handleInstallApp} className="mt-8 w-full flex items-center justify-center gap-2 text-[10px] font-black uppercase text-blue-600 tracking-widest border-2 border-blue-50 py-3 rounded-2xl hover:bg-blue-50 transition-all animate-pulse-indigo">
+            <button onClick={handleInstallApp} className="mt-8 w-full flex items-center justify-center gap-2 text-[10px] font-black uppercase text-blue-600 tracking-widest border-2 border-blue-50 py-3 rounded-2xl hover:bg-blue-50 transition-all animate-pulse-install">
               Install ElimuSmart App
             </button>
           )}

@@ -17,7 +17,8 @@ import {
   Loader2,
   Smartphone,
   Download,
-  X
+  X,
+  SmartphoneNfc
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -47,7 +48,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
 
   // Calculate accurate statistics from the students source of truth
   const stats = useMemo(() => {
-    const totalExpected = students.reduce((sum, s) => sum + (Number(s.totalFee) || 0), 0);
+    const totalExpected = students.reduce((sum, s) => sum + (Number(s.agreedFee ?? s.totalFee) || 0), 0);
     const totalCollected = students.reduce((sum, s) => sum + (Number(s.paidFee) || 0), 0);
     const totalArrears = students.reduce((sum, s) => sum + (Number(s.feeBalance) || 0), 0);
     const totalPrepaid = students.reduce((sum, s) => sum + (Number(s.prepaidFee) || 0), 0);
@@ -116,30 +117,31 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       
-      {/* PWA Install Invitation Banner */}
+      {/* PWA Install Invitation Banner - High Visibility */}
       {installApp && showInstallCard && (
-        <div className="bg-indigo-600 rounded-[32px] p-6 text-white shadow-xl shadow-indigo-100 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 duration-500">
-           <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
-                 <Smartphone className="w-8 h-8 text-white" />
+        <div className="bg-indigo-600 rounded-[32px] p-6 text-white shadow-xl shadow-indigo-100 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 duration-500 border-2 border-indigo-400">
+           <div className="flex items-center gap-5">
+              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/30 animate-pulse-install">
+                 <SmartphoneNfc className="w-10 h-10 text-white" />
               </div>
               <div>
-                 <h3 className="text-lg font-black uppercase tracking-tight leading-none">Install ElimuSmart App</h3>
-                 <p className="text-[10px] font-bold text-indigo-100 uppercase tracking-widest mt-1">Get instant access from your home screen</p>
+                 <h3 className="text-xl font-black uppercase tracking-tight leading-none">Install ElimuSmart Academy App</h3>
+                 <p className="text-[11px] font-bold text-indigo-100 uppercase tracking-widest mt-2">Access your school dashboard directly from your home screen</p>
               </div>
            </div>
            <div className="flex items-center gap-3">
               <button 
                 onClick={installApp}
-                className="bg-white text-indigo-600 px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-indigo-50 transition-all flex items-center gap-2"
+                className="bg-white text-indigo-600 px-10 py-4 rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-indigo-50 transition-all flex items-center gap-3 shadow-lg active:scale-95"
               >
-                <Download size={14} /> Install Now
+                <Download size={16} /> Install App
               </button>
               <button 
                 onClick={() => setShowInstallCard(false)}
-                className="p-3 bg-indigo-500/30 hover:bg-indigo-500/50 rounded-2xl transition-all"
+                className="p-4 bg-indigo-500/30 hover:bg-indigo-500/50 rounded-2xl transition-all"
+                title="Dismiss"
               >
-                <X size={18} />
+                <X size={20} />
               </button>
            </div>
         </div>

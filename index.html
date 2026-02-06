@@ -21,17 +21,25 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
-    <!-- Stable html2pdf.js CDN Bundle -->
+    <!-- html2pdf.js Bundle -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
         body { font-family: 'Inter', sans-serif; }
+        
         @media print {
             .no-print { display: none !important; }
             .print-only { display: block !important; }
             body { background: white !important; padding: 0 !important; margin: 0 !important; }
             #root { height: auto !important; overflow: visible !important; }
+            /* Ensure fixed overlays don't hide the content being printed */
+            .fixed { position: static !important; }
+            .bg-gray-900\/90 { background: transparent !important; }
+            .shadow-2xl { shadow: none !important; }
+            .p-10 { padding: 20px !important; }
+            .rounded-\[32px\] { border-radius: 0 !important; border: 1px solid #eee !important; }
         }
+        
         .print-only { display: none; }
         
         @keyframes pulse-indigo {
