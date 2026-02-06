@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState, useEffect } from 'react';
 import { 
   Users, 
@@ -13,7 +14,10 @@ import {
   Shield,
   Wand2,
   Sparkles,
-  Loader2
+  Loader2,
+  Smartphone,
+  Download,
+  X
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -32,12 +36,14 @@ interface DashboardProps {
   user: User;
   lang: Language;
   students: Student[];
+  installApp?: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [] }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [], installApp }) => {
   const t = translations[lang];
   const [aiBriefing, setAiBriefing] = useState<string>('');
   const [isBriefingLoading, setIsBriefingLoading] = useState(false);
+  const [showInstallCard, setShowInstallCard] = useState(true);
 
   // Calculate accurate statistics from the students source of truth
   const stats = useMemo(() => {
@@ -109,6 +115,36 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [] 
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
+      
+      {/* PWA Install Invitation Banner */}
+      {installApp && showInstallCard && (
+        <div className="bg-indigo-600 rounded-[32px] p-6 text-white shadow-xl shadow-indigo-100 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 duration-500">
+           <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
+                 <Smartphone className="w-8 h-8 text-white" />
+              </div>
+              <div>
+                 <h3 className="text-lg font-black uppercase tracking-tight leading-none">Install ElimuSmart App</h3>
+                 <p className="text-[10px] font-bold text-indigo-100 uppercase tracking-widest mt-1">Get instant access from your home screen</p>
+              </div>
+           </div>
+           <div className="flex items-center gap-3">
+              <button 
+                onClick={installApp}
+                className="bg-white text-indigo-600 px-8 py-3 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-indigo-50 transition-all flex items-center gap-2"
+              >
+                <Download size={14} /> Install Now
+              </button>
+              <button 
+                onClick={() => setShowInstallCard(false)}
+                className="p-3 bg-indigo-500/30 hover:bg-indigo-500/50 rounded-2xl transition-all"
+              >
+                <X size={18} />
+              </button>
+           </div>
+        </div>
+      )}
+
       {/* Principal's Briefing Card */}
       <div className="bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden group">
         <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12 group-hover:scale-110 transition-transform duration-1000">
@@ -203,10 +239,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [] 
               <TrendingUp className="w-3.5 h-3.5" /> Growth Trend
             </div>
           </div>
-          {/* 
-              Fix: Adding explicit dimensions, min-width, and overflow-hidden to the container.
-              Also using minWidth={0} on ResponsiveContainer to prevent layout calculation loops.
-          */}
           <div className="w-full h-[350px] relative min-h-[350px] min-w-0 overflow-hidden bg-gray-50/30 rounded-3xl">
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>

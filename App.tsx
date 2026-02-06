@@ -209,7 +209,7 @@ const App: React.FC = () => {
             </button>
           </form>
           {deferredPrompt && (
-            <button onClick={handleInstallApp} className="mt-8 w-full flex items-center justify-center gap-2 text-[10px] font-black uppercase text-blue-600 tracking-widest border-2 border-blue-50 py-3 rounded-2xl hover:bg-blue-50 transition-all">
+            <button onClick={handleInstallApp} className="mt-8 w-full flex items-center justify-center gap-2 text-[10px] font-black uppercase text-blue-600 tracking-widest border-2 border-blue-50 py-3 rounded-2xl hover:bg-blue-50 transition-all animate-pulse-indigo">
               Install ElimuSmart App
             </button>
           )}
@@ -233,7 +233,7 @@ const App: React.FC = () => {
       installApp={deferredPrompt ? handleInstallApp : undefined}
     >
       <div className="p-4 md:p-8">
-        {currentTab === 'dashboard' && <Dashboard user={user} lang={lang} students={students} />}
+        {currentTab === 'dashboard' && <Dashboard user={user} lang={lang} students={students} installApp={deferredPrompt ? handleInstallApp : undefined} />}
         {currentTab === 'students' && <StudentManagement students={students} setStudents={setStudents} feeStructure={feeStructure} />}
         {currentTab === 'staff' && <StaffManagement staffList={staff} setStaffList={setStaff} />}
         {currentTab === 'finance' && <FinanceModule lang={lang} students={students} setStudents={setStudents} expenditures={expenditures} setExpenditures={setExpenditures} feeStructure={feeStructure} setFeeStructure={setFeeStructure} schoolLogo={schoolLogo} schoolConfig={schoolConfig} isBackendLive={isBackendLive} />}
