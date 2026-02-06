@@ -77,7 +77,6 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
   });
 
   const isAdmin = currentUser.role === UserRole.ADMIN;
-  const isAdminOrPrincipal = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.PRINCIPAL;
 
   // Auto Term Calculation for Preview
   const sysTime = useMemo(() => {
@@ -91,6 +90,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
   }, []);
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isAdmin) return;
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -175,6 +175,10 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
 
   const handleSaveSchoolInfo = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) {
+      alert("Unauthorized: Only Administrative accounts can modify the Institutional Identity.");
+      return;
+    }
     setIsSaving(true);
     await new Promise(r => setTimeout(r, 1500));
     setSchoolConfig(editableConfig);
@@ -183,6 +187,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
   };
 
   const syncAcademicClock = () => {
+    if (!isAdmin) return;
     setEditableConfig({ ...editableConfig, year: sysTime.year, term: sysTime.term });
     alert(`System synchronized to: ${sysTime.year} Term ${sysTime.term}`);
   };
@@ -200,14 +205,12 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
         <div className="md:col-span-1 space-y-1">
           <nav className="bg-white rounded-2xl border border-gray-100 p-2 shadow-sm">
             <NavItem icon={User} label="Personal Profile" active={activeSection === 'profile'} onClick={() => setActiveSection('profile')} />
-            {isAdminOrPrincipal && (
+            {isAdmin && (
               <>
                 <NavItem icon={School} label="School Profile" active={activeSection === 'school'} onClick={() => setActiveSection('school')} />
                 <NavItem icon={Calendar} label="Academic Term" active={activeSection === 'academic'} onClick={() => setActiveSection('academic')} />
+                <NavItem icon={Users} label="User Accounts" active={activeSection === 'users'} onClick={() => setActiveSection('users')} />
               </>
-            )}
-            {isAdmin && (
-              <NavItem icon={Users} label="User Accounts" active={activeSection === 'users'} onClick={() => setActiveSection('users')} />
             )}
             <NavItem icon={Lock} label="Security" active={activeSection === 'security'} onClick={() => setActiveSection('security')} />
           </nav>
@@ -220,7 +223,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               <div className="p-8 space-y-6 animate-in fade-in duration-300">
                 <h3 className="text-lg font-black border-b pb-4 uppercase tracking-tight text-gray-800">My Identity</h3>
                 <div className="flex items-center gap-6 p-6 bg-gray-50 rounded-2xl">
-                   <img src={currentUser.avatar} className="w-20 h-20 rounded-2xl border-4 border-white shadow-md" alt="Avatar" />
+                   <img src={currentUser.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser.name}`} className="w-20 h-20 rounded-2xl border-4 border-white shadow-md" alt="Avatar" />
                    <div>
                       <p className="text-2xl font-black text-gray-900 leading-none">{currentUser.name}</p>
                       <p className="text-xs font-black text-blue-600 uppercase tracking-widest mt-2">{currentUser.role.replace('_', ' ')}</p>
@@ -244,7 +247,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                     <div key={u.id} className="p-4 flex items-center justify-between hover:bg-gray-50 transition-colors group">
                        <div className="flex items-center gap-4">
                           <div className="relative">
-                            <img src={u.avatar} className="w-12 h-12 rounded-xl border bg-white" />
+                            <img src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`} className="w-12 h-12 rounded-xl border bg-white" />
                             {u.id === currentUser.id && (
                               <div className="absolute -top-1 -right-1 bg-green-500 w-3 h-3 rounded-full border-2 border-white"></div>
                             )}
@@ -320,7 +323,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               </form>
             )}
 
-            {activeSection === 'school' && isAdminOrPrincipal && (
+            {activeSection === 'school' && isAdmin && (
               <form onSubmit={handleSaveSchoolInfo} className="p-8 space-y-8 animate-in fade-in duration-300">
                 <h3 className="text-lg font-black border-b pb-4 text-blue-900 uppercase tracking-tight">Institutional Profile</h3>
                 
@@ -400,9 +403,6 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                          </div>
                       </div>
                    </div>
-                   <p className="mt-4 text-[9px] text-gray-400 font-bold uppercase tracking-widest italic flex items-center gap-2 bg-gray-50 p-3 rounded-xl border border-gray-100">
-                      <Hash size={10} className="text-blue-500" /> These details will appear on official fee statements and printed invoices generated for guardians.
-                   </p>
                 </div>
 
                 <div className="flex justify-end pt-6 border-t mt-10">
@@ -414,16 +414,12 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               </form>
             )}
 
-            {activeSection === 'academic' && isAdminOrPrincipal && (
+            {activeSection === 'academic' && isAdmin && (
               <div className="p-8 space-y-10 animate-in fade-in duration-300">
                 <div className="flex items-center justify-between border-b pb-6">
                    <div>
                       <h3 className="text-xl font-black text-indigo-900 uppercase tracking-tight">Academic Timeline</h3>
                       <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-1">Configure active year and term logic</p>
-                   </div>
-                   <div className="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-full border border-indigo-100">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
-                      <span className="text-[9px] font-black text-indigo-600 uppercase tracking-[0.2em]">Automated Timezone Sync Active</span>
                    </div>
                 </div>
 
@@ -446,7 +442,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                         onClick={syncAcademicClock}
                         className="mt-10 w-full flex items-center justify-center gap-3 bg-white border-2 border-indigo-100 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-lg shadow-indigo-100/50"
                       >
-                         <RefreshCw size={14} className="animate-spin-slow" /> Reset to System Clock
+                         <RefreshCw size={14} /> Reset to System Clock
                       </button>
                    </div>
 
@@ -484,16 +480,6 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                             Update Global Timeline
                          </button>
                       </div>
-                   </div>
-                </div>
-
-                <div className="p-8 bg-blue-50/50 rounded-[40px] border-2 border-blue-100 flex items-start gap-6">
-                   <div className="p-4 bg-white rounded-3xl shadow-sm border border-blue-50"><RefreshCw className="text-blue-600 w-6 h-6" /></div>
-                   <div>
-                      <p className="text-xs font-black text-blue-900 uppercase tracking-widest mb-1 italic">Propagated Syncing</p>
-                      <p className="text-[11px] font-medium text-blue-800 leading-relaxed">
-                        Updating the Global Academic Cycle will automatically set defaults for all new exams, report card generations, and financial fee invoicing across the platform. Current system detected: <strong className="uppercase">Nairobi/Kenyan Timezone Standard</strong>.
-                      </p>
                    </div>
                 </div>
               </div>

@@ -58,8 +58,16 @@ const App: React.FC = () => {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [expenditures, setExpenditures] = useState<Expenditure[]>([]);
   const [feeStructure, setFeeStructure] = useState<ClassFee[]>([]);
-  const [schoolConfig, setSchoolConfig] = useState(INITIAL_SCHOOL_CONFIG);
-  const [schoolLogo, setSchoolLogo] = useState<string | null>(null);
+  
+  // FIXED: Lazy initialization for schoolConfig to prevent reverting on refresh
+  const [schoolConfig, setSchoolConfig] = useState(() => {
+    const saved = localStorage.getItem('elimusmart_config');
+    return saved ? JSON.parse(saved) : INITIAL_SCHOOL_CONFIG;
+  });
+  
+  const [schoolLogo, setSchoolLogo] = useState<string | null>(() => {
+    return localStorage.getItem('elimusmart_logo');
+  });
 
   // Initialize and check connection
   useEffect(() => {
@@ -110,9 +118,7 @@ const App: React.FC = () => {
       if (st) setStaff(JSON.parse(st));
       const f = localStorage.getItem('elimusmart_fees');
       if (f) setFeeStructure(JSON.parse(f));
-      const c = localStorage.getItem('elimusmart_config');
-      if (c) setSchoolConfig(JSON.parse(c));
-      setSchoolLogo(localStorage.getItem('elimusmart_logo'));
+      // Config is already lazy-loaded in useState
     } catch (e) {
       console.error("Local load failed");
     }
@@ -174,11 +180,15 @@ const App: React.FC = () => {
     setUser(null);
   };
 
+  // Sync state to local storage on change
   useEffect(() => {
     if (students.length > 0) localStorage.setItem('elimusmart_students', JSON.stringify(students));
     if (staff.length > 0) localStorage.setItem('elimusmart_staff', JSON.stringify(staff));
     if (feeStructure.length > 0) localStorage.setItem('elimusmart_fees', JSON.stringify(feeStructure));
+    
+    // Ensure schoolConfig is always saved to survive refresh
     localStorage.setItem('elimusmart_config', JSON.stringify(schoolConfig));
+    
     if (schoolLogo) localStorage.setItem('elimusmart_logo', schoolLogo);
   }, [students, staff, feeStructure, schoolConfig, schoolLogo]);
 
