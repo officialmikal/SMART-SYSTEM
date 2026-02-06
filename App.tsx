@@ -118,7 +118,8 @@ const App: React.FC = () => {
       if (st) setStaff(JSON.parse(st));
       const f = localStorage.getItem('elimusmart_fees');
       if (f) setFeeStructure(JSON.parse(f));
-      // Config is already lazy-loaded in useState
+      const exp = localStorage.getItem('elimusmart_expenditures');
+      if (exp) setExpenditures(JSON.parse(exp));
     } catch (e) {
       console.error("Local load failed");
     }
@@ -185,12 +186,13 @@ const App: React.FC = () => {
     if (students.length > 0) localStorage.setItem('elimusmart_students', JSON.stringify(students));
     if (staff.length > 0) localStorage.setItem('elimusmart_staff', JSON.stringify(staff));
     if (feeStructure.length > 0) localStorage.setItem('elimusmart_fees', JSON.stringify(feeStructure));
+    if (expenditures.length > 0) localStorage.setItem('elimusmart_expenditures', JSON.stringify(expenditures));
     
     // Ensure schoolConfig is always saved to survive refresh
     localStorage.setItem('elimusmart_config', JSON.stringify(schoolConfig));
     
     if (schoolLogo) localStorage.setItem('elimusmart_logo', schoolLogo);
-  }, [students, staff, feeStructure, schoolConfig, schoolLogo]);
+  }, [students, staff, feeStructure, schoolConfig, schoolLogo, expenditures]);
 
   if (!user) {
     return (
@@ -243,7 +245,7 @@ const App: React.FC = () => {
       installApp={deferredPrompt ? handleInstallApp : undefined}
     >
       <div className="p-4 md:p-8">
-        {currentTab === 'dashboard' && <Dashboard user={user} lang={lang} students={students} installApp={deferredPrompt ? handleInstallApp : undefined} />}
+        {currentTab === 'dashboard' && <Dashboard user={user} lang={lang} students={students} expenditures={expenditures} installApp={deferredPrompt ? handleInstallApp : undefined} />}
         {currentTab === 'students' && <StudentManagement students={students} setStudents={setStudents} feeStructure={feeStructure} />}
         {currentTab === 'staff' && <StaffManagement staffList={staff} setStaffList={setStaff} />}
         {currentTab === 'finance' && <FinanceModule lang={lang} students={students} setStudents={setStudents} expenditures={expenditures} setExpenditures={setExpenditures} feeStructure={feeStructure} setFeeStructure={setFeeStructure} schoolLogo={schoolLogo} schoolConfig={schoolConfig} isBackendLive={isBackendLive} />}

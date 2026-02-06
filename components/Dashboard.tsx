@@ -18,7 +18,10 @@ import {
   Smartphone,
   Download,
   X,
-  SmartphoneNfc
+  SmartphoneNfc,
+  TrendingDown,
+  Scale,
+  Wallet
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -30,33 +33,42 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { GoogleGenAI } from '@google/genai';
-import { User, Student } from '../types';
+import { User, Student, Expenditure } from '../types';
 import { Language, translations } from '../services/localizationService';
 
 interface DashboardProps {
   user: User;
   lang: Language;
   students: Student[];
+  expenditures: Expenditure[];
   installApp?: () => void;
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [], installApp }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [], expenditures = [], installApp }) => {
   const t = translations[lang];
   const [aiBriefing, setAiBriefing] = useState<string>('');
   const [isBriefingLoading, setIsBriefingLoading] = useState(false);
   const [showInstallCard, setShowInstallCard] = useState(true);
 
-  // Calculate accurate statistics from the students source of truth
+  // Calculate accurate statistics from both students and expenditures
   const stats = useMemo(() => {
     const totalExpected = students.reduce((sum, s) => sum + (Number(s.agreedFee ?? s.totalFee) || 0), 0);
     const totalCollected = students.reduce((sum, s) => sum + (Number(s.paidFee) || 0), 0);
     const totalArrears = students.reduce((sum, s) => sum + (Number(s.feeBalance) || 0), 0);
     const totalPrepaid = students.reduce((sum, s) => sum + (Number(s.prepaidFee) || 0), 0);
+    
+    // NEW: Calculate Expenditure and Net
+    const totalExp = expenditures.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const netPosition = totalCollected - totalExp;
 
     const formatKES = (val: number) => {
-      if (val >= 1000000) return (val / 1000000).toFixed(2) + 'M';
-      if (val >= 1000) return (val / 1000).toFixed(1) + 'K';
-      return val.toLocaleString();
+      const isNegative = val < 0;
+      const absVal = Math.abs(val);
+      let formatted = '';
+      if (absVal >= 1000000) formatted = (absVal / 1000000).toFixed(2) + 'M';
+      else if (absVal >= 1000) formatted = (absVal / 1000).toFixed(1) + 'K';
+      else formatted = absVal.toLocaleString();
+      return isNegative ? `-${formatted}` : formatted;
     };
 
     const collectionRate = totalExpected > 0 ? (totalCollected / totalExpected) * 100 : 0;
@@ -66,14 +78,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
       collected: formatKES(totalCollected),
       arrears: formatKES(totalArrears),
       prepaid: formatKES(totalPrepaid),
+      expenditure: formatKES(totalExp),
+      net: formatKES(netPosition),
       rawExpected: totalExpected,
       rawCollected: totalCollected,
+      rawNet: netPosition,
       studentCount: students.length,
       collectionRate: collectionRate.toFixed(1) + '%',
       attendanceRate: '94.2%',
       enrollmentChange: `+${Math.ceil(students.length * 0.05)} New this term`
     };
-  }, [students]);
+  }, [students, expenditures]);
 
   // AI Briefing Logic
   useEffect(() => {
@@ -88,10 +103,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
           - Enrollment: ${stats.studentCount} students
           - Collection Rate: ${stats.collectionRate}
           - Total Collected: KES ${stats.collected}
+          - Total Expenditures: KES ${stats.expenditure}
+          - Net Cash Remaining: KES ${stats.net}
           - Arrears: KES ${stats.arrears}
-          - Attendance: ${stats.attendanceRate}
           
-          Write a short, professional, and punchy 2-sentence executive summary (Principal's Briefing) for the dashboard. Use an encouraging tone.`;
+          Write a short, professional, and punchy 2-sentence executive summary (Principal's Briefing) for the dashboard. Use an encouraging tone. Focus on the net cash position.`;
 
         const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
@@ -99,7 +115,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
         });
         setAiBriefing(response.text || '');
       } catch (e) {
-        setAiBriefing("School operations are stable. Focus on fee collection to meet Term 3 targets.");
+        setAiBriefing("School operations are stable. Net cash flow is being managed effectively. Focus on Term 3 collection targets.");
       } finally {
         setIsBriefingLoading(false);
       }
@@ -117,7 +133,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       
-      {/* PWA Install Invitation Banner - High Visibility */}
+      {/* PWA Install Invitation Banner */}
       {installApp && showInstallCard && (
         <div className="bg-indigo-600 rounded-[32px] p-6 text-white shadow-xl shadow-indigo-100 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 duration-500 border-2 border-indigo-400">
            <div className="flex items-center gap-5">
@@ -188,19 +204,22 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase leading-none">{t.karibu}, {user.name.split(' ')[0]}</h1>
-          <p className="text-gray-500 font-medium tracking-tight mt-2">Live School Financial & Operational Overview.</p>
+          <p className="text-gray-500 font-medium tracking-tight mt-2">Financial & Expenditure Liquidity Dashboard.</p>
         </div>
         <div className="bg-blue-50 px-4 py-2 rounded-2xl border border-blue-100 hidden md:block">
-           <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Global Collection Rate: {stats.collectionRate}</span>
+           <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Net Cash Remaining: KES {stats.net}</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Stats Grid - Expanded to include Expenditure and Net Remaining */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[
-          { label: "Total Invoiced", value: stats.expected, icon: Target, color: 'indigo', change: 'Current Year', positive: true },
-          { label: "Fees Collected", value: stats.collected, icon: Banknote, color: 'green', change: stats.collectionRate + ' Rate', positive: true },
-          { label: "Fee Balances", value: stats.arrears, icon: AlertCircle, color: 'red', change: 'Due Now', positive: false },
-          { label: "Prepaid Credit", value: stats.prepaid, icon: Forward, color: 'blue', change: 'Future Terms', positive: true },
+          { label: "Total Invoiced", value: stats.expected, icon: Target, color: 'indigo', change: 'Current Year' },
+          { label: "Fees Collected", value: stats.collected, icon: Banknote, color: 'green', change: stats.collectionRate + ' Rate' },
+          { label: "Fee Balances", value: stats.arrears, icon: AlertCircle, color: 'red', change: 'Outstanding Arrears' },
+          { label: "Total Expenditure", value: stats.expenditure, icon: TrendingDown, color: 'orange', change: 'Institutional Costs' },
+          { label: "Net Cash Position", value: stats.net, icon: Wallet, color: 'emerald', change: 'Cash Remainder' },
+          { label: "Prepaid Credit", value: stats.prepaid, icon: Forward, color: 'blue', change: 'Future Term Funds' },
         ].map((stat, idx) => {
           const Icon = stat.icon;
           return (
@@ -209,17 +228,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest truncate mb-1">{stat.label}</p>
                 <div className="flex items-baseline gap-1">
                    <span className="text-xs font-bold text-gray-300">KES</span>
-                   <h3 className={`text-3xl font-black tracking-tighter ${stat.color === 'red' ? 'text-red-600' : stat.color === 'green' ? 'text-green-600' : 'text-gray-900'}`}>{stat.value}</h3>
+                   <h3 className={`text-3xl font-black tracking-tighter ${
+                     stat.color === 'red' || stat.color === 'orange' ? 'text-red-600' : 
+                     stat.color === 'green' || stat.color === 'emerald' ? 'text-emerald-600' : 
+                     'text-gray-900'
+                   }`}>{stat.value}</h3>
                 </div>
-                <div className={`mt-3 flex items-center text-[10px] font-black uppercase tracking-widest ${stat.positive ? 'text-green-600' : 'text-red-500'}`}>
-                  {stat.positive ? <CheckCircle className="w-3 h-3 mr-1" /> : <Clock className="w-3 h-3 mr-1" />}
+                <div className={`mt-3 flex items-center text-[10px] font-black uppercase tracking-widest ${
+                  stat.color === 'red' || stat.color === 'orange' ? 'text-red-500' : 'text-blue-500'
+                }`}>
+                  <Clock className="w-3 h-3 mr-1" />
                   {stat.change}
                 </div>
               </div>
               <div className={`p-4 rounded-2xl transition-transform group-hover:scale-110 shrink-0 ${
                 stat.color === 'blue' ? 'bg-blue-50 text-blue-600' : 
-                stat.color === 'green' ? 'bg-green-50 text-green-600' : 
+                stat.color === 'green' || stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-600' : 
                 stat.color === 'red' ? 'bg-red-50 text-red-600' : 
+                stat.color === 'orange' ? 'bg-orange-50 text-orange-600' :
                 stat.color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
                 'bg-purple-50 text-purple-600'
               } border-2 border-white shadow-lg shadow-gray-100/50`}>
@@ -245,6 +271,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                 <defs>
+                  {/* FIXED: Corrected duplicate x1 attribute by replacing the second one with y1 */}
                   <linearGradient id="colorColl" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#2563eb" stopOpacity={0.2}/>
                     <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
@@ -301,7 +328,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
               <div className="relative z-10">
                 <div className="flex justify-between items-start mb-10">
                    <div>
-                      <h4 className="text-2xl font-black uppercase tracking-tighter">School Health Index</h4>
+                      <h4 className="text-2xl font-black uppercase tracking-tighter">Institutional Health Index</h4>
                       <p className="text-[10px] opacity-70 font-black uppercase tracking-[0.2em] mt-2">Operational Integrity Status</p>
                    </div>
                    <Shield className="w-10 h-10 text-blue-300" />
@@ -318,11 +345,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
                    </div>
                    <div className="space-y-2">
                       <div className="flex justify-between text-[11px] font-black uppercase tracking-widest">
-                         <span>SMS Communication</span>
-                         <span className="text-blue-300">Live & Active</span>
+                         <span>Cash Reserve Liquidity</span>
+                         <span className="text-blue-300">{stats.rawNet > 0 ? 'Surplus' : 'Deficit'} Detected</span>
                       </div>
                       <div className="w-full h-2.5 bg-blue-800/50 rounded-full overflow-hidden border border-blue-400/20 shadow-inner">
-                         <div className="h-full bg-blue-300 shadow-[0_0_15px_rgba(147,197,253,0.5)] transition-all duration-1000" style={{ width: '100%' }}></div>
+                         <div className={`h-full ${stats.rawNet > 0 ? 'bg-blue-300' : 'bg-red-400'} shadow-[0_0_15px_rgba(147,197,253,0.5)] transition-all duration-1000`} style={{ width: stats.rawNet > 0 ? '100%' : '20%' }}></div>
                       </div>
                    </div>
                 </div>
