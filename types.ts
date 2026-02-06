@@ -8,6 +8,14 @@ export enum UserRole {
   PARENT = 'PARENT'
 }
 
+export interface CustomRole {
+  id: string;
+  name: string;
+  description: string;
+  baseRole: UserRole; // Maps to functional permissions
+  isSystemRole?: boolean; // Protects core roles from deletion
+}
+
 export enum CBCGrade {
   EE = 'EE', // Exceeding Expectations
   ME = 'ME', // Meeting Expectations
@@ -136,6 +144,7 @@ export interface User {
   role: UserRole;
   password?: string;
   avatar?: string;
+  customRoleName?: string; // Added to display custom role labels
 }
 
 export interface TimetableEntry {

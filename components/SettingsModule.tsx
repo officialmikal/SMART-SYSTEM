@@ -27,9 +27,11 @@ import {
   ShieldCheck,
   UserPlus,
   RefreshCw,
-  Clock as ClockIcon
+  Clock as ClockIcon,
+  ShieldAlert,
+  ArrowRight
 } from 'lucide-react';
-import { UserRole, User as UserType } from '../types';
+import { UserRole, User as UserType, CustomRole } from '../types';
 
 interface SettingsModuleProps {
   currentUser: UserType;
@@ -39,6 +41,8 @@ interface SettingsModuleProps {
   setSchoolLogo: (logo: string | null) => void;
   schoolConfig: any;
   setSchoolConfig: React.Dispatch<React.SetStateAction<any>>;
+  systemRoles: CustomRole[];
+  setSystemRoles: React.Dispatch<React.SetStateAction<CustomRole[]>>;
 }
 
 export const SettingsModule: React.FC<SettingsModuleProps> = ({ 
@@ -48,9 +52,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
   schoolLogo, 
   setSchoolLogo,
   schoolConfig,
-  setSchoolConfig
+  setSchoolConfig,
+  systemRoles,
+  setSystemRoles
 }) => {
-  const [activeSection, setActiveSection] = useState<'profile' | 'school' | 'academic' | 'security' | 'users'>('profile');
+  const [activeSection, setActiveSection] = useState<'profile' | 'school' | 'academic' | 'security' | 'users' | 'roles'>('profile');
   const [isSaving, setIsSaving] = useState(false);
   
   // Security State
@@ -74,6 +80,15 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
     email: '',
     role: UserRole.SUBJECT_TEACHER,
     password: ''
+  });
+
+  // Role Modal State
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<CustomRole | null>(null);
+  const [roleFormData, setRoleFormData] = useState<Partial<CustomRole>>({
+    name: '',
+    description: '',
+    baseRole: UserRole.SUBJECT_TEACHER
   });
 
   const isAdmin = currentUser.role === UserRole.ADMIN;
@@ -114,9 +129,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
 
     setIsSaving(true);
     await new Promise(r => setTimeout(r, 1000));
-    
     setUsers(prev => prev.map(u => u.id === currentUser.id ? { ...u, password: newPassword } : u));
-    
     setIsSaving(false);
     alert('Security Update: Password successfully changed.');
     setCurrentPassword('');
@@ -160,6 +173,51 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
       alert(`New account created for ${userFormData.name}.`);
     }
     setIsUserModalOpen(false);
+  };
+
+  const openRoleModal = (role?: CustomRole) => {
+    if (!isAdmin) return;
+    if (role) {
+      setEditingRole(role);
+      setRoleFormData({ ...role });
+    } else {
+      setEditingRole(null);
+      setRoleFormData({ name: '', description: '', baseRole: UserRole.SUBJECT_TEACHER });
+    }
+    setIsRoleModalOpen(true);
+  };
+
+  const handleSaveRole = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!roleFormData.name) return;
+
+    if (editingRole) {
+      setSystemRoles(prev => prev.map(r => r.id === editingRole.id ? { ...r, ...roleFormData } as CustomRole : r));
+      alert(`Role ${roleFormData.name} updated.`);
+    } else {
+      const newRole: CustomRole = {
+        id: `r${Date.now()}`,
+        name: roleFormData.name || '',
+        description: roleFormData.description || '',
+        baseRole: roleFormData.baseRole as UserRole,
+        isSystemRole: false
+      };
+      setSystemRoles(prev => [...prev, newRole]);
+      alert(`New Role: ${roleFormData.name} created successfully.`);
+    }
+    setIsRoleModalOpen(false);
+  };
+
+  const handleDeleteRole = (id: string) => {
+    if (!isAdmin) return;
+    const role = systemRoles.find(r => r.id === id);
+    if (role?.isSystemRole) {
+      alert("Error: Protected System Role cannot be deleted.");
+      return;
+    }
+    if (window.confirm(`Security Check: Are you sure you want to remove the '${role?.name}' role? Users assigned to this role will remain but their functional access will be frozen.`)) {
+      setSystemRoles(prev => prev.filter(r => r.id !== id));
+    }
   };
 
   const handleDeleteUser = (id: string) => {
@@ -210,6 +268,7 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                 <NavItem icon={School} label="School Profile" active={activeSection === 'school'} onClick={() => setActiveSection('school')} />
                 <NavItem icon={Calendar} label="Academic Term" active={activeSection === 'academic'} onClick={() => setActiveSection('academic')} />
                 <NavItem icon={Users} label="User Accounts" active={activeSection === 'users'} onClick={() => setActiveSection('users')} />
+                <NavItem icon={Shield} label="Role Definitions" active={activeSection === 'roles'} onClick={() => setActiveSection('roles')} />
               </>
             )}
             <NavItem icon={Lock} label="Security" active={activeSection === 'security'} onClick={() => setActiveSection('security')} />
@@ -230,6 +289,46 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                       <p className="text-[10px] text-gray-400 font-medium mt-1">{currentUser.email}</p>
                    </div>
                 </div>
+              </div>
+            )}
+
+            {activeSection === 'roles' && isAdmin && (
+              <div className="p-8 space-y-6 animate-in fade-in duration-300">
+                 <div className="flex items-center justify-between border-b pb-4">
+                    <h3 className="text-lg font-black uppercase tracking-tight text-gray-800">Permission Hierarchy</h3>
+                    <button onClick={() => openRoleModal()} className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100">
+                      <Plus className="w-4 h-4" /> Create New Role
+                    </button>
+                 </div>
+
+                 <div className="grid grid-cols-1 gap-4">
+                    {systemRoles.map(role => (
+                      <div key={role.id} className="p-5 border-2 rounded-[24px] border-gray-50 bg-white hover:border-indigo-100 transition-all group flex items-center justify-between">
+                         <div className="flex items-center gap-5">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${role.isSystemRole ? 'bg-gray-100 text-gray-400' : 'bg-indigo-50 text-indigo-600'}`}>
+                               {role.isSystemRole ? <ShieldCheck size={20} /> : <Shield size={20} />}
+                            </div>
+                            <div>
+                               <div className="flex items-center gap-2">
+                                  <p className="font-black text-gray-900 text-sm uppercase tracking-tight">{role.name}</p>
+                                  {role.isSystemRole && <span className="text-[8px] font-black bg-gray-100 px-1.5 py-0.5 rounded text-gray-400 uppercase tracking-widest">System</span>}
+                               </div>
+                               <p className="text-[10px] text-gray-500 font-medium">{role.description}</p>
+                               <div className="flex items-center gap-1.5 mt-2">
+                                  <ShieldAlert size={10} className="text-indigo-400" />
+                                  <span className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Base Permissions: {role.baseRole}</span>
+                               </div>
+                            </div>
+                         </div>
+                         <div className="flex items-center gap-2">
+                            <button onClick={() => openRoleModal(role)} className="p-2 text-gray-400 hover:text-indigo-600 transition-colors"><Edit3 size={16} /></button>
+                            {!role.isSystemRole && (
+                              <button onClick={() => handleDeleteRole(role.id)} className="p-2 text-gray-400 hover:text-red-600 transition-colors"><Trash2 size={16} /></button>
+                            )}
+                         </div>
+                      </div>
+                    ))}
+                 </div>
               </div>
             )}
 
@@ -261,30 +360,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                           </div>
                        </div>
                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => openUserModal(u)}
-                            className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all border border-transparent hover:border-blue-100"
-                            title="Update Credentials"
-                          >
-                            <Edit3 className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteUser(u.id)}
-                            className={`p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all border border-transparent hover:border-red-100 ${u.id === currentUser.id ? 'opacity-20 cursor-not-allowed' : ''}`}
-                            title="Revoke Access"
-                            disabled={u.id === currentUser.id}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          <button onClick={() => openUserModal(u)} className="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"><Edit3 className="w-4 h-4" /></button>
+                          <button onClick={() => handleDeleteUser(u.id)} className={`p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all ${u.id === currentUser.id ? 'opacity-20 cursor-not-allowed' : ''}`} disabled={u.id === currentUser.id}><Trash2 className="w-4 h-4" /></button>
                        </div>
                     </div>
                   ))}
-                </div>
-                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex items-start gap-3">
-                   <ShieldCheck className="w-5 h-5 text-gray-400 mt-0.5" />
-                   <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest leading-relaxed italic">
-                     Only Administrators can manage user accounts. Changes to roles affect portal visibility and permissions immediately.
-                   </p>
                 </div>
               </div>
             )}
@@ -311,13 +391,8 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                         <input required type="password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner" />
                       </div>
                    </div>
-                   <button 
-                    type="submit"
-                    disabled={isSaving}
-                    className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200 disabled:opacity-50 flex items-center justify-center gap-3"
-                   >
-                     {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                     Commit Security Change
+                   <button type="submit" disabled={isSaving} className="w-full py-4 bg-gray-900 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl shadow-gray-200 disabled:opacity-50 flex items-center justify-center gap-3">
+                     {isSaving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />} Commit Security Change
                    </button>
                 </div>
               </form>
@@ -341,9 +416,6 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                   <div className="flex-1 flex flex-col justify-center">
                     <h4 className="text-xl font-black text-blue-900 uppercase tracking-tight">{editableConfig?.schoolName}</h4>
                     <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest mt-1 opacity-70">Main Digital Seal</p>
-                    <div className="mt-6 flex gap-3">
-                       <button type="button" onClick={() => setSchoolLogo(null)} className="text-[10px] font-black uppercase text-red-500 hover:text-red-700 transition-colors">Remove Custom Logo</button>
-                    </div>
                   </div>
                 </div>
 
@@ -356,59 +428,10 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Reg No.</label>
                     <input type="text" value={editableConfig?.registrationNo} onChange={e => setEditableConfig({...editableConfig, registrationNo: e.target.value})} className="w-full p-3 border rounded-xl font-mono font-bold outline-none focus:border-blue-500" />
                   </div>
-                  <div className="col-span-2 space-y-1">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">School Motto</label>
-                    <input type="text" value={editableConfig?.motto} onChange={e => setEditableConfig({...editableConfig, motto: e.target.value})} className="w-full p-3 border rounded-xl font-bold outline-none focus:border-blue-500" />
-                  </div>
                 </div>
-
-                <div className="pt-6 border-t mt-8">
-                   <div className="flex items-center gap-3 mb-6">
-                      <Banknote className="text-blue-600 w-6 h-6" />
-                      <h3 className="text-lg font-black text-blue-900 uppercase tracking-tight">Financial Disbursement Details</h3>
-                   </div>
-                   
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      <div className="space-y-4">
-                         <div className="flex items-center gap-2 mb-2">
-                            <Smartphone className="w-4 h-4 text-green-600" />
-                            <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">M-Pesa Merchant Accounts</p>
-                         </div>
-                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Paybill No.</label>
-                               <input type="text" placeholder="e.g. 522522" value={editableConfig?.mpesaPaybill} onChange={e => setEditableConfig({...editableConfig, mpesaPaybill: e.target.value})} className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl font-black focus:border-green-500 outline-none transition-all shadow-inner" />
-                            </div>
-                            <div className="space-y-1">
-                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Buy Goods Till</label>
-                               <input type="text" placeholder="e.g. 123456" value={editableConfig?.mpesaTill} onChange={e => setEditableConfig({...editableConfig, mpesaTill: e.target.value})} className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl font-black focus:border-green-500 outline-none transition-all shadow-inner" />
-                            </div>
-                         </div>
-                      </div>
-
-                      <div className="space-y-4">
-                         <div className="flex items-center gap-2 mb-2">
-                            <CreditCard className="w-4 h-4 text-blue-600" />
-                            <p className="text-[10px] font-black uppercase text-gray-400 tracking-widest">Official Bank Account</p>
-                         </div>
-                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Bank Name</label>
-                               <input type="text" placeholder="e.g. Equity Bank" value={editableConfig?.bankName} onChange={e => setEditableConfig({...editableConfig, bankName: e.target.value})} className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl font-black focus:border-blue-500 outline-none transition-all shadow-inner" />
-                            </div>
-                            <div className="space-y-1">
-                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Account No.</label>
-                               <input type="text" placeholder="0123456789" value={editableConfig?.bankAccountNumber} onChange={e => setEditableConfig({...editableConfig, bankAccountNumber: e.target.value})} className="w-full p-3 bg-gray-50 border-2 border-transparent rounded-xl font-black focus:border-blue-500 outline-none transition-all shadow-inner" />
-                            </div>
-                         </div>
-                      </div>
-                   </div>
-                </div>
-
-                <div className="flex justify-end pt-6 border-t mt-10">
-                   <button type="submit" disabled={isSaving} className="bg-gray-900 text-white px-10 py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl hover:bg-black transition-all flex items-center gap-3 border-b-4 border-black active:scale-95">
-                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                     Commit Profile Updates
+                <div className="flex justify-end pt-6">
+                   <button type="submit" disabled={isSaving} className="bg-gray-900 text-white px-10 py-4 rounded-2xl font-black uppercase text-xs tracking-widest shadow-2xl hover:bg-black transition-all flex items-center gap-3 border-b-4 border-black">
+                     {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} Commit Profile Updates
                    </button>
                 </div>
               </form>
@@ -428,58 +451,13 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                       <div className="absolute top-0 right-0 p-8 opacity-[0.03] group-hover:scale-110 transition-transform"><ClockIcon size={120} /></div>
                       <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-6">Current Active Cycle</h4>
                       <div className="flex gap-10">
-                         <div>
-                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 opacity-60">Year</p>
-                            <p className="text-5xl font-black text-indigo-900 tracking-tighter leading-none">{editableConfig?.year}</p>
-                         </div>
+                         <div><p className="text-5xl font-black text-indigo-900 tracking-tighter leading-none">{editableConfig?.year}</p></div>
                          <div className="w-[2px] bg-indigo-200/50"></div>
-                         <div>
-                            <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 opacity-60">Session</p>
-                            <p className="text-5xl font-black text-indigo-900 tracking-tighter leading-none">Term {editableConfig?.term}</p>
-                         </div>
+                         <div><p className="text-5xl font-black text-indigo-900 tracking-tighter leading-none">Term {editableConfig?.term}</p></div>
                       </div>
-                      <button 
-                        onClick={syncAcademicClock}
-                        className="mt-10 w-full flex items-center justify-center gap-3 bg-white border-2 border-indigo-100 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 hover:bg-indigo-600 hover:text-white hover:border-indigo-600 transition-all shadow-lg shadow-indigo-100/50"
-                      >
+                      <button onClick={syncAcademicClock} className="mt-10 w-full flex items-center justify-center gap-3 bg-white border-2 border-indigo-100 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all">
                          <RefreshCw size={14} /> Reset to System Clock
                       </button>
-                   </div>
-
-                   <div className="space-y-6">
-                      <div className="p-8 bg-gray-50 rounded-[40px] border-2 border-gray-100 space-y-6">
-                         <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Manual Session Override</h4>
-                         <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-1">
-                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Academic Year</label>
-                               <select 
-                                  value={editableConfig?.year} 
-                                  onChange={e => setEditableConfig({...editableConfig, year: parseInt(e.target.value)})}
-                                  className="w-full p-4 bg-white border-2 border-gray-100 rounded-2xl font-black text-xl outline-none focus:border-indigo-500 shadow-sm"
-                               >
-                                  {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-                               </select>
-                            </div>
-                            <div className="space-y-1">
-                               <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Current Term</label>
-                               <select 
-                                  value={editableConfig?.term} 
-                                  onChange={e => setEditableConfig({...editableConfig, term: parseInt(e.target.value)})}
-                                  className="w-full p-4 bg-white border-2 border-gray-100 rounded-2xl font-black text-xl outline-none focus:border-indigo-500 shadow-sm"
-                               >
-                                  {[1, 2, 3].map(t => <option key={t} value={t}>Term {t}</option>)}
-                               </select>
-                            </div>
-                         </div>
-                         <button 
-                           onClick={handleSaveSchoolInfo}
-                           disabled={isSaving}
-                           className="w-full bg-indigo-900 text-white py-4 rounded-2xl font-black uppercase text-[10px] tracking-[0.3em] shadow-2xl hover:bg-black transition-all flex items-center justify-center gap-3 border-b-4 border-black"
-                         >
-                            {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                            Update Global Timeline
-                         </button>
-                      </div>
                    </div>
                 </div>
               </div>
@@ -488,9 +466,55 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
         </div>
       </div>
 
-      {/* Unified User Modal (Add/Update) */}
+      {/* Role Modal */}
+      {isRoleModalOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md animate-in fade-in">
+           <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl relative overflow-hidden animate-in zoom-in duration-300">
+              <div className="p-8 border-b bg-gray-50/50 flex items-center justify-between">
+                 <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm border-2 border-white">
+                      <Shield size={24} />
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter leading-none">{editingRole ? 'Update Role' : 'New Role Definition'}</h2>
+                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-2">Access Control Policy</p>
+                    </div>
+                 </div>
+                 <button onClick={() => setIsRoleModalOpen(false)} className="p-4 hover:bg-red-50 text-gray-400 rounded-full transition-all"><X size={24} /></button>
+              </div>
+
+              <form onSubmit={handleSaveRole} className="p-8 space-y-6">
+                 <div className="space-y-4">
+                    <div className="space-y-1">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Role Label</label>
+                       <input required type="text" value={roleFormData.name} onChange={e => setRoleFormData({...roleFormData, name: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner" placeholder="e.g. Librarian" />
+                    </div>
+                    <div className="space-y-1">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Functional Base (Permissions)</label>
+                       <select value={roleFormData.baseRole} onChange={e => setRoleFormData({...roleFormData, baseRole: e.target.value as UserRole})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-black uppercase text-xs focus:border-indigo-500 outline-none">
+                          {Object.values(UserRole).map(r => <option key={r} value={r}>{r.replace('_', ' ')} Level</option>)}
+                       </select>
+                    </div>
+                    <div className="space-y-1">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Description</label>
+                       <textarea value={roleFormData.description} onChange={e => setRoleFormData({...roleFormData, description: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-indigo-500 focus:bg-white transition-all shadow-inner h-24" placeholder="Describe scope of this role..." />
+                    </div>
+                 </div>
+
+                 <div className="flex gap-4 pt-6">
+                    <button type="button" onClick={() => setIsRoleModalOpen(false)} className="flex-1 py-5 text-gray-400 font-black uppercase text-[10px] tracking-widest">Discard</button>
+                    <button type="submit" className="flex-[2] py-5 bg-indigo-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl hover:bg-indigo-700 transition-all active:scale-95 border-b-4 border-indigo-800 flex items-center justify-center gap-3">
+                       <Save size={18} /> Confirm Role
+                    </button>
+                 </div>
+              </form>
+           </div>
+        </div>
+      )}
+
+      {/* User Modal (Updated to use dynamic roles) */}
       {isUserModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md animate-in fade-in">
            <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl relative overflow-hidden animate-in zoom-in duration-300">
               <div className="p-8 border-b bg-gray-50/50 flex items-center justify-between">
                  <div className="flex items-center gap-4">
@@ -499,42 +523,31 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                     </div>
                     <div>
                         <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter leading-none">{editingUser ? 'Update Account' : 'New Credentials'}</h2>
-                        <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.2em] mt-2">{editingUser ? 'Modify Secure System Account' : 'Create Secure System Account'}</p>
                     </div>
                  </div>
-                 <button onClick={() => setIsUserModalOpen(false)} className="p-4 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-all">
-                    <X className="w-6 h-6" />
-                 </button>
+                 <button onClick={() => setIsUserModalOpen(false)} className="p-4 hover:bg-red-50 text-gray-400 rounded-full transition-all"><X size={24} /></button>
               </div>
 
               <form onSubmit={handleSaveUser} className="p-8 space-y-6">
                  <div className="space-y-4">
                     <div className="space-y-1">
                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
-                       <input required type="text" value={userFormData.name} onChange={e => setUserFormData({...userFormData, name: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner" placeholder="John Doe" />
+                       <input required type="text" value={userFormData.name} onChange={e => setUserFormData({...userFormData, name: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner" />
                     </div>
                     <div className="space-y-1">
                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
-                       <input required type="email" value={userFormData.email} onChange={e => setUserFormData({...userFormData, email: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner" placeholder="name@school.ac.ke" />
+                       <input required type="email" value={userFormData.email} onChange={e => setUserFormData({...userFormData, email: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner" />
                     </div>
                     <div className="space-y-1">
-                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">System Role</label>
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Assigned Role</label>
                        <select value={userFormData.role} onChange={e => setUserFormData({...userFormData, role: e.target.value as UserRole})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-black uppercase text-xs outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner">
-                          {Object.values(UserRole).map(r => <option key={r} value={r}>{r.replace('_', ' ')}</option>)}
+                          {systemRoles.map(r => <option key={r.id} value={r.baseRole}>{r.name}</option>)}
                        </select>
                     </div>
-                    <div className="space-y-1">
-                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">{editingUser ? 'Reset Password (Optional)' : 'Initial Password'}</label>
-                       <input type="password" value={userFormData.password} onChange={e => setUserFormData({...userFormData, password: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all shadow-inner" placeholder="••••••••" />
-                    </div>
                  </div>
-
                  <div className="flex gap-4 pt-6">
                     <button type="button" onClick={() => setIsUserModalOpen(false)} className="flex-1 py-5 text-gray-400 font-black uppercase text-[10px] tracking-widest">Discard</button>
-                    <button type="submit" className="flex-[2] py-5 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-[0.2em] shadow-xl shadow-blue-100 hover:bg-blue-700 transition-all active:scale-95 border-b-4 border-blue-800 flex items-center justify-center gap-3">
-                       {editingUser ? <Save size={18} /> : <UserPlus size={18} />}
-                       {editingUser ? 'Save Changes' : 'Confirm Account'}
-                    </button>
+                    <button type="submit" className="flex-[2] py-5 bg-blue-600 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl active:scale-95 border-b-4 border-blue-800">Save Changes</button>
                  </div>
               </form>
            </div>

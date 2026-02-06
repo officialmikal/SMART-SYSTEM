@@ -11,7 +11,7 @@ import { AcademicsModule } from './components/AcademicsModule';
 import { SettingsModule } from './components/SettingsModule';
 import { TimetableModule } from './components/TimetableModule';
 import { MessagingModule } from './components/MessagingModule';
-import { UserRole, User, Student, ClassFee, KENYAN_CLASSES, Expenditure, Staff, SMSProvider } from './types';
+import { UserRole, User, Student, ClassFee, KENYAN_CLASSES, Expenditure, Staff, SMSProvider, CustomRole } from './types';
 import { Language } from './services/localizationService';
 import { apiService } from './services/apiService';
 
@@ -24,6 +24,14 @@ const getCurrentAcademicCycle = () => {
   else if (month >= 8) term = 3;
   return { year, term };
 };
+
+const INITIAL_ROLES: CustomRole[] = [
+  { id: 'r1', name: 'System Admin', description: 'Full access to all modules and configurations', baseRole: UserRole.ADMIN, isSystemRole: true },
+  { id: 'r2', name: 'Principal', description: 'Institutional oversight and financial reports', baseRole: UserRole.PRINCIPAL, isSystemRole: true },
+  { id: 'r3', name: 'Class Teacher', description: 'Manage class attendance and student marks', baseRole: UserRole.CLASS_TEACHER, isSystemRole: true },
+  { id: 'r4', name: 'Subject Teacher', description: 'Enter marks for specific subjects', baseRole: UserRole.SUBJECT_TEACHER, isSystemRole: true },
+  { id: 'r5', name: 'Parent', description: 'View student performance and fee balance', baseRole: UserRole.PARENT, isSystemRole: true }
+];
 
 const INITIAL_SCHOOL_CONFIG = {
   schoolName: 'ElimuSmart Academy',
@@ -58,8 +66,11 @@ const App: React.FC = () => {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [expenditures, setExpenditures] = useState<Expenditure[]>([]);
   const [feeStructure, setFeeStructure] = useState<ClassFee[]>([]);
+  const [systemRoles, setSystemRoles] = useState<CustomRole[]>(() => {
+    const saved = localStorage.getItem('elimusmart_roles');
+    return saved ? JSON.parse(saved) : INITIAL_ROLES;
+  });
   
-  // FIXED: Lazy initialization for schoolConfig to prevent reverting on refresh
   const [schoolConfig, setSchoolConfig] = useState(() => {
     const saved = localStorage.getItem('elimusmart_config');
     return saved ? JSON.parse(saved) : INITIAL_SCHOOL_CONFIG;
@@ -69,7 +80,6 @@ const App: React.FC = () => {
     return localStorage.getItem('elimusmart_logo');
   });
 
-  // Initialize and check connection
   useEffect(() => {
     const checkConnection = async () => {
       const isLive = await apiService.checkHealth();
@@ -89,11 +99,9 @@ const App: React.FC = () => {
     };
     checkConnection();
 
-    // PWA Install Prompt Listener
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      console.log('ElimuSmart: Installation prompt ready');
     });
 
     window.addEventListener('unauthorized', () => {
@@ -151,12 +159,12 @@ const App: React.FC = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const email = (e.target as any).email.value;
+    const email = (e.target as any).email.value.toLowerCase().trim();
     const password = (e.target as any).password.value;
 
     if (isBackendLive) {
       try {
-        const res = await apiService.request('/auth/login', {
+        const res = await apiService.request('/api/auth/login', {
           method: 'POST',
           body: JSON.stringify({ email, password })
         });
@@ -164,14 +172,23 @@ const App: React.FC = () => {
         setUser(res);
         fetchCloudData();
       } catch (err: any) {
-        alert(err.message || "Invalid credentials");
+        alert(err.message || "Invalid credentials. Please verify email/password.");
       }
     } else {
-      if (email === 'admin@school.ac.ke' && password === 'adminpassword') {
-        setUser({ id: 'local-1', name: 'Admin (Offline)', email, role: UserRole.ADMIN });
+      const mockAccounts = [
+        { email: 'admin@school.ac.ke', role: UserRole.ADMIN, name: 'System Admin' },
+        { email: 'principal@school.ac.ke', role: UserRole.PRINCIPAL, name: 'Institutional Principal' },
+        { email: 'teacher@school.ac.ke', role: UserRole.CLASS_TEACHER, name: 'Form 2 Teacher' },
+        { email: 'parent@school.ac.ke', role: UserRole.PARENT, name: 'Guardian Account' }
+      ];
+
+      const found = mockAccounts.find(acc => acc.email === email);
+      
+      if (found && password === 'adminpassword') {
+        setUser({ id: 'local-' + Date.now(), name: found.name + ' (Demo)', email, role: found.role });
         loadLocalData();
       } else {
-        alert("Incorrect login. Note: System is currently in OFFLINE mode.");
+        alert("Invalid login. Check your credentials and try again.");
       }
     }
   };
@@ -181,18 +198,15 @@ const App: React.FC = () => {
     setUser(null);
   };
 
-  // Sync state to local storage on change
   useEffect(() => {
     if (students.length > 0) localStorage.setItem('elimusmart_students', JSON.stringify(students));
     if (staff.length > 0) localStorage.setItem('elimusmart_staff', JSON.stringify(staff));
     if (feeStructure.length > 0) localStorage.setItem('elimusmart_fees', JSON.stringify(feeStructure));
     if (expenditures.length > 0) localStorage.setItem('elimusmart_expenditures', JSON.stringify(expenditures));
-    
-    // Ensure schoolConfig is always saved to survive refresh
     localStorage.setItem('elimusmart_config', JSON.stringify(schoolConfig));
-    
+    localStorage.setItem('elimusmart_roles', JSON.stringify(systemRoles));
     if (schoolLogo) localStorage.setItem('elimusmart_logo', schoolLogo);
-  }, [students, staff, feeStructure, schoolConfig, schoolLogo, expenditures]);
+  }, [students, staff, feeStructure, schoolConfig, schoolLogo, expenditures, systemRoles]);
 
   if (!user) {
     return (
@@ -203,25 +217,26 @@ const App: React.FC = () => {
             <div className="flex items-center justify-center gap-2 mt-3">
               <div className={`w-2 h-2 rounded-full ${isBackendLive ? 'bg-green-500 animate-pulse' : 'bg-amber-500'}`}></div>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                {isBackendLive ? 'Cloud Database Ready' : 'Database Offline - Local Mode'}
+                {isBackendLive ? 'Cloud Engine Active' : 'Access Authorization Required'}
               </p>
             </div>
           </div>
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Email Address</label>
-              <input name="email" type="email" required defaultValue="admin@school.ac.ke" className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-blue-500" />
+              <input name="email" type="email" required placeholder="name@school.ac.ke" className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all" />
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Password</label>
-              <input name="password" type="password" required defaultValue="adminpassword" className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-blue-500" />
+              <input name="password" type="password" required placeholder="••••••••" className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-blue-500 transition-all" />
             </div>
-            <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-3xl font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95">
-              Authorize Access
+            <button type="submit" className="w-full py-5 bg-blue-600 text-white rounded-3xl font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95 border-b-4 border-blue-800">
+              Sign In to Dashboard
             </button>
           </form>
+
           {deferredPrompt && (
-            <button onClick={handleInstallApp} className="mt-8 w-full flex items-center justify-center gap-2 text-[10px] font-black uppercase text-blue-600 tracking-widest border-2 border-blue-50 py-3 rounded-2xl hover:bg-blue-50 transition-all animate-pulse-install">
+            <button onClick={handleInstallApp} className="mt-6 w-full flex items-center justify-center gap-2 text-[10px] font-black uppercase text-blue-600 tracking-widest border-2 border-blue-50 py-4 rounded-2xl hover:bg-blue-50 transition-all animate-pulse-install">
               Install ElimuSmart App
             </button>
           )}
@@ -254,7 +269,7 @@ const App: React.FC = () => {
         {currentTab === 'reports' && <ReportsModule lang={lang} students={students} users={[]} schoolLogo={schoolLogo} schoolConfig={schoolConfig} />}
         {currentTab === 'timetable' && <TimetableModule lang={lang} />}
         {currentTab === 'messaging' && <MessagingModule lang={lang} user={user} students={students} schoolConfig={schoolConfig} setSchoolConfig={setSchoolConfig} />}
-        {currentTab === 'settings' && <SettingsModule currentUser={user} users={[]} setUsers={() => {}} schoolLogo={schoolLogo} setSchoolLogo={setSchoolLogo} schoolConfig={schoolConfig} setSchoolConfig={setSchoolConfig} />}
+        {currentTab === 'settings' && <SettingsModule currentUser={user} users={[]} setUsers={() => {}} schoolLogo={schoolLogo} setSchoolLogo={setSchoolLogo} schoolConfig={schoolConfig} setSchoolConfig={setSchoolConfig} systemRoles={systemRoles} setSystemRoles={setSystemRoles} />}
       </div>
     </Layout>
   );
