@@ -19,9 +19,23 @@ const app = express();
 // Standard express middleware initialization with proper typing
 app.use(helmet() as any);
 
-// Production-ready CORS
+// Production-ready CORS - Including explicitly used Render origins
+const allowedOrigins = [
+  config.FRONTEND_URL,
+  'https://smart-system-wlnh.onrender.com',
+  'https://smart-system-wlnh.onrender.com/',
+  'https://elimusmart-production.netlify.app'
+];
+
 app.use(cors({
-  origin: config.FRONTEND_URL,
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*') || config.FRONTEND_URL === '*') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
