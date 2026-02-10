@@ -2,14 +2,15 @@
 {
   "short_name": "ElimuSmart",
   "name": "ElimuSmart CBC & JSS Management",
-  "description": "Smart School Management System for Kenyan CBC and JSS.",
+  "description": "Smart School Management System for Kenyan CBC and JSS with M-Pesa and AI Reports.",
   "id": "/",
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "theme_color": "#1d4ed8",
   "background_color": "#f9fafb",
+  "categories": ["education", "productivity", "finance"],
   "icons": [
     {
       "src": "https://api.dicebear.com/7.x/initials/png?seed=ES&backgroundColor=1e3a8a&fontFamily=Inter&fontSize=45&bold=true&size=192",
@@ -28,6 +29,22 @@
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "https://api.dicebear.com/7.x/initials/png?seed=Desktop&backgroundColor=1e3a8a&size=1280",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "ElimuSmart Dashboard"
+    },
+    {
+      "src": "https://api.dicebear.com/7.x/initials/png?seed=Mobile&backgroundColor=1e3a8a&size=720",
+      "sizes": "720x1280",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile Presence"
     }
   ]
 }
