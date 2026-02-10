@@ -1,6 +1,25 @@
+
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+
+// Global PWA Prompt Capture
+// We attach this immediately at the top level to catch the event 
+// if it fires before React is ready.
+declare global {
+  interface Window {
+    elimusmart_deferredPrompt: any;
+  }
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent the mini-infobar from appearing on mobile
+  e.preventDefault();
+  // Stash the event so it can be triggered later.
+  window.elimusmart_deferredPrompt = e;
+  // Dispatch a custom event so the React app knows it's available
+  window.dispatchEvent(new Event('elimusmart_pwa_installable'));
+});
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

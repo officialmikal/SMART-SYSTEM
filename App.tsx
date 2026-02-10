@@ -81,6 +81,25 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
+    // 1. Initial check for existing prompt stashed in index.tsx
+    if (window.elimusmart_deferredPrompt) {
+      setDeferredPrompt(window.elimusmart_deferredPrompt);
+    }
+
+    // 2. Listen for the custom event or direct event if it fires later
+    const handleInstallable = () => {
+      setDeferredPrompt(window.elimusmart_deferredPrompt);
+    };
+
+    const handlePromptEvent = (e: any) => {
+      e.preventDefault();
+      window.elimusmart_deferredPrompt = e;
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('elimusmart_pwa_installable', handleInstallable);
+    window.addEventListener('beforeinstallprompt', handlePromptEvent);
+
     const checkConnection = async () => {
       const isLive = await apiService.checkHealth();
       setIsBackendLive(isLive);
@@ -99,23 +118,24 @@ const App: React.FC = () => {
     };
     checkConnection();
 
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    });
-
     window.addEventListener('unauthorized', () => {
       setUser(null);
     });
+
+    return () => {
+      window.removeEventListener('elimusmart_pwa_installable', handleInstallable);
+      window.removeEventListener('beforeinstallprompt', handlePromptEvent);
+    };
   }, []);
 
   const handleInstallApp = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setDeferredPrompt(null);
-    }
+    console.log(`PWA Install User Choice: ${outcome}`);
+    // Clear the prompt regardless of outcome to maintain UX
+    setDeferredPrompt(null);
+    window.elimusmart_deferredPrompt = null;
   };
 
   const loadLocalData = () => {
