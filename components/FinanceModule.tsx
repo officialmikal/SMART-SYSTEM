@@ -641,7 +641,7 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
         </div>
       )}
 
-      {/* Official Receipt Modal - FIXED FOR PRINTING AND SAVING */}
+      {/* Official Receipt Modal - UPDATED TO SHOW LOGO */}
       {showReceipt && lastReceipt && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-md">
            <div className="bg-white rounded-[32px] w-full max-w-sm shadow-2xl p-10 animate-in zoom-in duration-300 text-center relative overflow-hidden" id="official-receipt-print">
@@ -649,9 +649,13 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                  <ShieldCheck size={120} />
               </div>
               <div className="border-b-2 border-gray-100 pb-6 mb-6">
+                 {schoolLogo ? (
+                   <img src={schoolLogo} className="w-20 h-20 mx-auto mb-4 rounded-xl object-contain" alt="Institution Logo" />
+                 ) : (
+                   <div className="w-16 h-16 bg-blue-600 text-white rounded-xl flex items-center justify-center mx-auto mb-4 text-2xl font-black">ES</div>
+                 )}
                  <h2 className="text-xl font-black text-gray-900 uppercase tracking-tighter leading-tight">{schoolConfig.schoolName}</h2>
                  <p className="text-[9px] font-black text-blue-600 uppercase tracking-[0.2em] mt-2 italic">Institutional Revenue Department</p>
-                 <p className="text-[8px] font-black text-gray-300 uppercase tracking-widest mt-1">Official Fee Receipt</p>
               </div>
               
               <div className="space-y-5 text-left mb-10">
