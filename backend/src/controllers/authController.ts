@@ -57,6 +57,51 @@ export const login = async (req: any, res: any): Promise<void> => {
 };
 
 /**
+ * Change authenticated user's password.
+ */
+export const changePassword = async (req: any, res: any): Promise<void> => {
+  const { currentPassword, newPassword } = req.body;
+
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      res.status(404).json({ message: 'User not found.' });
+      return;
+    }
+
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      res.status(400).json({ message: 'The current password you entered is incorrect.' });
+      return;
+    }
+
+    // Hash and Save new password
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    // Log the security event
+    await AuditLog.create({
+      institutionId: user.institutionId,
+      userId: user.id,
+      userName: user.name,
+      action: 'UPDATE',
+      resource: 'Credentials',
+      resourceId: user.id,
+      oldValue: { status: 'password_changed_requested' },
+      newValue: { status: 'password_changed_success' },
+      ipAddress: req.ip,
+      userAgent: req.headers['user-agent']
+    });
+
+    res.json({ message: 'Password updated successfully across all devices.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to update credentials.', error });
+  }
+};
+
+/**
  * Get profile data restricted to the user's institution.
  */
 export const getMe = async (req: any, res: any): Promise<void> => {

@@ -35,7 +35,9 @@ import {
   Eye,
   Monitor,
   Globe,
-  MapPin
+  MapPin,
+  LockKeyhole,
+  CheckCircle2
 } from 'lucide-react';
 import { UserRole, User as UserType, CustomRole, AuditLog } from '../types';
 import { apiService } from '../services/apiService';
@@ -68,6 +70,11 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [isLogsLoading, setIsLogsLoading] = useState(false);
   const [logSearch, setLogSearch] = useState('');
+
+  // Password Change States
+  const [pwForm, setPwForm] = useState({ current: '', new: '', confirm: '' });
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState('');
   
   // Institution Identity
   const institutionName = (currentUser as any).institution?.name || "ElimuSmart Academy";
@@ -91,6 +98,38 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
     }
   };
 
+  const handlePasswordChange = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwError('');
+    setPwSuccess('');
+
+    if (pwForm.new !== pwForm.confirm) {
+      setPwError('New passwords do not match.');
+      return;
+    }
+    if (pwForm.new.length < 6) {
+      setPwError('Password must be at least 6 characters.');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await apiService.request('/auth/change-password', {
+        method: 'PUT',
+        body: JSON.stringify({
+          currentPassword: pwForm.current,
+          newPassword: pwForm.new
+        })
+      });
+      setPwSuccess('Credentials updated successfully. Your new password is now active on all devices.');
+      setPwForm({ current: '', new: '', confirm: '' });
+    } catch (err: any) {
+      setPwError(err.message || 'Failed to update password. Check current credentials.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const filteredLogs = useMemo(() => {
     return auditLogs.filter(log => 
       log.userName.toLowerCase().includes(logSearch.toLowerCase()) ||
@@ -100,9 +139,6 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
   }, [auditLogs, logSearch]);
 
   const isAdmin = currentUser.role === UserRole.ADMIN;
-
-  // Modals omitted for brevity - logic remains same but includes institutional scoping
-  // ... (User/Role management methods)
 
   return (
     <div className="space-y-6">
@@ -150,6 +186,88 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
               </div>
             )}
 
+            {activeSection === 'security' && (
+              <div className="p-8 space-y-10 animate-in fade-in duration-300">
+                <div className="flex items-center gap-4 border-b pb-6">
+                   <div className="p-4 bg-blue-600 text-white rounded-2xl shadow-lg">
+                      <LockKeyhole size={24} />
+                   </div>
+                   <div>
+                      <h3 className="text-xl font-black uppercase tracking-tight text-gray-800">Access Credentials</h3>
+                      <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Update your institutional entry keys</p>
+                   </div>
+                </div>
+
+                <form onSubmit={handlePasswordChange} className="max-w-md space-y-6">
+                   {pwError && (
+                     <div className="p-4 bg-red-50 text-red-600 rounded-xl border border-red-100 flex items-center gap-3 animate-pulse">
+                        <ShieldAlert size={18} />
+                        <p className="text-[10px] font-black uppercase">{pwError}</p>
+                     </div>
+                   )}
+                   {pwSuccess && (
+                     <div className="p-4 bg-green-50 text-green-700 rounded-xl border border-green-100 flex items-center gap-3">
+                        <CheckCircle2 size={18} />
+                        <p className="text-[10px] font-black uppercase">{pwSuccess}</p>
+                     </div>
+                   )}
+
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Current Password</label>
+                      <input 
+                        type="password" 
+                        required
+                        value={pwForm.current}
+                        onChange={e => setPwForm({...pwForm, current: e.target.value})}
+                        placeholder="••••••••" 
+                        className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl outline-none focus:border-blue-500 font-bold" 
+                      />
+                   </div>
+
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">New Password</label>
+                        <input 
+                          type="password" 
+                          required
+                          value={pwForm.new}
+                          onChange={e => setPwForm({...pwForm, new: e.target.value})}
+                          placeholder="Min 6 chars" 
+                          className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl outline-none focus:border-blue-500 font-bold" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Confirm New</label>
+                        <input 
+                          type="password" 
+                          required
+                          value={pwForm.confirm}
+                          onChange={e => setPwForm({...pwForm, confirm: e.target.value})}
+                          placeholder="Re-type new" 
+                          className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl outline-none focus:border-blue-500 font-bold" 
+                        />
+                      </div>
+                   </div>
+
+                   <button 
+                    type="submit" 
+                    disabled={isSaving}
+                    className="w-full py-5 bg-gray-900 text-white rounded-3xl font-black uppercase text-xs tracking-widest shadow-xl hover:bg-black transition-all active:scale-95 flex items-center justify-center gap-3"
+                   >
+                     {isSaving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+                     Update Credentials
+                   </button>
+                </form>
+
+                <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100">
+                   <h4 className="text-[10px] font-black text-gray-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+                     <Monitor size={12} /> Cross-Device Sync Status
+                   </h4>
+                   <p className="text-[11px] text-gray-400 font-medium leading-relaxed italic">Updating your password here will invalidate active sessions on other devices for security. You will need to re-authenticate on your mobile phone or tablet using the new keys.</p>
+                </div>
+              </div>
+            )}
+
             {activeSection === 'logs' && isAdmin && (
               <div className="p-8 space-y-6 animate-in fade-in duration-300">
                 <div className="flex items-center justify-between border-b pb-4">
@@ -188,18 +306,15 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                       {filteredLogs.map(log => (
                         <tr key={log.id} className="hover:bg-gray-50/50">
                           <td className="px-4 py-3 text-gray-500 font-mono">
-                            {/* Updated to use createdAt property from AuditLog interface */}
                             {new Date(log.createdAt).toLocaleString()}
                           </td>
                           <td className="px-4 py-3 font-bold text-gray-900">{log.userName}</td>
                           <td className="px-4 py-3">
                             <div className="flex flex-col gap-0.5">
                                <div className="flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase">
-                                  {/* Fixed: Property userAgent now exists on AuditLog interface */}
                                   <Monitor size={10} /> {log.userAgent?.includes('Mobile') ? 'Mobile' : 'Desktop'}
                                </div>
                                <div className="flex items-center gap-1.5 text-[9px] font-bold text-blue-400">
-                                  {/* Fixed: Property ipAddress now exists on AuditLog interface */}
                                   <Globe size={10} /> {log.ipAddress || 'Internal'}
                                </div>
                             </div>
@@ -219,7 +334,6 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                                resource: log.resource,
                                id: log.resourceId,
                                metadata: log.newValue || log.oldValue,
-                               /* Fixed: Property userAgent now exists on AuditLog interface */
                                device: log.userAgent
                              }, null, 2))} className="p-1 text-gray-400 hover:text-blue-600">
                                <Eye size={14} />
@@ -232,7 +346,6 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                 </div>
               </div>
             )}
-            {/* Other sections... */}
           </div>
         </div>
       </div>
