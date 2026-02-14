@@ -4,6 +4,7 @@ import sequelize from '../config/database';
 
 export interface AuditLogAttributes {
   id: string;
+  institutionId: string; // Critical for multi-tenant isolation
   userId: string;
   userName: string;
   action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN';
@@ -11,12 +12,15 @@ export interface AuditLogAttributes {
   resourceId: string;
   oldValue: any | null;
   newValue: any | null;
+  ipAddress: string | null;
+  userAgent: string | null; // Identifies the device/browser
 }
 
-export interface AuditLogCreationAttributes extends Optional<AuditLogAttributes, 'id'> {}
+export interface AuditLogCreationAttributes extends Optional<AuditLogAttributes, 'id' | 'ipAddress' | 'userAgent'> {}
 
 export class AuditLog extends Model<AuditLogAttributes, AuditLogCreationAttributes> implements AuditLogAttributes {
   public id!: string;
+  public institutionId!: string;
   public userId!: string;
   public userName!: string;
   public action!: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN';
@@ -24,6 +28,8 @@ export class AuditLog extends Model<AuditLogAttributes, AuditLogCreationAttribut
   public resourceId!: string;
   public oldValue!: any | null;
   public newValue!: any | null;
+  public ipAddress!: string | null;
+  public userAgent!: string | null;
 
   public readonly createdAt!: Date;
 }
@@ -33,6 +39,10 @@ AuditLog.init({
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true,
+  },
+  institutionId: {
+    type: DataTypes.UUID,
+    allowNull: false,
   },
   userId: {
     type: DataTypes.STRING,
@@ -60,6 +70,14 @@ AuditLog.init({
   },
   newValue: {
     type: DataTypes.JSONB,
+    allowNull: true,
+  },
+  ipAddress: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  userAgent: {
+    type: DataTypes.TEXT,
     allowNull: true,
   },
 }, {

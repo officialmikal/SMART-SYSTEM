@@ -157,6 +157,9 @@ export interface TimetableEntry {
   category: 'STEM' | 'Languages' | 'Arts' | 'Break' | 'Technical' | 'Social';
 }
 
+/**
+ * Updated AuditLog interface to match backend model properties for consistency
+ */
 export interface AuditLog {
   id: string;
   userId: string;
@@ -166,5 +169,7 @@ export interface AuditLog {
   resourceId: string;
   oldValue?: any;
   newValue?: any;
-  timestamp: string;
+  createdAt: string;
+  userAgent?: string | null;
+  ipAddress?: string | null;
 }

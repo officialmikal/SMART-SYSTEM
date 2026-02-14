@@ -21,7 +21,8 @@ import {
   SmartphoneNfc,
   TrendingDown,
   Scale,
-  Wallet
+  Wallet,
+  Building2
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -50,14 +51,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
   const [isBriefingLoading, setIsBriefingLoading] = useState(false);
   const [showInstallCard, setShowInstallCard] = useState(true);
 
-  // Calculate accurate statistics from both students and expenditures
+  // Institution branding from user object (if exists)
+  const institutionName = (user as any).institution?.name || "ElimuSmart Academy";
+
+  // Calculate accurate statistics
   const stats = useMemo(() => {
     const totalExpected = students.reduce((sum, s) => sum + (Number(s.agreedFee ?? s.totalFee) || 0), 0);
     const totalCollected = students.reduce((sum, s) => sum + (Number(s.paidFee) || 0), 0);
     const totalArrears = students.reduce((sum, s) => sum + (Number(s.feeBalance) || 0), 0);
     const totalPrepaid = students.reduce((sum, s) => sum + (Number(s.prepaidFee) || 0), 0);
     
-    // NEW: Calculate Expenditure and Net
     const totalExp = expenditures.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const netPosition = totalCollected - totalExp;
 
@@ -98,16 +101,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
       setIsBriefingLoading(true);
       try {
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-        const prompt = `You are a school management advisor for a Kenyan school. 
+        const prompt = `You are a school management advisor for ${institutionName} in Kenya. 
           Analyze these current stats:
           - Enrollment: ${stats.studentCount} students
           - Collection Rate: ${stats.collectionRate}
           - Total Collected: KES ${stats.collected}
-          - Total Expenditures: KES ${stats.expenditure}
           - Net Cash Remaining: KES ${stats.net}
-          - Arrears: KES ${stats.arrears}
           
-          Write a short, professional, and punchy 2-sentence executive summary (Principal's Briefing) for the dashboard. Use an encouraging tone. Focus on the net cash position.`;
+          Write a short, professional 2-sentence summary.`;
 
         const response = await ai.models.generateContent({
           model: 'gemini-3-flash-preview',
@@ -115,14 +116,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
         });
         setAiBriefing(response.text || '');
       } catch (e) {
-        setAiBriefing("School operations are stable. Net cash flow is being managed effectively. Focus on Term 3 collection targets.");
+        setAiBriefing("School operations are stable. Focus on Term 3 collection targets.");
       } finally {
         setIsBriefingLoading(false);
       }
     };
 
     fetchBriefing();
-  }, [stats]);
+  }, [stats, institutionName]);
 
   const chartData = useMemo(() => [
     { name: 'Term 1', collection: 3200000 },
@@ -135,28 +136,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
       
       {/* PWA Install Invitation Banner */}
       {installApp && showInstallCard && (
-        <div className="bg-indigo-600 rounded-[32px] p-6 text-white shadow-xl shadow-indigo-100 flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 duration-500 border-2 border-indigo-400">
+        <div className="bg-indigo-600 rounded-[32px] p-6 text-white shadow-xl shadow-indigo-100 flex flex-col md:flex-row items-center justify-between gap-6 border-2 border-indigo-400">
            <div className="flex items-center gap-5">
               <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/30 animate-pulse-install">
                  <SmartphoneNfc className="w-10 h-10 text-white" />
               </div>
               <div>
-                 <h3 className="text-xl font-black uppercase tracking-tight leading-none">Install ElimuSmart Academy App</h3>
-                 <p className="text-[11px] font-bold text-indigo-100 uppercase tracking-widest mt-2">Access your school dashboard directly from your home screen</p>
+                 <h3 className="text-xl font-black uppercase tracking-tight leading-none">Install {institutionName} Portal</h3>
+                 <p className="text-[11px] font-bold text-indigo-100 uppercase tracking-widest mt-2">Access institutional data from any device home screen</p>
               </div>
            </div>
            <div className="flex items-center gap-3">
               <button 
                 onClick={installApp}
-                className="bg-white text-indigo-600 px-10 py-4 rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-indigo-50 transition-all flex items-center gap-3 shadow-lg active:scale-95"
+                className="bg-white text-indigo-600 px-10 py-4 rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-indigo-50 transition-all flex items-center gap-3 shadow-lg"
               >
                 <Download size={16} /> Install App
               </button>
-              <button 
-                onClick={() => setShowInstallCard(false)}
-                className="p-4 bg-indigo-500/30 hover:bg-indigo-500/50 rounded-2xl transition-all"
-                title="Dismiss"
-              >
+              <button onClick={() => setShowInstallCard(false)} className="p-4 bg-indigo-500/30 hover:bg-indigo-500/50 rounded-2xl transition-all">
                 <X size={20} />
               </button>
            </div>
@@ -174,27 +171,27 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
               <div className="bg-blue-400/20 p-2 rounded-xl backdrop-blur-md border border-white/10">
                 <Wand2 className="w-5 h-5 text-blue-200" />
               </div>
-              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-200">AI Principal's Briefing</h2>
+              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-200">AI Institutional Briefing</h2>
             </div>
             {isBriefingLoading ? (
               <div className="flex items-center gap-3 text-blue-200/60 font-medium italic">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Generating operational insights...</span>
+                <span>Syncing institutional insights...</span>
               </div>
             ) : (
               <p className="text-2xl font-black tracking-tight leading-snug">
-                {aiBriefing || "Initializing system diagnostics... Prepare for Term 3 closure reports."}
+                {aiBriefing || `Initializing system diagnostics for ${institutionName}...`}
               </p>
             )}
           </div>
           <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-[32px] shrink-0">
              <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-green-400 rounded-full flex items-center justify-center shadow-lg shadow-green-400/20">
-                   <Shield className="w-6 h-6 text-green-900" />
+                   <Building2 className="w-6 h-6 text-green-900" />
                 </div>
                 <div>
-                   <p className="text-[10px] font-black uppercase tracking-widest text-blue-100">System Integrity</p>
-                   <p className="text-xl font-black text-white">OPTIMIZED</p>
+                   <p className="text-[10px] font-black uppercase tracking-widest text-blue-100">Tenant Status</p>
+                   <p className="text-xl font-black text-white uppercase tracking-tighter">{institutionName.split(' ')[0]}</p>
                 </div>
              </div>
           </div>
@@ -204,14 +201,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase leading-none">{t.karibu}, {user.name.split(' ')[0]}</h1>
-          <p className="text-gray-500 font-medium tracking-tight mt-2">Financial & Expenditure Liquidity Dashboard.</p>
+          <p className="text-gray-500 font-medium tracking-tight mt-2">Active Multi-Device Session for <strong className="text-blue-600">{institutionName}</strong>.</p>
         </div>
         <div className="bg-blue-50 px-4 py-2 rounded-2xl border border-blue-100 hidden md:block">
-           <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Net Cash Remaining: KES {stats.net}</span>
+           <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Global Sync Status: SECURED</span>
         </div>
       </div>
 
-      {/* Stats Grid - Expanded to include Expenditure and Net Remaining */}
+      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[
           { label: "Total Invoiced", value: stats.expected, icon: Target, color: 'indigo', change: 'Current Year' },
@@ -271,7 +268,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
             <ResponsiveContainer width="100%" height="100%" minWidth={0}>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                 <defs>
-                  {/* FIXED: Corrected duplicate x1 attribute by replacing the second one with y1 */}
                   <linearGradient id="colorColl" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#2563eb" stopOpacity={0.2}/>
                     <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>

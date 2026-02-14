@@ -2,7 +2,7 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
-import { User, Institution } from '../models';
+import { User, Institution, AuditLog } from '../models';
 import { config } from '../config/env';
 
 const generateToken = (id: string, institutionId: string): string => {
@@ -24,14 +24,29 @@ export const login = async (req: any, res: any): Promise<void> => {
     });
 
     if (user && (await bcrypt.compare(password, user.password))) {
-      // Logic for cross-device consistency starts here
+      const token = generateToken(user.id, user.institutionId);
+
+      // SECURITY: Log the successful login attempt and device metadata
+      await AuditLog.create({
+        institutionId: user.institutionId,
+        userId: user.id,
+        userName: user.name,
+        action: 'LOGIN',
+        resource: 'Session',
+        resourceId: 'current',
+        oldValue: null,
+        newValue: { device: req.headers['user-agent'] },
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+
       res.json({
         id: user.id,
         name: user.name,
         email: user.email,
         role: user.role,
         institution: (user as any).institution,
-        token: generateToken(user.id, user.institutionId),
+        token: token,
       });
     } else {
       res.status(401).json({ message: 'Invalid credentials. Please verify your school email and password.' });
