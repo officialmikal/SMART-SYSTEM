@@ -1,3 +1,5 @@
+
+import Institution from './Institution';
 import User from './User';
 import Student from './Student';
 import Class from './Class';
@@ -7,9 +9,16 @@ import Staff from './Staff';
 import Attendance from './Attendance';
 import Exam from './Exam';
 import Mark from './Mark';
+import AuditLog from './AuditLog';
 
-// Associations
-// Fix: Use any casting to satisfy the compiler for association static methods
+// Tenant-level Associations
+Institution.hasMany(User, { foreignKey: 'institutionId', as: 'users' });
+User.belongsTo(Institution, { foreignKey: 'institutionId', as: 'institution' });
+
+Institution.hasMany(Student, { foreignKey: 'institutionId', as: 'students' });
+Student.belongsTo(Institution, { foreignKey: 'institutionId' });
+
+// Module Associations
 (Class as any).hasMany(Student, { foreignKey: 'classId', as: 'students' });
 (Student as any).belongsTo(Class, { foreignKey: 'classId', as: 'class' });
 
@@ -29,6 +38,7 @@ import Mark from './Mark';
 (Mark as any).belongsTo(Exam, { foreignKey: 'examId', as: 'exam' });
 
 export {
+  Institution,
   User,
   Student,
   Class,
@@ -37,5 +47,6 @@ export {
   Staff,
   Attendance,
   Exam,
-  Mark
+  Mark,
+  AuditLog
 };

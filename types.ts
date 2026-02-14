@@ -156,3 +156,15 @@ export interface TimetableEntry {
   room?: string;
   category: 'STEM' | 'Languages' | 'Arts' | 'Break' | 'Technical' | 'Social';
 }
+
+export interface AuditLog {
+  id: string;
+  userId: string;
+  userName: string;
+  action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN';
+  resource: string;
+  resourceId: string;
+  oldValue?: any;
+  newValue?: any;
+  timestamp: string;
+}

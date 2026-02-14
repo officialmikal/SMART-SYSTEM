@@ -1,5 +1,4 @@
-
-import express, { Request, Response, NextFunction } from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -13,27 +12,30 @@ import attendanceRoutes from './routes/attendanceRoutes';
 import examRoutes from './routes/examRoutes';
 import markRoutes from './routes/markRoutes';
 import mpesaRoutes from './routes/mpesaRoutes';
+import { getAuditLogs } from './controllers/adminController';
+import { protect, authorize } from './middleware/auth';
 
 const app = express();
 
-// Standard express middleware initialization with proper typing
+// Security Headers
+// Fix: Added 'as any' to resolve middleware type mismatch with Express app.use overloads
 app.use(helmet() as any);
 
-// Production-ready CORS - Including explicitly used Render origins
+// Typed CORS Configuration
 const allowedOrigins = [
   config.FRONTEND_URL,
   'https://smart-system-wlnh.onrender.com',
-  'https://smart-system-wlnh.onrender.com/',
   'https://elimusmart-production.netlify.app'
 ];
 
+// Fix: Added 'as any' to resolve middleware type mismatch with Express app.use overloads
 app.use(cors({
-  origin: function (origin, callback) {
+  origin: (origin, callback) => {
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*') || config.FRONTEND_URL === '*') {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error('Not allowed by CORS policy'));
     }
   },
   credentials: true,
@@ -41,7 +43,9 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }) as any);
 
+// Fix: Used any casting to bypass type mismatch between morgan and express middleware overloads
 app.use(morgan('dev') as any);
+// Fix: Added 'as any' to resolve middleware type mismatch with Express app.use overloads
 app.use(express.json() as any);
 
 // Main API Routes
@@ -55,8 +59,14 @@ app.use('/api/exams', examRoutes);
 app.use('/api/marks', markRoutes);
 app.use('/api/mpesa', mpesaRoutes);
 
-// Simple health check endpoint
-app.get('/health', (req: any, res: any) => {
+// Admin Routes (New)
+app.get('/api/admin/logs', protect, authorize('ADMIN'), (req: any, res: any) => {
+  getAuditLogs(req, res);
+});
+
+// Health Endpoint
+// Fix: Used any for req and res to resolve Property 'status' does not exist error
+app.get('/health', (_req: any, res: any) => {
   res.status(200).send('API is healthy');
 });
 

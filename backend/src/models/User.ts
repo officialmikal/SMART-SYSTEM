@@ -1,8 +1,10 @@
+
 import { Model, DataTypes, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 export interface UserAttributes {
   id: string;
+  institutionId: string;
   name: string;
   email: string;
   password: string;
@@ -13,6 +15,7 @@ export interface UserCreationAttributes extends Optional<UserAttributes, 'id'> {
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: string;
+  public institutionId!: string;
   public name!: string;
   public email!: string;
   public password!: string;
@@ -22,12 +25,19 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   public readonly updatedAt!: Date;
 }
 
-// Fix: Cast User to any to bypass static method check on subclass in this environment
-(User as any).init({
+User.init({
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true,
+  },
+  institutionId: {
+    type: DataTypes.UUID,
+    allowNull: false,
+    references: {
+      model: 'institutions',
+      key: 'id'
+    }
   },
   name: {
     type: DataTypes.STRING,

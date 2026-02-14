@@ -1,36 +1,53 @@
+
 import app from './app';
 import bcrypt from 'bcryptjs';
 import process from 'process';
 import { config } from './config/env';
 import sequelize from './config/database';
-import { User } from './models';
+import { User, Institution } from './models';
 
+/**
+ * Start Server with Multi-Tenant Seed logic.
+ */
 const start = async () => {
   try {
     await sequelize.authenticate();
-    console.log('Database connected successfully.');
+    console.log('PostgreSQL: Connected successfully.');
 
     await sequelize.sync({ force: false });
-    console.log('Models synchronized.');
+    console.log('PostgreSQL: Models Scoped and Synced.');
 
-    // Fix: Cast User to any for static methods findOne and create
-    const adminExists = await (User as any).findOne({ where: { role: 'ADMIN' } });
+    // Seed: Ensure at least one institution exists
+    let defaultInst = await Institution.findOne({ where: { subdomain: 'demo' } });
+    if (!defaultInst) {
+      defaultInst = await Institution.create({
+        name: 'ElimuSmart Demo Academy',
+        motto: 'Excellence Through Innovation',
+        registrationNumber: 'MOE/DEMO/001',
+        subdomain: 'demo'
+      });
+      console.log('Seed: Demo Institution created.');
+    }
+
+    // Seed: Ensure initial admin account exists for this institution
+    const adminExists = await User.findOne({ where: { role: 'ADMIN', institutionId: defaultInst.id } });
     if (!adminExists) {
       const hashedPassword = await bcrypt.hash('adminpassword', 10);
-      await (User as any).create({
-        name: 'System Admin',
+      await User.create({
+        name: 'Master Admin',
         email: 'admin@school.ac.ke',
         password: hashedPassword,
         role: 'ADMIN',
+        institutionId: defaultInst.id
       });
-      console.log('Seed: Initial admin account created (admin@school.ac.ke / adminpassword)');
+      console.log('Seed: Master Admin assigned to Demo Institution.');
     }
 
     app.listen(config.PORT, () => {
-      console.log(`ElimuSmart Server running in ${config.NODE_ENV} mode on port ${config.PORT}`);
+      console.log(`ElimuSmart: Multi-Tenant Core Running on port ${config.PORT}`);
     });
   } catch (error) {
-    console.error('Unable to connect to the database:', error);
+    console.error('CRITICAL: Database initialization failed:', error);
     process.exit(1);
   }
 };
