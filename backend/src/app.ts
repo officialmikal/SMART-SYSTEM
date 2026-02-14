@@ -1,3 +1,4 @@
+
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -18,19 +19,22 @@ import { protect, authorize } from './middleware/auth';
 const app = express();
 
 // Security Headers
-// Fix: Added 'as any' to resolve middleware type mismatch with Express app.use overloads
 app.use(helmet() as any);
 
-// Typed CORS Configuration
+// Expanded CORS Configuration to include local development environments
 const allowedOrigins = [
   config.FRONTEND_URL,
   'https://smart-system-wlnh.onrender.com',
-  'https://elimusmart-production.netlify.app'
+  'https://elimusmart-production.netlify.app',
+  'http://localhost:3000',
+  'http://localhost:5173',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:5173'
 ];
 
-// Fix: Added 'as any' to resolve middleware type mismatch with Express app.use overloads
 app.use(cors({
   origin: (origin, callback) => {
+    // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*') || config.FRONTEND_URL === '*') {
       callback(null, true);
@@ -43,9 +47,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }) as any);
 
-// Fix: Used any casting to bypass type mismatch between morgan and express middleware overloads
 app.use(morgan('dev') as any);
-// Fix: Added 'as any' to resolve middleware type mismatch with Express app.use overloads
 app.use(express.json() as any);
 
 // Main API Routes
@@ -65,7 +67,6 @@ app.get('/api/admin/logs', protect, authorize('ADMIN'), (req: any, res: any) => 
 });
 
 // Health Endpoint
-// Fix: Used any for req and res to resolve Property 'status' does not exist error
 app.get('/health', (_req: any, res: any) => {
   res.status(200).send('API is healthy');
 });

@@ -52,6 +52,7 @@ interface SettingsModuleProps {
   setSchoolConfig: React.Dispatch<React.SetStateAction<any>>;
   systemRoles: CustomRole[];
   setSystemRoles: React.Dispatch<React.SetStateAction<CustomRole[]>>;
+  isBackendLive?: boolean;
 }
 
 export const SettingsModule: React.FC<SettingsModuleProps> = ({ 
@@ -63,7 +64,8 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
   schoolConfig,
   setSchoolConfig,
   systemRoles,
-  setSystemRoles
+  setSystemRoles,
+  isBackendLive = false
 }) => {
   const [activeSection, setActiveSection] = useState<'profile' | 'school' | 'academic' | 'security' | 'users' | 'roles' | 'logs'>('profile');
   const [isSaving, setIsSaving] = useState(false);
@@ -87,6 +89,10 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
   }, [activeSection]);
 
   const fetchAuditLogs = async () => {
+    if (!isBackendLive) {
+      setAuditLogs([]);
+      return;
+    }
     setIsLogsLoading(true);
     try {
       const data = await apiService.request('/admin/logs');
@@ -114,17 +120,30 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
 
     setIsSaving(true);
     try {
-      await apiService.request('/auth/change-password', {
-        method: 'PUT',
-        body: JSON.stringify({
-          currentPassword: pwForm.current,
-          newPassword: pwForm.new
-        })
-      });
+      if (isBackendLive) {
+        // Correct endpoint path matching backend structure and standardizing on /auth
+        await apiService.request('/auth/change-password', {
+          method: 'PUT',
+          body: JSON.stringify({
+            currentPassword: pwForm.current,
+            newPassword: pwForm.new
+          })
+        });
+      } else {
+        // Simulate a delay for demo purposes in "Local Mode"
+        await new Promise(resolve => setTimeout(resolve, 1200));
+        console.log("Demo Mode: Password change simulated.");
+      }
+      
       setPwSuccess('Credentials updated successfully. Your new password is now active on all devices.');
       setPwForm({ current: '', new: '', confirm: '' });
     } catch (err: any) {
-      setPwError(err.message || 'Failed to update password. Check current credentials.');
+      // Catch network errors and display as a clearer institutional security notice
+      if (err.message === 'Failed to fetch') {
+        setPwError('Network Error: The institutional security vault is unreachable. Please check your internet connection.');
+      } else {
+        setPwError(err.message || 'Failed to update password. Check current credentials.');
+      }
     } finally {
       setIsSaving(false);
     }

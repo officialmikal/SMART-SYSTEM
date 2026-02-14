@@ -81,12 +81,10 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    // 1. Initial check for existing prompt stashed in index.tsx
     if (window.elimusmart_deferredPrompt) {
       setDeferredPrompt(window.elimusmart_deferredPrompt);
     }
 
-    // 2. Listen for the custom event or direct event if it fires later
     const handleInstallable = () => {
       setDeferredPrompt(window.elimusmart_deferredPrompt);
     };
@@ -133,7 +131,6 @@ const App: React.FC = () => {
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
     console.log(`PWA Install User Choice: ${outcome}`);
-    // Clear the prompt regardless of outcome to maintain UX
     setDeferredPrompt(null);
     window.elimusmart_deferredPrompt = null;
   };
@@ -184,7 +181,7 @@ const App: React.FC = () => {
 
     if (isBackendLive) {
       try {
-        const res = await apiService.request('/api/auth/login', {
+        const res = await apiService.request('/auth/login', {
           method: 'POST',
           body: JSON.stringify({ email, password })
         });
@@ -289,7 +286,7 @@ const App: React.FC = () => {
         {currentTab === 'reports' && <ReportsModule lang={lang} students={students} users={[]} schoolLogo={schoolLogo} schoolConfig={schoolConfig} />}
         {currentTab === 'timetable' && <TimetableModule lang={lang} />}
         {currentTab === 'messaging' && <MessagingModule lang={lang} user={user} students={students} schoolConfig={schoolConfig} setSchoolConfig={setSchoolConfig} />}
-        {currentTab === 'settings' && <SettingsModule currentUser={user} users={[]} setUsers={() => {}} schoolLogo={schoolLogo} setSchoolLogo={setSchoolLogo} schoolConfig={schoolConfig} setSchoolConfig={setSchoolConfig} systemRoles={systemRoles} setSystemRoles={setSystemRoles} />}
+        {currentTab === 'settings' && <SettingsModule currentUser={user} users={[]} setUsers={() => {}} schoolLogo={schoolLogo} setSchoolLogo={setSchoolLogo} schoolConfig={schoolConfig} setSchoolConfig={setSchoolConfig} systemRoles={systemRoles} setSystemRoles={setSystemRoles} isBackendLive={isBackendLive} />}
       </div>
     </Layout>
   );
