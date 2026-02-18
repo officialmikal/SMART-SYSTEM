@@ -10,6 +10,7 @@ import Attendance from './Attendance';
 import Exam from './Exam';
 import Mark from './Mark';
 import AuditLog from './AuditLog';
+import SmsLog from './SmsLog';
 
 // Tenant-level Associations
 Institution.hasMany(User, { foreignKey: 'institutionId', as: 'users' });
@@ -17,6 +18,9 @@ User.belongsTo(Institution, { foreignKey: 'institutionId', as: 'institution' });
 
 Institution.hasMany(Student, { foreignKey: 'institutionId', as: 'students' });
 Student.belongsTo(Institution, { foreignKey: 'institutionId' });
+
+Institution.hasMany(SmsLog, { foreignKey: 'institutionId', as: 'smsLogs' });
+SmsLog.belongsTo(Institution, { foreignKey: 'institutionId' });
 
 // Module Associations
 (Class as any).hasMany(Student, { foreignKey: 'classId', as: 'students' });
@@ -48,5 +52,6 @@ export {
   Attendance,
   Exam,
   Mark,
-  AuditLog
+  AuditLog,
+  SmsLog
 };

@@ -13,6 +13,7 @@ import attendanceRoutes from './routes/attendanceRoutes';
 import examRoutes from './routes/examRoutes';
 import markRoutes from './routes/markRoutes';
 import mpesaRoutes from './routes/mpesaRoutes';
+import messagingRoutes from './routes/messagingRoutes';
 import { getAuditLogs } from './controllers/adminController';
 import { protect, authorize } from './middleware/auth';
 
@@ -21,7 +22,7 @@ const app = express();
 // Security Headers
 app.use(helmet() as any);
 
-// Expanded CORS Configuration to include local development environments
+// Expanded CORS Configuration
 const allowedOrigins = [
   config.FRONTEND_URL,
   'https://smart-system-wlnh.onrender.com',
@@ -34,7 +35,6 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: (origin, callback) => {
-    // allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*') || config.FRONTEND_URL === '*') {
       callback(null, true);
@@ -60,8 +60,9 @@ app.use('/api/attendance', attendanceRoutes);
 app.use('/api/exams', examRoutes);
 app.use('/api/marks', markRoutes);
 app.use('/api/mpesa', mpesaRoutes);
+app.use('/api/messaging', messagingRoutes);
 
-// Admin Routes (New)
+// Admin Routes
 app.get('/api/admin/logs', protect, authorize('ADMIN'), (req: any, res: any) => {
   getAuditLogs(req, res);
 });
