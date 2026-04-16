@@ -14,18 +14,19 @@ export interface UserAttributes {
 export interface UserCreationAttributes extends Optional<UserAttributes, 'id'> {}
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
-  public id!: string;
-  public institutionId!: string;
-  public name!: string;
-  public email!: string;
-  public password!: string;
-  public role!: 'ADMIN' | 'PRINCIPAL' | 'CLASS_TEACHER' | 'SUBJECT_TEACHER';
+  declare id: string;
+  declare institutionId: string;
+  declare name: string;
+  declare email: string;
+  declare password: string;
+  declare role: 'ADMIN' | 'PRINCIPAL' | 'CLASS_TEACHER' | 'SUBJECT_TEACHER';
 
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 }
 
-User.init({
+// Fix: Cast User to any to bypass static method check on subclass in this environment
+(User as any).init({
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,

@@ -4,7 +4,8 @@ import { SmsLog, AuditLog } from '../models';
 
 export const getSmsLogs = async (req: any, res: any) => {
   try {
-    const logs = await SmsLog.findAll({
+    // Fix: Cast SmsLog to any for static findAll method
+    const logs = await (SmsLog as any).findAll({
       where: { institutionId: req.institutionId },
       order: [['createdAt', 'DESC']],
       limit: 100
@@ -18,7 +19,8 @@ export const getSmsLogs = async (req: any, res: any) => {
 export const sendBulkSms = async (req: any, res: any) => {
   const { type, recipientsCount, message, cost } = req.body;
   try {
-    const log = await SmsLog.create({
+    // Fix: Cast SmsLog to any for static create method
+    const log = await (SmsLog as any).create({
       institutionId: req.institutionId,
       type,
       recipientsCount,
@@ -29,7 +31,8 @@ export const sendBulkSms = async (req: any, res: any) => {
       providerResponse: 'Dispatched through institutional gateway.'
     });
 
-    await AuditLog.create({
+    // Fix: Cast AuditLog to any for static create method
+    await (AuditLog as any).create({
       institutionId: req.institutionId,
       userId: req.user.id,
       userName: req.user.name,

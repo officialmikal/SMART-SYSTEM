@@ -12,7 +12,8 @@ export const getAllStudents = async (req: any, res: any): Promise<void> => {
     const where: WhereOptions = {};
     if (classId) where.classId = Number(classId);
 
-    const students = await Student.findAll({
+    // Fix: Cast Student to any for static findAll method
+    const students = await (Student as any).findAll({
       where,
       include: [{ model: Class, as: 'class' }]
     });
@@ -29,13 +30,15 @@ export const createStudent = async (req: any, res: any): Promise<void> => {
   try {
     const { admissionNumber, firstName, lastName, classId, stream, gender, dob, guardianPhone, guardianName, agreedFee } = req.body;
 
-    const existing = await Student.findOne({ where: { admissionNumber } });
+    // Fix: Cast Student to any for static findOne method
+    const existing = await (Student as any).findOne({ where: { admissionNumber } });
     if (existing) {
       res.status(400).json({ message: 'Admission number already exists' });
       return;
     }
 
-    const student = await Student.create({
+    // Fix: Cast Student to any for static create method
+    const student = await (Student as any).create({
       admissionNumber,
       firstName,
       lastName,
@@ -49,7 +52,8 @@ export const createStudent = async (req: any, res: any): Promise<void> => {
     });
 
     // AUDIT LOG
-    await AuditLog.create({
+    // Fix: Cast AuditLog to any for static create method
+    await (AuditLog as any).create({
       userId: req.user?.id || 'system',
       userName: req.user?.name || 'System',
       action: 'CREATE',
@@ -70,7 +74,8 @@ export const createStudent = async (req: any, res: any): Promise<void> => {
  */
 export const getStudentById = async (req: any, res: any): Promise<void> => {
   try {
-    const student = await Student.findByPk(req.params.id, {
+    // Fix: Cast Student to any for static findByPk method
+    const student = await (Student as any).findByPk(req.params.id, {
       include: [{ model: Class, as: 'class' }]
     });
     if (!student) {
@@ -88,7 +93,8 @@ export const getStudentById = async (req: any, res: any): Promise<void> => {
  */
 export const updateStudent = async (req: any, res: any): Promise<void> => {
   try {
-    const student = await Student.findByPk(req.params.id);
+    // Fix: Cast Student to any for static findByPk method
+    const student = await (Student as any).findByPk(req.params.id);
     if (!student) {
       res.status(404).json({ message: 'Student not found' });
       return;
@@ -99,7 +105,8 @@ export const updateStudent = async (req: any, res: any): Promise<void> => {
     const newValue = student.toJSON();
 
     // AUDIT LOG
-    await AuditLog.create({
+    // Fix: Cast AuditLog to any for static create method
+    await (AuditLog as any).create({
       userId: req.user?.id || 'system',
       userName: req.user?.name || 'System',
       action: 'UPDATE',
@@ -120,7 +127,8 @@ export const updateStudent = async (req: any, res: any): Promise<void> => {
  */
 export const deleteStudent = async (req: any, res: any): Promise<void> => {
   try {
-    const student = await Student.findByPk(req.params.id);
+    // Fix: Cast Student to any for static findByPk method
+    const student = await (Student as any).findByPk(req.params.id);
     if (!student) {
       res.status(404).json({ message: 'Student not found' });
       return;
@@ -130,7 +138,8 @@ export const deleteStudent = async (req: any, res: any): Promise<void> => {
     await student.destroy();
 
     // AUDIT LOG
-    await AuditLog.create({
+    // Fix: Cast AuditLog to any for static create method
+    await (AuditLog as any).create({
       userId: req.user?.id || 'system',
       userName: req.user?.name || 'System',
       action: 'DELETE',

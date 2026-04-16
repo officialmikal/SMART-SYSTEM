@@ -20,7 +20,7 @@ import { protect, authorize } from './middleware/auth';
 const app = express();
 
 // Security Headers
-app.use(helmet() as any);
+// app.use(helmet() as any);
 
 // Expanded CORS Configuration
 const allowedOrigins = [
@@ -36,9 +36,17 @@ const allowedOrigins = [
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1 || allowedOrigins.includes('*') || config.FRONTEND_URL === '*') {
+    
+    const isAllowed = allowedOrigins.indexOf(origin) !== -1 || 
+                     allowedOrigins.includes('*') || 
+                     config.FRONTEND_URL === '*' ||
+                     origin.includes('aistudio.google.com') ||
+                     origin.includes('run.app');
+
+    if (isAllowed) {
       callback(null, true);
     } else {
+      console.warn(`CORS blocked for origin: ${origin}`);
       callback(new Error('Not allowed by CORS policy'));
     }
   },

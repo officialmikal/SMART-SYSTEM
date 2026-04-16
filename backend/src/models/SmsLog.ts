@@ -17,20 +17,21 @@ export interface SmsLogAttributes {
 export interface SmsLogCreationAttributes extends Optional<SmsLogAttributes, 'id' | 'providerResponse'> {}
 
 export class SmsLog extends Model<SmsLogAttributes, SmsLogCreationAttributes> implements SmsLogAttributes {
-  public id!: string;
-  public institutionId!: string;
-  public type!: string;
-  public recipientsCount!: number;
-  public message!: string;
-  public status!: 'Sent' | 'Delivered' | 'Failed' | 'Queued';
-  public cost!: number;
-  public providerResponse!: string | null;
-  public sentBy!: string;
+  declare id: string;
+  declare institutionId: string;
+  declare type: string;
+  declare recipientsCount: number;
+  declare message: string;
+  declare status: 'Sent' | 'Delivered' | 'Failed' | 'Queued';
+  declare cost: number;
+  declare providerResponse: string | null;
+  declare sentBy: string;
 
-  public readonly createdAt!: Date;
+  declare readonly createdAt: Date;
 }
 
-SmsLog.init({
+// Fix: Cast SmsLog to any to bypass static method check on subclass in this environment
+(SmsLog as any).init({
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,

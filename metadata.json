@@ -3,5 +3,6 @@
   "description": "A production-ready school management system for Kenya featuring M-Pesa integration, CBC competency tracking, attendance, and AI-powered report cards.",
   "requestFramePermissions": [
     "camera"
-  ]
+  ],
+  "majorCapabilities": []
 }

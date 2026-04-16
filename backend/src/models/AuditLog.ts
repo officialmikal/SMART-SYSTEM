@@ -19,22 +19,23 @@ export interface AuditLogAttributes {
 export interface AuditLogCreationAttributes extends Optional<AuditLogAttributes, 'id' | 'ipAddress' | 'userAgent'> {}
 
 export class AuditLog extends Model<AuditLogAttributes, AuditLogCreationAttributes> implements AuditLogAttributes {
-  public id!: string;
-  public institutionId!: string;
-  public userId!: string;
-  public userName!: string;
-  public action!: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN';
-  public resource!: string;
-  public resourceId!: string;
-  public oldValue!: any | null;
-  public newValue!: any | null;
-  public ipAddress!: string | null;
-  public userAgent!: string | null;
+  declare id: string;
+  declare institutionId: string;
+  declare userId: string;
+  declare userName: string;
+  declare action: 'CREATE' | 'UPDATE' | 'DELETE' | 'LOGIN';
+  declare resource: string;
+  declare resourceId: string;
+  declare oldValue: any | null;
+  declare newValue: any | null;
+  declare ipAddress: string | null;
+  declare userAgent: string | null;
 
-  public readonly createdAt!: Date;
+  declare readonly createdAt: Date;
 }
 
-AuditLog.init({
+// Fix: Cast AuditLog to any to bypass static method check on subclass in this environment
+(AuditLog as any).init({
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,
@@ -65,11 +66,11 @@ AuditLog.init({
     allowNull: false,
   },
   oldValue: {
-    type: DataTypes.JSONB,
+    type: DataTypes.JSON,
     allowNull: true,
   },
   newValue: {
-    type: DataTypes.JSONB,
+    type: DataTypes.JSON,
     allowNull: true,
   },
   ipAddress: {

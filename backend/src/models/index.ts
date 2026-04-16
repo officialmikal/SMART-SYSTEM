@@ -1,26 +1,27 @@
 
-import Institution from './Institution';
-import User from './User';
-import Student from './Student';
-import Class from './Class';
-import Fee from './Fee';
-import Payment from './Payment';
-import Staff from './Staff';
-import Attendance from './Attendance';
-import Exam from './Exam';
-import Mark from './Mark';
-import AuditLog from './AuditLog';
-import SmsLog from './SmsLog';
+import Institution from './Institution.ts';
+import User from './User.ts';
+import Student from './Student.ts';
+import Class from './Class.ts';
+import Fee from './Fee.ts';
+import Payment from './Payment.ts';
+import Staff from './Staff.ts';
+import Attendance from './Attendance.ts';
+import Exam from './Exam.ts';
+import Mark from './Mark.ts';
+import AuditLog from './AuditLog.ts';
+import SmsLog from './SmsLog.ts';
 
 // Tenant-level Associations
-Institution.hasMany(User, { foreignKey: 'institutionId', as: 'users' });
-User.belongsTo(Institution, { foreignKey: 'institutionId', as: 'institution' });
+// Fix: Cast models to any for static association methods
+(Institution as any).hasMany(User, { foreignKey: 'institutionId', as: 'users' });
+(User as any).belongsTo(Institution, { foreignKey: 'institutionId', as: 'institution' });
 
-Institution.hasMany(Student, { foreignKey: 'institutionId', as: 'students' });
-Student.belongsTo(Institution, { foreignKey: 'institutionId' });
+(Institution as any).hasMany(Student, { foreignKey: 'institutionId', as: 'students' });
+(Student as any).belongsTo(Institution, { foreignKey: 'institutionId' });
 
-Institution.hasMany(SmsLog, { foreignKey: 'institutionId', as: 'smsLogs' });
-SmsLog.belongsTo(Institution, { foreignKey: 'institutionId' });
+(Institution as any).hasMany(SmsLog, { foreignKey: 'institutionId', as: 'smsLogs' });
+(SmsLog as any).belongsTo(Institution, { foreignKey: 'institutionId' });
 
 // Module Associations
 (Class as any).hasMany(Student, { foreignKey: 'classId', as: 'students' });

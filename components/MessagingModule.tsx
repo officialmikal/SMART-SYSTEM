@@ -189,9 +189,10 @@ export const MessagingModule: React.FC<MessagingModuleProps> = ({ lang, user, st
 
     setIsSending(true);
     try {
-      const payload = Object.entries(parentGroups).map(([phone, kids]) => {
+      // Fix: Cast Object.entries(parentGroups) to the correct type to avoid 'unknown' inference for 'kids'
+      const payload = (Object.entries(parentGroups) as [string, Student[]][]).map(([phone, kids]) => {
         const names = kids.map(k => k.firstName).join(' & ');
-        // Fix for line 159 (reported): Explicitly type the accumulator and current value to avoid Student type inference errors
+        // Fix: Explicitly type kids to avoid 'unknown' errors when using reduce
         const totalBal = kids.reduce((sum: number, k: Student) => sum + (Number(k.feeBalance) || 0), 0);
         let msg = (templates[selectedType] || customMessage)
           .replace(/{StudentName}/g, names)

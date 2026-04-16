@@ -13,15 +13,15 @@ interface ExamAttributes {
 interface ExamCreationAttributes extends Optional<ExamAttributes, 'id'> {}
 
 export class Exam extends Model<ExamAttributes, ExamCreationAttributes> implements ExamAttributes {
-  public id!: string;
-  public title!: string;
-  public term!: number;
-  public year!: number;
-  public type!: 'CAT' | 'End of Term' | 'Initial Assessment';
-  public date!: string;
+  declare id: string;
+  declare title: string;
+  declare term: number;
+  declare year: number;
+  declare type: 'CAT' | 'End of Term' | 'Initial Assessment';
+  declare date: string;
 
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 }
 
 // Fix: Cast Exam to any to bypass static method check on subclass in this environment

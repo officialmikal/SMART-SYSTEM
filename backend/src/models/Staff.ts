@@ -15,17 +15,17 @@ interface StaffAttributes {
 interface StaffCreationAttributes extends Optional<StaffAttributes, 'id' | 'photo'> {}
 
 export class Staff extends Model<StaffAttributes, StaffCreationAttributes> implements StaffAttributes {
-  public id!: string;
-  public staffId!: string;
-  public name!: string;
-  public email!: string;
-  public phone!: string;
-  public role!: string;
-  public subjects!: string[];
-  public photo!: string | null;
+  declare id: string;
+  declare staffId: string;
+  declare name: string;
+  declare email: string;
+  declare phone: string;
+  declare role: string;
+  declare subjects: string[];
+  declare photo: string | null;
 
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 }
 
 // Fix: Cast Staff to any to bypass static method check on subclass in this environment
@@ -59,7 +59,7 @@ export class Staff extends Model<StaffAttributes, StaffCreationAttributes> imple
     allowNull: false,
   },
   subjects: {
-    type: DataTypes.ARRAY(DataTypes.STRING),
+    type: DataTypes.JSON,
     defaultValue: [],
   },
   photo: {

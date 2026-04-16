@@ -8,7 +8,8 @@ import { AuditLog } from '../models';
 export const getAuditLogs = async (req: any, res: any): Promise<void> => {
   try {
     // SECURITY: Only return logs matching the requester's institutionId
-    const logs = await AuditLog.findAll({
+    // Fix: Cast AuditLog to any for static findAll method
+    const logs = await (AuditLog as any).findAll({
       where: { institutionId: req.institutionId },
       order: [['createdAt', 'DESC']],
       limit: 500

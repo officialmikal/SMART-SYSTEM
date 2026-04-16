@@ -18,9 +18,11 @@ const start = async () => {
     console.log('PostgreSQL: Models Scoped and Synced.');
 
     // Seed: Ensure at least one institution exists
-    let defaultInst = await Institution.findOne({ where: { subdomain: 'demo' } });
+    // Fix: Cast Institution to any for static findOne method
+    let defaultInst = await (Institution as any).findOne({ where: { subdomain: 'demo' } });
     if (!defaultInst) {
-      defaultInst = await Institution.create({
+      // Fix: Cast Institution to any for static create method
+      defaultInst = await (Institution as any).create({
         name: 'ElimuSmart Demo Academy',
         motto: 'Excellence Through Innovation',
         registrationNumber: 'MOE/DEMO/001',
@@ -30,10 +32,12 @@ const start = async () => {
     }
 
     // Seed: Ensure initial admin account exists for this institution
-    const adminExists = await User.findOne({ where: { role: 'ADMIN', institutionId: defaultInst.id } });
+    // Fix: Cast User to any for static findOne method
+    const adminExists = await (User as any).findOne({ where: { role: 'ADMIN', institutionId: defaultInst.id } });
     if (!adminExists) {
       const hashedPassword = await bcrypt.hash('adminpassword', 10);
-      await User.create({
+      // Fix: Cast User to any for static create method
+      await (User as any).create({
         name: 'Master Admin',
         email: 'admin@school.ac.ke',
         password: hashedPassword,

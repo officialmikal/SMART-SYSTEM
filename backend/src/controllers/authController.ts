@@ -18,7 +18,8 @@ export const login = async (req: any, res: any): Promise<void> => {
   const { email, password } = req.body;
 
   try {
-    const user = await User.findOne({ 
+    // Fix: Cast User to any for static findOne method
+    const user = await (User as any).findOne({ 
       where: { email },
       include: [{ model: Institution, as: 'institution' }]
     });
@@ -27,7 +28,8 @@ export const login = async (req: any, res: any): Promise<void> => {
       const token = generateToken(user.id, user.institutionId);
 
       // SECURITY: Log the successful login attempt and device metadata
-      await AuditLog.create({
+      // Fix: Cast AuditLog to any for static create method
+      await (AuditLog as any).create({
         institutionId: user.institutionId,
         userId: user.id,
         userName: user.name,
@@ -51,8 +53,13 @@ export const login = async (req: any, res: any): Promise<void> => {
     } else {
       res.status(401).json({ message: 'Invalid credentials. Please verify your school email and password.' });
     }
-  } catch (error) {
-    res.status(500).json({ message: 'Security Engine Error during login', error });
+  } catch (error: any) {
+    console.error('Login Error:', error);
+    const isDbError = error.name === 'SequelizeConnectionError' || error.name === 'SequelizeConnectionRefusedError' || error.message?.includes('terminated unexpectedly');
+    res.status(500).json({ 
+      message: isDbError ? 'Database Connection Error. Please check if the database is online and accessible.' : 'Security Engine Error during login', 
+      error: config.NODE_ENV === 'development' ? error : undefined 
+    });
   }
 };
 
@@ -63,7 +70,8 @@ export const changePassword = async (req: any, res: any): Promise<void> => {
   const { currentPassword, newPassword } = req.body;
 
   try {
-    const user = await User.findByPk(req.user.id);
+    // Fix: Cast User to any for static findByPk method
+    const user = await (User as any).findByPk(req.user.id);
     if (!user) {
       res.status(404).json({ message: 'User not found.' });
       return;
@@ -82,7 +90,8 @@ export const changePassword = async (req: any, res: any): Promise<void> => {
     await user.save();
 
     // Log the security event
-    await AuditLog.create({
+    // Fix: Cast AuditLog to any for static create method
+    await (AuditLog as any).create({
       institutionId: user.institutionId,
       userId: user.id,
       userName: user.name,

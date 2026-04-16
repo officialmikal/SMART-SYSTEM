@@ -38,7 +38,8 @@ export const protect = async (req: any, res: any, next: NextFunction): Promise<v
     const decoded = jwt.verify(token, config.JWT_SECRET) as JwtPayload;
     
     // Multi-tenant check: Fetch user and their associated institution
-    const user = await User.findByPk(decoded.id, {
+    // Fix: Cast User to any for static findByPk method
+    const user = await (User as any).findByPk(decoded.id, {
       include: [{ model: Institution, as: 'institution' }]
     });
 

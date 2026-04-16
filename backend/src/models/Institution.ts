@@ -15,19 +15,20 @@ export interface InstitutionAttributes {
 export interface InstitutionCreationAttributes extends Optional<InstitutionAttributes, 'id' | 'logo' | 'subdomain'> {}
 
 export class Institution extends Model<InstitutionAttributes, InstitutionCreationAttributes> implements InstitutionAttributes {
-  public id!: string;
-  public name!: string;
-  public motto!: string | null;
-  public registrationNumber!: string | null;
-  public logo!: string | null;
-  public subdomain!: string | null;
-  public active!: boolean;
+  declare id: string;
+  declare name: string;
+  declare motto: string | null;
+  declare registrationNumber: string | null;
+  declare logo: string | null;
+  declare subdomain: string | null;
+  declare active: boolean;
 
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 }
 
-Institution.init({
+// Fix: Cast Institution to any to bypass static method check on subclass in this environment
+(Institution as any).init({
   id: {
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,

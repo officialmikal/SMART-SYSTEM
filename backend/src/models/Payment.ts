@@ -14,16 +14,16 @@ export interface PaymentAttributes {
 export interface PaymentCreationAttributes extends Optional<PaymentAttributes, 'id' | 'date' | 'description'> {}
 
 export class Payment extends Model<PaymentAttributes, PaymentCreationAttributes> implements PaymentAttributes {
-  public id!: string;
-  public studentId!: string;
-  public amount!: number;
-  public date!: Date;
-  public method!: 'M-PESA' | 'BANK' | 'CASH';
-  public transactionId!: string;
-  public description!: string | null;
+  declare id: string;
+  declare studentId: string;
+  declare amount: number;
+  declare date: Date;
+  declare method: 'M-PESA' | 'BANK' | 'CASH';
+  declare transactionId: string;
+  declare description: string | null;
 
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 }
 
 // Fix: Cast Payment to any to bypass static method check on subclass in this environment
@@ -44,7 +44,7 @@ export class Payment extends Model<PaymentAttributes, PaymentCreationAttributes>
   amount: {
     type: DataTypes.DECIMAL(12, 2),
     allowNull: false,
-    get() {
+    get(this: any) {
       const value = this.getDataValue('amount');
       return value === null ? 0 : parseFloat(String(value));
     },

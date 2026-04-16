@@ -12,14 +12,14 @@ interface AttendanceAttributes {
 interface AttendanceCreationAttributes extends Optional<AttendanceAttributes, 'id' | 'remarks'> {}
 
 export class Attendance extends Model<AttendanceAttributes, AttendanceCreationAttributes> implements AttendanceAttributes {
-  public id!: number;
-  public studentId!: string;
-  public date!: string;
-  public status!: 'Present' | 'Absent' | 'Late';
-  public remarks!: string | null;
+  declare id: number;
+  declare studentId: string;
+  declare date: string;
+  declare status: 'Present' | 'Absent' | 'Late';
+  declare remarks: string | null;
 
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 }
 
 // Fix: Cast Attendance to any to bypass static method check on subclass in this environment

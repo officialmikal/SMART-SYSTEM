@@ -10,12 +10,12 @@ export interface FeeAttributes {
 export interface FeeCreationAttributes extends Optional<FeeAttributes, 'id'> {}
 
 export class Fee extends Model<FeeAttributes, FeeCreationAttributes> implements FeeAttributes {
-  public id!: number;
-  public classId!: number;
-  public amount!: number;
+  declare id: number;
+  declare classId: number;
+  declare amount: number;
 
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 }
 
 // Fix: Cast Fee to any to bypass static method check on subclass in this environment
@@ -37,7 +37,7 @@ export class Fee extends Model<FeeAttributes, FeeCreationAttributes> implements 
     type: DataTypes.DECIMAL(12, 2),
     allowNull: false,
     defaultValue: 0,
-    get() {
+    get(this: any) {
       const value = this.getDataValue('amount');
       return value === null ? 0 : parseFloat(String(value));
     },

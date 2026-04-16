@@ -4,7 +4,7 @@
  * Centralizes all communication with the Render Backend
  */
 
-const API_BASE_URL = 'https://elimusmart-api.onrender.com/api'; // Replace with your actual Render URL if different
+const API_BASE_URL = '/api'; // Points to the local backend in this environment
 
 export const apiService = {
   getAuthToken() {

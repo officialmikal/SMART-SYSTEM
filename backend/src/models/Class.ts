@@ -9,11 +9,11 @@ export interface ClassAttributes {
 export interface ClassCreationAttributes extends Optional<ClassAttributes, 'id'> {}
 
 export class Class extends Model<ClassAttributes, ClassCreationAttributes> implements ClassAttributes {
-  public id!: number;
-  public name!: string;
+  declare id: number;
+  declare name: string;
 
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 }
 
 // Fix: Cast Class to any to bypass static method check on subclass in this environment

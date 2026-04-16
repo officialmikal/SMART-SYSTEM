@@ -14,16 +14,16 @@ interface MarkAttributes {
 interface MarkCreationAttributes extends Optional<MarkAttributes, 'id' | 'remarks'> {}
 
 export class Mark extends Model<MarkAttributes, MarkCreationAttributes> implements MarkAttributes {
-  public id!: number;
-  public studentId!: string;
-  public examId!: string;
-  public subject!: string;
-  public score!: number;
-  public cbcGrade!: 'EE' | 'ME' | 'AE' | 'BE';
-  public remarks!: string | null;
+  declare id: number;
+  declare studentId: string;
+  declare examId: string;
+  declare subject: string;
+  declare score: number;
+  declare cbcGrade: 'EE' | 'ME' | 'AE' | 'BE';
+  declare remarks: string | null;
 
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  declare readonly createdAt: Date;
+  declare readonly updatedAt: Date;
 }
 
 // Fix: Cast Mark to any to bypass static method check on subclass in this environment
