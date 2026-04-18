@@ -2,6 +2,8 @@
 export enum UserRole {
   ADMIN = 'ADMIN',
   PRINCIPAL = 'PRINCIPAL',
+  TEACHER = 'TEACHER',
+  FINANCE = 'FINANCE',
   CLASS_TEACHER = 'CLASS_TEACHER',
   SUBJECT_TEACHER = 'SUBJECT_TEACHER',
   STUDENT = 'STUDENT',
@@ -147,6 +149,8 @@ export interface User {
   role: UserRole;
   password?: string;
   avatar?: string;
+  active: boolean;
+  institutionId?: string;
   customRoleName?: string; // Added to display custom role labels
 }
 

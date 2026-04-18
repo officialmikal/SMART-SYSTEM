@@ -81,13 +81,21 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
 
   // Password Change States
   const [pwForm, setPwForm] = useState({ current: '', new: '', confirm: '' });
+  const [resetPwForm, setResetPwForm] = useState({ id: '', name: '', password: '', confirm: '' });
+  const [isResetPwModalOpen, setIsResetPwModalOpen] = useState(false);
   const [pwError, setPwError] = useState('');
   const [pwSuccess, setPwSuccess] = useState('');
 
   // User Management States
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
-  const [userFormData, setUserFormData] = useState({ name: '', email: '', role: UserRole.SUBJECT_TEACHER, password: '' });
+  const [userFormData, setUserFormData] = useState({ 
+    name: '', 
+    email: '', 
+    role: UserRole.SUBJECT_TEACHER, 
+    password: '',
+    active: true 
+  });
 
   // Role Management States
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
@@ -116,10 +124,123 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
 
   const fetchUsers = async () => {
     try {
-      const data = await apiService.request('/users');
-      setUsers(data);
+      if (isBackendLive) {
+        const data = await apiService.request('/users');
+        setUsers(data);
+      } else {
+        // Mock data ONLY if the list is currently empty in demo mode
+        if (users.length === 0) {
+          const mockUsers: UserType[] = [
+            { id: 'u1', name: 'Principal Jane', email: 'principal@school.ac.ke', role: UserRole.PRINCIPAL, active: true },
+            { id: 'u2', name: 'Finance Mgr John', email: 'finance@school.ac.ke', role: UserRole.FINANCE, active: true },
+            { id: 'u3', name: 'Teacher Sarah', email: 'teacher@school.ac.ke', role: UserRole.TEACHER, active: false }
+          ];
+          setUsers(mockUsers);
+        }
+      }
     } catch (e) {
       console.error("Failed to fetch users");
+    }
+  };
+
+  const handleSaveUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+      if (isBackendLive) {
+        if (editingUser) {
+          const updated = await apiService.request(`/users/${editingUser.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+              name: userFormData.name,
+              email: userFormData.email,
+              role: userFormData.role,
+              active: userFormData.active
+            })
+          });
+          setUsers(prev => prev.map(u => u.id === updated.id ? updated : u));
+        } else {
+          const created = await apiService.request('/users', {
+            method: 'POST',
+            body: JSON.stringify(userFormData)
+          });
+          setUsers(prev => [...prev, created]);
+        }
+      } else {
+        // Mock logic
+        const mockUser = {
+          id: editingUser?.id || 'u-' + Date.now(),
+          ...userFormData,
+          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userFormData.name}`
+        };
+        if (editingUser) {
+          setUsers(prev => prev.map(u => u.id === editingUser.id ? mockUser : u));
+        } else {
+          setUsers(prev => [...prev, mockUser]);
+        }
+      }
+      setIsUserModalOpen(false);
+      setEditingUser(null);
+    } catch (err: any) {
+      alert(err.message || "Failed to persist identity.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleUserStatus = async (user: UserType) => {
+    if (!confirm(`Are you sure you want to ${user.active ? 'deactivate' : 'activate'} ${user.name}?`)) return;
+    
+    try {
+      if (isBackendLive) {
+        const updated = await apiService.request(`/users/${user.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ ...user, active: !user.active })
+        });
+        setUsers(prev => prev.map(u => u.id === user.id ? updated : u));
+      } else {
+        setUsers(prev => prev.map(u => u.id === user.id ? { ...u, active: !u.active } : u));
+      }
+    } catch (err: any) {
+      alert(err.message || "Status transition failed.");
+    }
+  };
+
+  const handleAdminResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (resetPwForm.password !== resetPwForm.confirm) {
+      alert("Passwords do not match.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      if (isBackendLive) {
+        await apiService.request(`/users/${resetPwForm.id}/password`, {
+          method: 'PATCH',
+          body: JSON.stringify({ newPassword: resetPwForm.password })
+        });
+      }
+      setIsResetPwModalOpen(false);
+      setResetPwForm({ id: '', name: '', password: '', confirm: '' });
+      alert("User credentials rotated successfully.");
+    } catch (err: any) {
+      alert(err.message || "Failed to rotate credentials.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    if (!confirm("Are you sure? This will permanently purge the identity records.")) return;
+    try {
+      if (isBackendLive) {
+        await apiService.request(`/users/${id}`, { method: 'DELETE' });
+      }
+      setUsers(prev => prev.map(u => u.id === id ? { ...u, active: false } : u)); // Soft delete visual
+      if (isBackendLive) fetchUsers();
+    } catch (err: any) {
+      alert(err.message || "Purge failed.");
     }
   };
 
@@ -334,26 +455,62 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                            <tr key={u.id} className="group hover:bg-gray-50/50 transition-colors">
                               <td className="py-6">
                                  <div className="flex items-center gap-4">
-                                    <div className="w-12 h-12 bg-gray-100 rounded-xl overflow-hidden border-2 border-white shadow-sm">
+                                    <div className={`w-12 h-12 bg-gray-100 rounded-xl overflow-hidden border-2 border-white shadow-sm ${!u.active ? 'grayscale opacity-50' : ''}`}>
                                        <img src={u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`} alt="" />
                                     </div>
                                     <div>
-                                       <p className="font-black text-gray-900 uppercase italic leading-none">{u.name}</p>
+                                       <p className={`font-black uppercase italic leading-none ${u.active ? 'text-gray-900' : 'text-gray-400 line-through'}`}>{u.name}</p>
                                        <p className="text-[10px] text-gray-400 font-bold mt-1 uppercase">{u.email}</p>
                                     </div>
                                  </div>
                               </td>
                               <td className="py-6">
-                                 <span className="px-3 py-1 bg-blue-50 text-blue-600 text-[9px] font-black uppercase tracking-widest rounded-lg border border-blue-100">{u.customRoleName || u.role}</span>
+                                 <span className={`px-3 py-1 text-[9px] font-black uppercase tracking-widest rounded-lg border ${u.active ? 'bg-blue-50 text-blue-600 border-blue-100' : 'bg-gray-50 text-gray-400 border-gray-100'}`}>
+                                   {u.customRoleName || u.role}
+                                 </span>
                               </td>
                               <td className="py-6">
                                  <div className="flex items-center gap-2">
-                                    <div className={`w-2 h-2 rounded-full ${u.role === UserRole.ADMIN ? 'bg-red-500' : 'bg-green-500'}`}></div>
-                                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{u.role}</span>
+                                    <div className={`w-2 h-2 rounded-full ${!u.active ? 'bg-gray-300' : u.role === UserRole.ADMIN ? 'bg-red-500' : 'bg-green-500'}`}></div>
+                                    <span className={`text-[9px] font-black uppercase tracking-widest ${u.active ? 'text-gray-400' : 'text-gray-300'}`}>
+                                      {u.active ? (u.role === UserRole.ADMIN ? 'SUPERVISOR' : 'AUTHORIZED') : 'DISABLED'}
+                                    </span>
                                  </div>
                               </td>
                               <td className="py-6 text-right">
-                                 <button className="p-3 text-gray-400 hover:text-red-600 transition-colors"><Trash2 size={16} /></button>
+                                 <div className="flex items-center justify-end gap-2">
+                                    <button 
+                                      onClick={() => {
+                                        setEditingUser(u);
+                                        setUserFormData({ name: u.name, email: u.email, role: u.role, active: u.active, password: '' });
+                                        setIsUserModalOpen(true);
+                                      }} 
+                                      className="p-3 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                    >
+                                      <Edit3 size={16} />
+                                    </button>
+                                    <button 
+                                      onClick={() => {
+                                        setResetPwForm({ id: u.id, name: u.name, password: '', confirm: '' });
+                                        setIsResetPwModalOpen(true);
+                                      }}
+                                      className="p-3 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all"
+                                    >
+                                      <LockKeyhole size={16} />
+                                    </button>
+                                    <button 
+                                      onClick={() => handleToggleUserStatus(u)} 
+                                      className={`p-3 transition-all rounded-xl ${u.active ? 'text-amber-400 hover:text-amber-600 hover:bg-amber-50' : 'text-green-400 hover:text-green-600 hover:bg-green-50'}`}
+                                    >
+                                      <Smartphone size={16} />
+                                    </button>
+                                    <button 
+                                      onClick={() => handleDeleteUser(u.id)}
+                                      className="p-3 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                 </div>
                               </td>
                            </tr>
                          ))}
@@ -512,6 +669,143 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
           </div>
         </div>
       </div>
+
+      {/* USER MODAL */}
+      {isUserModalOpen && (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-xl animate-in fade-in duration-300">
+           <div className="bg-white rounded-[56px] w-full max-w-xl shadow-2xl relative overflow-hidden animate-in zoom-in duration-500 max-h-[90vh] flex flex-col border-8 border-gray-50">
+              <div className="p-12 border-b bg-gray-50/50 flex items-center justify-between">
+                 <div>
+                    <h2 className="text-4xl font-black text-gray-900 tracking-tighter uppercase leading-none italic">{editingUser ? 'Sync Identity' : 'Commission Account'}</h2>
+                    <p className="text-[10px] text-gray-400 font-black uppercase mt-4">Authorized Personnel Registry</p>
+                 </div>
+                 <button onClick={() => { setIsUserModalOpen(false); setEditingUser(null); }} className="p-5 hover:bg-red-50 text-gray-400 rounded-full transition-all"><X size={28} /></button>
+              </div>
+              <form onSubmit={handleSaveUser} className="p-12 space-y-8 overflow-y-auto">
+                 <div className="space-y-6">
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Legal Name</label>
+                       <input 
+                         required 
+                         type="text" 
+                         value={userFormData.name} 
+                         onChange={e => setUserFormData({...userFormData, name: e.target.value})} 
+                         className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl font-black uppercase" 
+                         placeholder="E.G. PROF. ALBERT MAINA" 
+                       />
+                    </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Official School Email</label>
+                       <input 
+                         required 
+                         type="email" 
+                         value={userFormData.email} 
+                         onChange={e => setUserFormData({...userFormData, email: e.target.value.toLowerCase()})} 
+                         className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl font-bold" 
+                         placeholder="name@school.ac.ke" 
+                       />
+                    </div>
+                    <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Functional Rank</label>
+                          <select 
+                            value={userFormData.role} 
+                            onChange={e => setUserFormData({...userFormData, role: e.target.value as UserRole})} 
+                            className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl font-black uppercase text-xs"
+                          >
+                              {Object.values(UserRole).map(r => (
+                                <option key={r} value={r}>{r.replace('_', ' ')}</option>
+                              ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Account Status</label>
+                           <div className="flex bg-gray-50 p-1 rounded-3xl border-2 border-gray-100 h-[68px]">
+                              <button 
+                                type="button"
+                                onClick={() => setUserFormData({...userFormData, active: true})}
+                                className={`flex-1 rounded-2xl text-[9px] font-black uppercase transition-all ${userFormData.active ? 'bg-green-500 text-white shadow-lg' : 'text-gray-400'}`}
+                              >Active</button>
+                              <button 
+                                type="button"
+                                onClick={() => setUserFormData({...userFormData, active: false})}
+                                className={`flex-1 rounded-2xl text-[9px] font-black uppercase transition-all ${!userFormData.active ? 'bg-red-500 text-white shadow-lg' : 'text-gray-400'}`}
+                              >Suspended</button>
+                           </div>
+                        </div>
+                    </div>
+                    {!editingUser && (
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-blue-600">Initial Access Token</label>
+                        <input 
+                          required 
+                          type="password" 
+                          value={userFormData.password} 
+                          onChange={e => setUserFormData({...userFormData, password: e.target.value})} 
+                          className="w-full p-5 bg-blue-50/30 border-2 border-blue-100 rounded-3xl font-bold" 
+                          placeholder="Assign a temporary password" 
+                        />
+                      </div>
+                    )}
+                 </div>
+                 <button 
+                   type="submit" 
+                   disabled={isSaving}
+                   className="w-full py-6 bg-blue-600 text-white rounded-[32px] font-black uppercase text-xs tracking-[0.2em] shadow-2xl hover:bg-blue-700 transition-all border-b-8 border-blue-800 flex items-center justify-center gap-3 disabled:opacity-50"
+                 >
+                    {isSaving ? <Loader2 className="animate-spin" /> : <ShieldCheck size={20} />} 
+                    {editingUser ? 'Sync Identity Pattern' : 'Register Secure Identity'}
+                 </button>
+              </form>
+           </div>
+        </div>
+      )}
+
+      {/* ADMIN RESET PASSWORD MODAL */}
+      {isResetPwModalOpen && (
+        <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-xl animate-in fade-in duration-300">
+           <div className="bg-white rounded-[56px] w-full max-w-md shadow-2xl relative overflow-hidden animate-in zoom-in duration-500 border-8 border-amber-50">
+              <div className="p-10 border-b bg-amber-50/50 flex items-center justify-between">
+                 <div>
+                    <h2 className="text-3xl font-black text-gray-900 tracking-tighter uppercase leading-none italic">Force Key Rotation</h2>
+                    <p className="text-[10px] text-amber-600 font-black uppercase mt-3">Resetting: {resetPwForm.name}</p>
+                 </div>
+                 <button onClick={() => setIsResetPwModalOpen(false)} className="p-4 hover:bg-amber-100 text-amber-600 rounded-full transition-all"><X size={24} /></button>
+              </div>
+              <form onSubmit={handleAdminResetPassword} className="p-10 space-y-6">
+                 <div className="space-y-4">
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">New Administrative Key</label>
+                       <input 
+                         required 
+                         type="password" 
+                         value={resetPwForm.password} 
+                         onChange={e => setResetPwForm({ ...resetPwForm, password: e.target.value })} 
+                         className="w-full p-5 bg-gray-50 border-2 border-amber-100 rounded-[24px] font-bold" 
+                       />
+                    </div>
+                    <div className="space-y-2">
+                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Confirm Identity Key</label>
+                       <input 
+                         required 
+                         type="password" 
+                         value={resetPwForm.confirm} 
+                         onChange={e => setResetPwForm({ ...resetPwForm, confirm: e.target.value })} 
+                         className="w-full p-5 bg-gray-50 border-2 border-amber-100 rounded-[24px] font-bold" 
+                       />
+                    </div>
+                 </div>
+                 <button 
+                   type="submit" 
+                   disabled={isSaving}
+                   className="w-full py-5 bg-amber-500 text-white rounded-[24px] font-black uppercase text-[10px] tracking-[0.2em] shadow-xl hover:bg-amber-600 transition-all border-b-4 border-amber-700 disabled:opacity-50"
+                 >
+                    {isSaving ? 'Processing...' : 'Rotate Security Token'}
+                 </button>
+              </form>
+           </div>
+        </div>
+      )}
 
       {/* ROLE MODAL */}
       {isRoleModalOpen && (

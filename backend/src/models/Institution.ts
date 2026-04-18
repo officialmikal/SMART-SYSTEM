@@ -9,10 +9,13 @@ export interface InstitutionAttributes {
   registrationNumber: string | null;
   logo: string | null;
   subdomain: string | null; // e.g., 'kilimani' for kilimani.elimusmart.com
+  atUsername: string | null;
+  atApiKey: string | null;
+  senderId: string | null;
   active: boolean;
 }
 
-export interface InstitutionCreationAttributes extends Optional<InstitutionAttributes, 'id' | 'logo' | 'subdomain'> {}
+export interface InstitutionCreationAttributes extends Optional<InstitutionAttributes, 'id' | 'logo' | 'subdomain' | 'atUsername' | 'atApiKey' | 'senderId' | 'active'> {}
 
 export class Institution extends Model<InstitutionAttributes, InstitutionCreationAttributes> implements InstitutionAttributes {
   declare id: string;
@@ -21,6 +24,9 @@ export class Institution extends Model<InstitutionAttributes, InstitutionCreatio
   declare registrationNumber: string | null;
   declare logo: string | null;
   declare subdomain: string | null;
+  declare atUsername: string | null;
+  declare atApiKey: string | null;
+  declare senderId: string | null;
   declare active: boolean;
 
   declare readonly createdAt: Date;
@@ -55,6 +61,18 @@ export class Institution extends Model<InstitutionAttributes, InstitutionCreatio
     type: DataTypes.STRING,
     allowNull: true,
     unique: true,
+  },
+  atUsername: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  atApiKey: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  senderId: {
+    type: DataTypes.STRING,
+    allowNull: true,
   },
   active: {
     type: DataTypes.BOOLEAN,

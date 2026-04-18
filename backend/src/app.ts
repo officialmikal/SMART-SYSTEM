@@ -14,6 +14,7 @@ import examRoutes from './routes/examRoutes';
 import markRoutes from './routes/markRoutes';
 import mpesaRoutes from './routes/mpesaRoutes';
 import messagingRoutes from './routes/messagingRoutes';
+import userRoutes from './routes/userRoutes';
 import { getAuditLogs } from './controllers/adminController';
 import { protect, authorize } from './middleware/auth';
 
@@ -22,24 +23,25 @@ const app = express();
 // Security Headers
 // app.use(helmet() as any);
 
-// Expanded CORS Configuration
+// Dynamic CORS Configuration for Production/SaaS Architecture
 const allowedOrigins = [
   config.FRONTEND_URL,
-  'https://smart-system-wlnh.onrender.com',
-  'https://elimusmart-production.netlify.app',
+  'https://legendary-clafoutis-44b967.netlify.app', // Current temporary frontend
   'http://localhost:3000',
   'http://localhost:5173',
   'http://127.0.0.1:3000',
   'http://127.0.0.1:5173'
-];
+].filter(Boolean); // Remove empty or undefined origins
 
 app.use(cors({
   origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, postman, or curl)
     if (!origin) return callback(null, true);
     
-    const isAllowed = allowedOrigins.indexOf(origin) !== -1 || 
+    const isAllowed = allowedOrigins.includes(origin) || 
                      allowedOrigins.includes('*') || 
                      config.FRONTEND_URL === '*' ||
+                     origin.endsWith('.netlify.app') || // Allow all netlify previews
                      origin.includes('aistudio.google.com') ||
                      origin.includes('run.app');
 
@@ -69,6 +71,7 @@ app.use('/api/exams', examRoutes);
 app.use('/api/marks', markRoutes);
 app.use('/api/mpesa', mpesaRoutes);
 app.use('/api/messaging', messagingRoutes);
+app.use('/api/users', userRoutes);
 
 // Admin Routes
 app.get('/api/admin/logs', protect, authorize('ADMIN'), (req: any, res: any) => {
@@ -76,8 +79,14 @@ app.get('/api/admin/logs', protect, authorize('ADMIN'), (req: any, res: any) => 
 });
 
 // Health Endpoint
-app.get('/health', (_req: any, res: any) => {
-  res.status(200).send('API is healthy');
+app.get('/health', async (_req: any, res: any) => {
+  try {
+    const { default: sequelize } = await import('./config/database');
+    await sequelize.authenticate();
+    res.status(200).send('API is healthy');
+  } catch (error) {
+    res.status(503).send('Database connection unavailable');
+  }
 });
 
 export default app;

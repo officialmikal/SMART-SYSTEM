@@ -6,7 +6,7 @@ const router = Router();
 
 router.use(protect);
 
-router.get('/', authorize('ADMIN', 'PRINCIPAL'), (req: Request, res: Response, next: NextFunction) => {
+router.get('/', authorize('ADMIN', 'PRINCIPAL', 'FINANCE'), (req: Request, res: Response, next: NextFunction) => {
   getPayments(req, res).catch(next);
 });
 
@@ -14,7 +14,7 @@ router.get('/student/:studentId', (req: Request, res: Response, next: NextFuncti
   getStudentPayments(req, res).catch(next);
 });
 
-router.post('/', authorize('ADMIN', 'PRINCIPAL'), (req: Request, res: Response, next: NextFunction) => {
+router.post('/', authorize('ADMIN', 'PRINCIPAL', 'FINANCE'), (req: Request, res: Response, next: NextFunction) => {
   recordPayment(req, res).catch(next);
 });
 

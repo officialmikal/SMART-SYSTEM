@@ -4,7 +4,9 @@
  * Centralizes all communication with the Render Backend
  */
 
-const API_BASE_URL = '/api'; // Points to the local backend in this environment
+// Detect the API base URL from environment or fallback to relative path for unified serving
+const env = (import.meta as any).env;
+const API_BASE_URL = env?.VITE_API_URL || '/api';
 
 export const apiService = {
   getAuthToken() {

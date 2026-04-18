@@ -8,10 +8,11 @@ export interface UserAttributes {
   name: string;
   email: string;
   password: string;
-  role: 'ADMIN' | 'PRINCIPAL' | 'CLASS_TEACHER' | 'SUBJECT_TEACHER';
+  role: 'ADMIN' | 'PRINCIPAL' | 'TEACHER' | 'FINANCE' | 'CLASS_TEACHER' | 'SUBJECT_TEACHER';
+  active: boolean;
 }
 
-export interface UserCreationAttributes extends Optional<UserAttributes, 'id'> {}
+export interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'active'> {}
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   declare id: string;
@@ -19,7 +20,8 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
   declare name: string;
   declare email: string;
   declare password: string;
-  declare role: 'ADMIN' | 'PRINCIPAL' | 'CLASS_TEACHER' | 'SUBJECT_TEACHER';
+  declare role: 'ADMIN' | 'PRINCIPAL' | 'TEACHER' | 'FINANCE' | 'CLASS_TEACHER' | 'SUBJECT_TEACHER';
+  declare active: boolean;
 
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
@@ -57,9 +59,14 @@ export class User extends Model<UserAttributes, UserCreationAttributes> implemen
     allowNull: false,
   },
   role: {
-    type: DataTypes.ENUM('ADMIN', 'PRINCIPAL', 'CLASS_TEACHER', 'SUBJECT_TEACHER'),
+    type: DataTypes.ENUM('ADMIN', 'PRINCIPAL', 'TEACHER', 'FINANCE', 'CLASS_TEACHER', 'SUBJECT_TEACHER'),
     allowNull: false,
     defaultValue: 'SUBJECT_TEACHER',
+  },
+  active: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true,
   },
 }, {
   sequelize,

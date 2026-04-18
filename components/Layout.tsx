@@ -73,15 +73,15 @@ export const Layout: React.FC<LayoutProps> = ({
   const hasAccess = (role: UserRole, tabId: string): boolean => {
     switch (tabId) {
       case 'dashboard': return true;
-      case 'students': return [UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.CLASS_TEACHER].includes(role);
+      case 'students': return [UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.CLASS_TEACHER].includes(role);
       case 'staff': return [UserRole.ADMIN, UserRole.PRINCIPAL].includes(role);
-      case 'academics': return [UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.CLASS_TEACHER, UserRole.SUBJECT_TEACHER, UserRole.STUDENT].includes(role);
+      case 'academics': return [UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.CLASS_TEACHER, UserRole.SUBJECT_TEACHER, UserRole.STUDENT].includes(role);
       case 'timetable': return true;
-      case 'attendance': return [UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.CLASS_TEACHER, UserRole.SUBJECT_TEACHER].includes(role);
+      case 'attendance': return [UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.CLASS_TEACHER, UserRole.SUBJECT_TEACHER].includes(role);
       case 'messaging': return [UserRole.ADMIN, UserRole.PRINCIPAL].includes(role);
-      case 'finance': return [UserRole.ADMIN, UserRole.PRINCIPAL].includes(role);
-      case 'reports': return [UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.CLASS_TEACHER, UserRole.SUBJECT_TEACHER].includes(role);
-      case 'settings': return true;
+      case 'finance': return [UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.FINANCE].includes(role);
+      case 'reports': return [UserRole.ADMIN, UserRole.PRINCIPAL, UserRole.TEACHER, UserRole.CLASS_TEACHER, UserRole.SUBJECT_TEACHER].includes(role);
+      case 'settings': return [UserRole.ADMIN, UserRole.PRINCIPAL].includes(role);
       default: return false;
     }
   };

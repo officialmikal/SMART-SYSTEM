@@ -15,7 +15,8 @@ const generateToken = (id: string, institutionId: string): string => {
  * Handle user login and JWT generation with Institutional Scoping.
  */
 export const login = async (req: any, res: any): Promise<void> => {
-  const { email, password } = req.body;
+  const { password } = req.body;
+  const email = req.body.email?.toLowerCase().trim();
 
   try {
     // Fix: Cast User to any for static findOne method
@@ -25,10 +26,19 @@ export const login = async (req: any, res: any): Promise<void> => {
     });
 
     if (user && (await bcrypt.compare(password, user.password))) {
+      // Check if user is active
+      if (!user.active) {
+        return res.status(401).json({ message: 'Your account has been deactivated. Please contact your administrator.' });
+      }
+
+      // Check if institution is active
+      if (user.institution && !user.institution.active) {
+        return res.status(401).json({ message: 'Your institution has been suspended. Please contact support.' });
+      }
+
       const token = generateToken(user.id, user.institutionId);
 
-      // SECURITY: Log the successful login attempt and device metadata
-      // Fix: Cast AuditLog to any for static create method
+      // SECURITY: Log the successful login attempt
       await (AuditLog as any).create({
         institutionId: user.institutionId,
         userId: user.id,
@@ -36,7 +46,6 @@ export const login = async (req: any, res: any): Promise<void> => {
         action: 'LOGIN',
         resource: 'Session',
         resourceId: 'current',
-        oldValue: null,
         newValue: { device: req.headers['user-agent'] },
         ipAddress: req.ip,
         userAgent: req.headers['user-agent']
@@ -55,9 +64,9 @@ export const login = async (req: any, res: any): Promise<void> => {
     }
   } catch (error: any) {
     console.error('Login Error:', error);
-    const isDbError = error.name === 'SequelizeConnectionError' || error.name === 'SequelizeConnectionRefusedError' || error.message?.includes('terminated unexpectedly');
+    const isDbError = error.name === 'SequelizeConnectionError' || error.name === 'SequelizeConnectionRefusedError';
     res.status(500).json({ 
-      message: isDbError ? 'Database Connection Error. Please check if the database is online and accessible.' : 'Security Engine Error during login', 
+      message: isDbError ? 'Database Connection Error. System initializing...' : 'Security Engine Error during login', 
       error: config.NODE_ENV === 'development' ? error : undefined 
     });
   }

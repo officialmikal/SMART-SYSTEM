@@ -6,7 +6,7 @@ const router = Router();
 
 router.use(protect);
 
-router.post('/bulk', authorize('ADMIN', 'PRINCIPAL', 'CLASS_TEACHER'), (req: Request, res: Response, next: NextFunction) => {
+router.post('/bulk', authorize('ADMIN', 'PRINCIPAL', 'TEACHER', 'CLASS_TEACHER'), (req: Request, res: Response, next: NextFunction) => {
   bulkRecordAttendance(req, res).catch(next);
 });
 

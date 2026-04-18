@@ -27,10 +27,11 @@ const getCurrentAcademicCycle = () => {
 
 const INITIAL_ROLES: CustomRole[] = [
   { id: 'r1', name: 'System Admin', description: 'Full access to all modules and configurations', baseRole: UserRole.ADMIN, isSystemRole: true },
-  { id: 'r2', name: 'Principal', description: 'Institutional oversight and financial reports', baseRole: UserRole.PRINCIPAL, isSystemRole: true },
-  { id: 'r3', name: 'Class Teacher', description: 'Manage class attendance and student marks', baseRole: UserRole.CLASS_TEACHER, isSystemRole: true },
-  { id: 'r4', name: 'Subject Teacher', description: 'Enter marks for specific subjects', baseRole: UserRole.SUBJECT_TEACHER, isSystemRole: true },
-  { id: 'r5', name: 'Parent', description: 'View student performance and fee balance', baseRole: UserRole.PARENT, isSystemRole: true }
+  { id: 'r2', name: 'Principal', description: 'Institutional oversight and personnel records', baseRole: UserRole.PRINCIPAL, isSystemRole: true },
+  { id: 'r3', name: 'Finance Manager', description: 'Manage school fees and expenditures', baseRole: UserRole.FINANCE, isSystemRole: true },
+  { id: 'r4', name: 'Reg. Teacher', description: 'Institutional academic operations', baseRole: UserRole.TEACHER, isSystemRole: true },
+  { id: 'r5', name: 'Class Teacher', description: 'Manage class attendance and student marks', baseRole: UserRole.CLASS_TEACHER, isSystemRole: true },
+  { id: 'r6', name: 'Subject Teacher', description: 'Enter marks for specific subjects', baseRole: UserRole.SUBJECT_TEACHER, isSystemRole: true }
 ];
 
 const INITIAL_SCHOOL_CONFIG = {
@@ -64,6 +65,10 @@ const App: React.FC = () => {
   // Core Data States
   const [students, setStudents] = useState<Student[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
+  const [users, setUsers] = useState<User[]>(() => {
+    const saved = localStorage.getItem('elimusmart_users');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [expenditures, setExpenditures] = useState<Expenditure[]>([]);
   const [feeStructure, setFeeStructure] = useState<ClassFee[]>([]);
   const [systemRoles, setSystemRoles] = useState<CustomRole[]>(() => {
@@ -202,7 +207,7 @@ const App: React.FC = () => {
       const found = mockAccounts.find(acc => acc.email === email);
       
       if (found && password === 'adminpassword') {
-        setUser({ id: 'local-' + Date.now(), name: found.name + ' (Demo)', email, role: found.role });
+        setUser({ id: 'local-' + Date.now(), name: found.name + ' (Demo)', email, role: found.role, active: true });
         loadLocalData();
       } else {
         alert("Invalid login. Check your credentials and try again.");
@@ -222,8 +227,9 @@ const App: React.FC = () => {
     if (expenditures.length > 0) localStorage.setItem('elimusmart_expenditures', JSON.stringify(expenditures));
     localStorage.setItem('elimusmart_config', JSON.stringify(schoolConfig));
     localStorage.setItem('elimusmart_roles', JSON.stringify(systemRoles));
+    localStorage.setItem('elimusmart_users', JSON.stringify(users));
     if (schoolLogo) localStorage.setItem('elimusmart_logo', schoolLogo);
-  }, [students, staff, feeStructure, schoolConfig, schoolLogo, expenditures, systemRoles]);
+  }, [students, staff, feeStructure, schoolConfig, schoolLogo, expenditures, systemRoles, users]);
 
   if (!user) {
     return (
@@ -286,7 +292,7 @@ const App: React.FC = () => {
         {currentTab === 'reports' && <ReportsModule lang={lang} students={students} users={[]} schoolLogo={schoolLogo} schoolConfig={schoolConfig} />}
         {currentTab === 'timetable' && <TimetableModule lang={lang} />}
         {currentTab === 'messaging' && <MessagingModule lang={lang} user={user} students={students} schoolConfig={schoolConfig} setSchoolConfig={setSchoolConfig} />}
-        {currentTab === 'settings' && <SettingsModule currentUser={user} users={[]} setUsers={() => {}} schoolLogo={schoolLogo} setSchoolLogo={setSchoolLogo} schoolConfig={schoolConfig} setSchoolConfig={setSchoolConfig} systemRoles={systemRoles} setSystemRoles={setSystemRoles} isBackendLive={isBackendLive} />}
+        {currentTab === 'settings' && <SettingsModule currentUser={user} users={users} setUsers={setUsers} schoolLogo={schoolLogo} setSchoolLogo={setSchoolLogo} schoolConfig={schoolConfig} setSchoolConfig={setSchoolConfig} systemRoles={systemRoles} setSystemRoles={setSystemRoles} isBackendLive={isBackendLive} />}
       </div>
     </Layout>
   );

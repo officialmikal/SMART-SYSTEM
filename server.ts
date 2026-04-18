@@ -65,8 +65,8 @@ async function initializeDatabase() {
     await sequelize.authenticate();
     console.log("PostgreSQL: Connected successfully.");
     
-    await sequelize.sync({ force: false });
-    console.log("PostgreSQL: Models synced.");
+    await sequelize.sync({ alter: true });
+    console.log("PostgreSQL: Models synced and schema updated.");
 
     // Seed Data
     let defaultInst = await (Institution as any).findOne({ where: { subdomain: "demo" } });
@@ -75,7 +75,8 @@ async function initializeDatabase() {
         name: "ElimuSmart Demo Academy",
         motto: "Excellence Through Innovation",
         registrationNumber: "MOE/DEMO/001",
-        subdomain: "demo"
+        subdomain: "demo",
+        active: true
       });
       console.log("Seed: Demo Institution created.");
     }
@@ -89,7 +90,8 @@ async function initializeDatabase() {
           email: "admin@school.ac.ke",
           password: hashedPassword,
           role: "ADMIN",
-          institutionId: defaultInst.id
+          institutionId: defaultInst.id,
+          active: true
         });
         console.log("Seed: Master Admin created.");
       }

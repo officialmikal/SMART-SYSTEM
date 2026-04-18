@@ -34,8 +34,7 @@ import {
   Wallet,
   UserSearch,
   FileBadge,
-  Bus,
-  ChevronRight
+  Bus
 } from 'lucide-react';
 import { Language, translations } from '../services/localizationService';
 import { KENYAN_CLASSES, Student, ClassFee, Expenditure } from '../types';

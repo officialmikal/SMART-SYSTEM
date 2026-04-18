@@ -3,6 +3,7 @@
  * Multi-Provider SMS Engine (Production Ready)
  */
 import { SMSSettings, SMSProvider } from '../types';
+import { apiService } from './apiService';
 
 export interface SMSRecipient {
   name: string;
@@ -38,90 +39,49 @@ export const smsService = {
   },
 
   /**
-   * Dispatches messages using the school's specific gateway settings.
-   * This now includes the actual fetch implementation for Africa's Talking.
+   * Dispatches messages using the backend gateway (Secure Implementation)
    */
   async sendBulkCampaign(
     recipients: SMSRecipient[], 
     template: string, 
-    campaignType: string,
-    settings?: SMSSettings
+    campaignType: string
   ): Promise<SMSResponse> {
-    if (!settings?.enabled) {
-      throw new Error("SMS Dispatch is disabled in Gateway Settings.");
-    }
+    const response = await apiService.request('/messaging/send-bulk', {
+      method: 'POST',
+      body: JSON.stringify({
+        type: campaignType.toUpperCase(),
+        recipients, // Array of { name, phone, message }
+        message: template,
+        cost: recipients.length
+      })
+    });
 
-    const provider = settings.provider || SMSProvider.AFRICAS_TALKING;
-    
-    // For Africa's Talking Live Integration
-    if (provider === SMSProvider.AFRICAS_TALKING) {
-      const url = 'https://api.africastalking.com/version1/messaging';
-      
-      // We process recipients sequentially or in small batches to avoid gateway timeouts
-      // In a real browser env, you'd often proxy this through your backend to avoid exposing API Keys
-      // But for this direct implementation:
-      
-      const phoneNumbers = recipients.map(r => this.formatPhone(r.phone)).join(',');
-      const message = recipients[0]?.message || ''; // Assuming consolidated message for bulk
-
-      const body = new URLSearchParams();
-      body.append('username', settings.username);
-      body.append('to', phoneNumbers);
-      body.append('message', message);
-      if (settings.senderId) body.append('from', settings.senderId);
-
-      // Note: This fetch might require a CORS proxy or Backend route in strict browser environments
-      console.log(`[LIVE DISPATCH] Initiating ${campaignType} via ${provider}`);
-      
-      // Simulation for the actual network call if in demo, or real fetch if keys are provided
-      if (settings.apiKey === '***' || !settings.apiKey) {
-        await new Promise(r => setTimeout(r, 1000));
-        return {
-          status: 'queued',
-          campaignId: `DEMO-${Date.now()}`,
-          cost: recipients.length,
-          timestamp: new Date().toISOString(),
-          providerResponse: 'Simulated success (API Key not provided).'
-        };
-      }
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'apiKey': settings.apiKey
-        },
-        body: body.toString()
-      });
-
-      const result = await response.json();
-      
-      return {
-        status: 'queued',
-        campaignId: result.SMSMessageData?.Recipients?.[0]?.messageId || 'N/A',
-        cost: recipients.length,
-        timestamp: new Date().toISOString(),
-        providerResponse: JSON.stringify(result.SMSMessageData)
-      };
-    }
-
-    // Default Fallback
     return {
-      status: 'queued',
-      campaignId: `ELM-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
-      cost: recipients.length,
-      timestamp: new Date().toISOString(),
-      providerResponse: `Accepted by ${provider} Network Service.`
+      status: response.status === 'Sent' ? 'delivered' : 'failed',
+      campaignId: response.id,
+      cost: response.cost,
+      timestamp: response.createdAt,
+      providerResponse: response.providerResponse
     };
+  },
+
+  async fetchSettings() {
+    return apiService.request('/messaging/settings');
+  },
+
+  async updateSettings(settings: any) {
+    return apiService.request('/messaging/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings)
+    });
   },
 
   /**
    * Helper to send absence alerts (used by Attendance module).
    */
-  async sendBulkAbsenceAlerts(recipients: { name: string; phone: string }[], settings?: SMSSettings) {
+  async sendBulkAbsenceAlerts(recipients: { name: string; phone: string }[]) {
     const template = "Dear Parent, {name} was recorded as absent today.";
-    return this.sendBulkCampaign(recipients, template, 'ATTENDANCE_ALERT', settings);
+    return this.sendBulkCampaign(recipients, template, 'ATTENDANCE_ALERT');
   },
 
   /**

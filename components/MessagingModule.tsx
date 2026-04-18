@@ -93,7 +93,23 @@ export const MessagingModule: React.FC<MessagingModuleProps> = ({ lang, user, st
 
   useEffect(() => {
     if (activeTab === 'history') fetchLogs();
+    if (activeTab === 'settings') loadSettings();
   }, [activeTab]);
+
+  const loadSettings = async () => {
+    try {
+      const settings = await smsService.fetchSettings();
+      setLocalSmsSettings({
+        provider: SMSProvider.AFRICAS_TALKING,
+        username: settings.username || '',
+        apiKey: settings.apiKey || '', // Will be '***' if exists
+        senderId: settings.senderId || '',
+        enabled: true
+      });
+    } catch (e) {
+      console.error("Failed to load gateway settings");
+    }
+  };
 
   const fetchLogs = async () => {
     setIsLogsLoading(true);
@@ -189,39 +205,26 @@ export const MessagingModule: React.FC<MessagingModuleProps> = ({ lang, user, st
 
     setIsSending(true);
     try {
-      // Fix: Cast Object.entries(parentGroups) to the correct type to avoid 'unknown' inference for 'kids'
       const payload = (Object.entries(parentGroups) as [string, Student[]][]).map(([phone, kids]) => {
         const names = kids.map(k => k.firstName).join(' & ');
-        // Fix: Explicitly type kids to avoid 'unknown' errors when using reduce
         const totalBal = kids.reduce((sum: number, k: Student) => sum + (Number(k.feeBalance) || 0), 0);
         let msg = (templates[selectedType] || customMessage)
           .replace(/{StudentName}/g, names)
           .replace(/{Balance}/g, totalBal.toLocaleString())
           .replace(/{Date}/g, new Date().toLocaleDateString());
 
-        return { name: names, phone: smsService.formatPhone(phone), message: msg };
+        return { name: names, phone, message: msg };
       });
 
-      // 1. Dispatch through Gateway
-      await smsService.sendBulkCampaign(payload, '', selectedType, schoolConfig.smsSettings);
-      
-      // 2. Persist to Backend
-      await apiService.request('/messaging/send-bulk', {
-        method: 'POST',
-        body: JSON.stringify({
-          type: selectedType.toUpperCase(),
-          recipientsCount: numGroups,
-          message: currentPreview,
-          cost: numGroups
-        })
-      });
+      // Unified Backend Dispatch (Secure Implementation)
+      await smsService.sendBulkCampaign(payload, currentPreview, selectedType);
       
       setSmsBalance(prev => prev - numGroups);
-      alert(`Institutional Sync Complete: ${numGroups} SMS dispatched.`);
+      alert(`Institutional Sync Complete: ${numGroups} SMS dispatched through secure gateway.`);
       setSelectedStudentIds(new Set());
       setActiveTab('history');
     } catch (err: any) {
-      alert("Network Error: " + err.message);
+      alert("Gateway Error: " + err.message);
     } finally {
       setIsSending(false);
     }
@@ -477,7 +480,18 @@ export const MessagingModule: React.FC<MessagingModuleProps> = ({ lang, user, st
                         {isTestingLink ? <Loader2 className="w-5 h-5 animate-spin text-blue-600" /> : <RefreshCw size={20} className="text-blue-600" />}
                         Run Diagnostic
                      </button>
-                     <button onClick={async () => { setIsSavingConfig(true); await new Promise(r => setTimeout(r, 800)); setSchoolConfig({...schoolConfig, smsSettings: {...localSmsSettings}}); setIsSavingConfig(false); alert("Gateway Profile Updated."); }} disabled={isSavingConfig} className="flex-[2] py-6 bg-gray-900 text-white rounded-[32px] font-black uppercase text-[11px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4 border-b-8 border-black">
+                     <button onClick={async () => { 
+                         setIsSavingConfig(true); 
+                         try {
+                           await smsService.updateSettings(localSmsSettings);
+                           setSchoolConfig({...schoolConfig, smsSettings: {...localSmsSettings}}); 
+                           alert("Gateway Profile Persistent on Backend."); 
+                         } catch (e: any) {
+                           alert("Failed to save settings: " + e.message);
+                         } finally {
+                           setIsSavingConfig(false); 
+                         }
+                      }} disabled={isSavingConfig} className="flex-[2] py-6 bg-gray-900 text-white rounded-[32px] font-black uppercase text-[11px] tracking-[0.2em] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4 border-b-8 border-black">
                         {isSavingConfig ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save size={20} />}
                         Sync Institutional Profile
                      </button>
