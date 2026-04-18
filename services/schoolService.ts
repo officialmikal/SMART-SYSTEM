@@ -58,11 +58,15 @@ export const schoolService = {
     ];
   },
 
-  calculateCBCGrade(score: number): CBCGrade {
-    if (score >= 80) return CBCGrade.EE;
-    if (score >= 60) return CBCGrade.ME;
-    if (score >= 40) return CBCGrade.AE;
-    return CBCGrade.BE;
+  calculateCBCGrade(score: number): { level: string; descriptor: string; points: number } {
+    if (score >= 90) return { level: 'EE1', descriptor: 'Exceeding Expectation', points: 4.0 };
+    if (score >= 75) return { level: 'EE2', descriptor: 'Exceeding Expectation', points: 3.5 };
+    if (score >= 58) return { level: 'ME1', descriptor: 'Meeting Expectation', points: 3.0 };
+    if (score >= 41) return { level: 'ME2', descriptor: 'Meeting Expectation', points: 2.5 };
+    if (score >= 31) return { level: 'AE1', descriptor: 'Approaching Expectation', points: 2.0 };
+    if (score >= 21) return { level: 'AE2', descriptor: 'Approaching Expectation', points: 1.5 };
+    if (score >= 11) return { level: 'BE1', descriptor: 'Below Expectation', points: 1.0 };
+    return { level: 'BE2', descriptor: 'Below Expectation', points: 0.5 };
   },
 
   async saveAttendance(classId: string, records: any[]) {

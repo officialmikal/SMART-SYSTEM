@@ -33,7 +33,9 @@ import {
   ArrowRight,
   Wallet,
   UserSearch,
-  FileBadge
+  FileBadge,
+  Bus,
+  ChevronRight
 } from 'lucide-react';
 import { Language, translations } from '../services/localizationService';
 import { KENYAN_CLASSES, Student, ClassFee, Expenditure } from '../types';
@@ -76,12 +78,18 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
 
   // Global Collection States
   const [isQuickCollectOpen, setIsQuickCollectOpen] = useState(false);
+  const [quickCategory, setQuickCategory] = useState<'TUITION' | 'TRANSPORT'>('TUITION');
   const [quickSearchTerm, setQuickSearchTerm] = useState('');
 
   // Payment Recording states
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<Student | null>(null);
-  const [paymentFormData, setPaymentFormData] = useState({ amount: '', method: 'CASH' as 'CASH' | 'BANK' | 'M-PESA', reference: '' });
+  const [paymentFormData, setPaymentFormData] = useState({ 
+    amount: '', 
+    method: 'CASH' as 'CASH' | 'BANK' | 'M-PESA', 
+    reference: '',
+    category: 'TUITION' as 'TUITION' | 'TRANSPORT'
+  });
 
   // STK Push states
   const [isStkModalOpen, setIsStkModalOpen] = useState(false);
@@ -93,7 +101,12 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
   // Billing states
   const [isBillingModalOpen, setIsBillingModalOpen] = useState(false);
   const [selectedStudentForBilling, setSelectedStudentForBilling] = useState<Student | null>(null);
-  const [billingFormData, setBillingFormData] = useState({ agreedFee: 0, paidFee: 0 });
+  const [billingFormData, setBillingFormData] = useState({ 
+    agreedFee: 0, 
+    paidFee: 0,
+    transportFee: 0,
+    isUsingTransport: false 
+  });
 
   // Expenditure management states
   const [showExpModal, setShowExpModal] = useState(false);
@@ -123,15 +136,26 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
   }, [students, quickSearchTerm]);
 
   const financeStats = useMemo(() => {
-    const totalCollected = students.reduce((sum, s) => sum + (s.paidFee || 0), 0);
+    const tuitionCollected = (students || []).reduce((sum, s) => sum + (s.paidFee || 0), 0);
+    const transportCollected = (students || []).reduce((sum, s) => sum + (s.paidTransportFee || 0), 0);
     const totalExp = expenditures.reduce((sum, e) => sum + e.amount, 0);
+
+    const tuitionExpected = (students || []).reduce((sum, s) => sum + ((s.agreedFee ?? s.totalFee) || 0), 0);
+    const transportExpected = (students || []).reduce((sum, s) => sum + (s.isUsingTransport ? (s.transportFee || 0) : 0), 0);
+
     return { 
-      expected: students.reduce((sum, s) => sum + (s.agreedFee ?? s.totalFee), 0),
-      collected: totalCollected, 
-      outstanding: students.reduce((sum, s) => sum + (s.feeBalance || 0), 0), 
-      prepaid: students.reduce((sum, s) => sum + (s.prepaidFee || 0), 0),
+      expected: tuitionExpected + transportExpected,
+      collected: tuitionCollected + transportCollected, 
+      outstanding: (tuitionExpected + transportExpected) - (tuitionCollected + transportCollected),
+      tuitionExpected,
+      tuitionCollected,
+      tuitionOutstanding: tuitionExpected - tuitionCollected,
+      transportExpected,
+      transportCollected,
+      transportOutstanding: transportExpected - transportCollected,
+      prepaid: (students || []).reduce((sum, s) => sum + (s.prepaidFee || 0), 0),
       expenditure: totalExp,
-      net: totalCollected - totalExp 
+      net: (tuitionCollected + transportCollected) - totalExp 
     };
   }, [students, expenditures]);
 
@@ -142,9 +166,14 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
     setIsStkModalOpen(true);
   };
 
-  const openPaymentModal = (student: Student) => {
+  const openPaymentModal = (student: Student, categoryOverride?: 'TUITION' | 'TRANSPORT') => {
     setSelectedStudentForPayment(student);
-    setPaymentFormData({ amount: '', method: 'CASH', reference: '' });
+    setPaymentFormData({ 
+      amount: '', 
+      method: 'CASH', 
+      reference: '',
+      category: categoryOverride || quickCategory
+    });
     setIsPaymentModalOpen(true);
     setIsQuickCollectOpen(false); // Close search if it was open
   };
@@ -156,10 +185,22 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
     const amountToAdd = parseFloat(paymentFormData.amount);
     setStudents(prev => prev.map(s => {
       if (s.id === selectedStudentForPayment.id) {
-        const totalPaid = (s.paidFee || 0) + amountToAdd;
-        const target = s.agreedFee ?? s.totalFee;
-        const balance = Math.max(0, target - totalPaid);
-        const prepaid = totalPaid > target ? totalPaid - target : 0;
+        let newPaidTuition = s.paidFee || 0;
+        let newPaidTransport = s.paidTransportFee || 0;
+
+        if (paymentFormData.category === 'TRANSPORT') {
+          newPaidTransport += amountToAdd;
+        } else {
+          newPaidTuition += amountToAdd;
+        }
+
+        const base = s.agreedFee ?? s.totalFee;
+        const transport = s.isUsingTransport ? (s.transportFee || 0) : 0;
+        const totalExpected = base + transport;
+        const totalPaid = newPaidTuition + newPaidTransport;
+
+        const balance = Math.max(0, totalExpected - totalPaid);
+        const prepaid = totalPaid > totalExpected ? totalPaid - totalExpected : 0;
         
         // Generate receipt
         setLastReceipt({
@@ -175,7 +216,13 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
           servedBy: 'Institutional Finance'
         });
         
-        return { ...s, paidFee: totalPaid, feeBalance: balance, prepaidFee: prepaid };
+        return { 
+          ...s, 
+          paidFee: newPaidTuition, 
+          paidTransportFee: newPaidTransport,
+          feeBalance: balance, 
+          prepaidFee: prepaid 
+        };
       }
       return s;
     }));
@@ -236,7 +283,12 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
 
   const openBillingEditor = (student: Student) => {
     setSelectedStudentForBilling(student);
-    setBillingFormData({ agreedFee: student.agreedFee ?? student.totalFee, paidFee: student.paidFee || 0 });
+    setBillingFormData({ 
+      agreedFee: student.agreedFee ?? student.totalFee, 
+      paidFee: student.paidFee || 0,
+      transportFee: student.transportFee || 0,
+      isUsingTransport: student.isUsingTransport || false
+    });
     setIsBillingModalOpen(true);
   };
 
@@ -245,11 +297,19 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
     if (!selectedStudentForBilling) return;
     setStudents(prev => prev.map(s => {
       if (s.id === selectedStudentForBilling.id) {
-        const target = billingFormData.agreedFee;
+        const target = billingFormData.agreedFee + (billingFormData.isUsingTransport ? billingFormData.transportFee : 0);
         const paid = billingFormData.paidFee;
         let balance = Math.max(0, target - paid);
         let prepaid = paid > target ? paid - target : 0;
-        return { ...s, agreedFee: target, paidFee: paid, feeBalance: balance, prepaidFee: prepaid };
+        return { 
+          ...s, 
+          agreedFee: billingFormData.agreedFee, 
+          paidFee: paid, 
+          feeBalance: balance, 
+          prepaidFee: prepaid,
+          transportFee: billingFormData.transportFee,
+          isUsingTransport: billingFormData.isUsingTransport
+        };
       }
       return s;
     }));
@@ -307,20 +367,26 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
           <h1 className="text-2xl font-black text-gray-800 tracking-tight uppercase">{t.finance}</h1>
           <p className="text-gray-500 font-medium">Manage institutional revenue and integrated M-Pesa payments.</p>
         </div>
-        <div className="flex gap-2">
-           <button 
-             onClick={() => openExpEditor()}
-             className="flex items-center gap-2 bg-white border-2 border-gray-100 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all shadow-sm"
-           >
-             <TrendingDown className="w-4 h-4 text-red-600" /> New Expense
-           </button>
-           <button 
-             onClick={() => setIsQuickCollectOpen(true)}
-             className="flex items-center gap-2 bg-blue-600 text-white px-8 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 animate-pulse-install"
-           >
-             <Banknote className="w-4 h-4" /> Collect Fee
-           </button>
-        </div>
+         <div className="flex gap-2">
+            <button 
+              onClick={() => openExpEditor()}
+              className="flex items-center gap-2 bg-white border-2 border-gray-100 px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-50 transition-all shadow-sm"
+            >
+              <TrendingDown className="w-4 h-4 text-red-600" /> New Expense
+            </button>
+            <button 
+              onClick={() => { setQuickCategory('TUITION'); setIsQuickCollectOpen(true); }}
+              className="flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 animate-pulse-install"
+            >
+              <Banknote className="w-4 h-4" /> Collect Fee
+            </button>
+            <button 
+              onClick={() => { setQuickCategory('TRANSPORT'); setIsQuickCollectOpen(true); }}
+              className="flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100"
+            >
+              <Bus className="w-4 h-4" /> Transport Fee
+            </button>
+         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -328,7 +394,10 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
           { label: t.total_expected, value: financeStats.expected, icon: Target, color: 'indigo' },
           { label: t.collected_fee, value: financeStats.collected, icon: Banknote, color: 'green' },
           { label: t.outstanding_fees, value: financeStats.outstanding, icon: AlertCircle, color: 'red' },
-          { label: 'Expenditures', value: financeStats.expenditure, icon: TrendingDown, color: 'orange' }
+          { label: 'Expenditures', value: financeStats.expenditure, icon: TrendingDown, color: 'orange' },
+          { label: 'Transport Expected', value: financeStats.transportExpected, icon: Target, color: 'blue' },
+          { label: 'Transport Collected', value: financeStats.transportCollected, icon: Banknote, color: 'emerald' },
+          { label: 'Transport Arrears', value: financeStats.transportOutstanding, icon: AlertCircle, color: 'pink' },
         ].map((stat, idx) => (
           <div key={idx} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
              <div className="p-3 rounded-xl bg-gray-50">
@@ -389,43 +458,55 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                      <tr className="text-[9px] font-black uppercase text-gray-400 tracking-widest border-b pb-4">
                        <th className="pb-4 px-2">Learner Name</th>
                        <th className="pb-4 px-2">Grade</th>
-                       <th className="pb-4 px-2">Balance</th>
+                       <th className="pb-4 px-2">Tuition Bal</th>
+                       <th className="pb-4 px-2 text-center">Bus Bal</th>
+                       <th className="pb-4 px-2">Total Bal</th>
                        <th className="pb-4 px-2 text-right">Actions</th>
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-gray-50">
-                     {filteredStudents.map(student => (
-                       <tr key={student.id} className="hover:bg-gray-50/50 transition-colors">
-                         <td className="py-4 px-2">
-                            <p className="font-bold text-gray-900">{student.firstName} {student.lastName}</p>
-                            <p className="text-[9px] font-mono text-blue-600 uppercase tracking-tighter">{student.admissionNumber}</p>
-                         </td>
-                         <td className="py-4 px-2"><span className="px-2 py-0.5 bg-gray-100 rounded text-[9px] font-black uppercase">{student.class}</span></td>
-                         <td className="py-4 px-2">
-                            <p className={`text-xs font-black ${student.feeBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                               KES {(student.feeBalance || 0).toLocaleString()}
-                            </p>
-                         </td>
-                         <td className="py-4 px-2 text-right">
-                            <div className="flex justify-end gap-2">
-                               <button 
-                                 onClick={() => openPaymentModal(student)} 
-                                 className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-[9px] font-black uppercase tracking-widest border border-blue-100 hover:bg-blue-100 transition-all shadow-sm"
-                               >
-                                  <CreditCard size={12} /> Record Payment
-                               </button>
-                               <button 
-                                 onClick={() => initiateStkPush(student)} 
-                                 className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-[9px] font-black uppercase tracking-widest border border-green-100 hover:bg-green-100 transition-all shadow-sm"
-                               >
-                                  <Smartphone size={12} /> STK Push
-                               </button>
-                               <button onClick={() => openBillingEditor(student)} className="p-2 text-gray-400 hover:text-blue-600" title="Adjust Billing"><Settings2 size={16} /></button>
-                               <button onClick={() => generateStudentReceipt(student)} className="p-2 text-gray-400 hover:text-green-600" title="Print Statement"><Printer size={16} /></button>
-                            </div>
-                         </td>
-                       </tr>
-                     ))}
+                     {filteredStudents.map(student => {
+                       const tuitionExpected = student.agreedFee ?? student.totalFee;
+                       const tuitionBal = Math.max(0, tuitionExpected - (student.paidFee || 0));
+                       const busBal = student.isUsingTransport ? Math.max(0, (student.transportFee || 0) - (student.paidTransportFee || 0)) : 0;
+                       
+                       return (
+                         <tr key={student.id} className="hover:bg-gray-50/50 transition-colors">
+                           <td className="py-4 px-2">
+                              <p className="font-bold text-gray-900">{student.firstName} {student.lastName}</p>
+                              <p className="text-[9px] font-mono text-blue-600 uppercase tracking-tighter">{student.admissionNumber}</p>
+                           </td>
+                           <td className="py-4 px-2"><span className="px-2 py-0.5 bg-gray-100 rounded text-[9px] font-black uppercase">{student.class}</span></td>
+                           <td className="py-4 px-2 text-gray-600 font-bold text-xs">KES {tuitionBal.toLocaleString()}</td>
+                           <td className="py-4 px-2 text-center text-blue-600 font-bold text-xs">
+                             {student.isUsingTransport ? `KES ${busBal.toLocaleString()}` : '-'}
+                           </td>
+                           <td className="py-4 px-2">
+                              <p className={`text-[10px] font-black ${student.feeBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                 KES {(student.feeBalance || 0).toLocaleString()}
+                              </p>
+                           </td>
+                           <td className="py-4 px-2 text-right">
+                              <div className="flex justify-end gap-2">
+                                 <button 
+                                   onClick={() => openPaymentModal(student)} 
+                                   className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg text-[9px] font-black uppercase tracking-widest border border-blue-100 hover:bg-blue-100 transition-all shadow-sm"
+                                 >
+                                    <CreditCard size={12} /> Record Payment
+                                 </button>
+                                 <button 
+                                   onClick={() => initiateStkPush(student)} 
+                                   className="flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-[9px] font-black uppercase tracking-widest border border-green-100 hover:bg-green-100 transition-all shadow-sm"
+                                 >
+                                    <Smartphone size={12} /> STK Push
+                                 </button>
+                                 <button onClick={() => openBillingEditor(student)} className="p-2 text-gray-400 hover:text-blue-600" title="Adjust Billing"><Settings2 size={16} /></button>
+                                 <button onClick={() => generateStudentReceipt(student)} className="p-2 text-gray-400 hover:text-green-600" title="Print Statement"><Printer size={16} /></button>
+                              </div>
+                           </td>
+                         </tr>
+                       );
+                     })}
                    </tbody>
                  </table>
                </div>
@@ -500,13 +581,87 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
         </div>
       </div>
 
+      {/* Billing & Negotiated Fee Adjustment Modal */}
+      {isBillingModalOpen && selectedStudentForBilling && (
+        <div className="fixed inset-0 z-[160] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md no-print">
+           <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl p-10 animate-in zoom-in duration-300">
+              <div className="flex justify-between items-center mb-8">
+                 <div>
+                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Billing Adjustment</h2>
+                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">Financial Reconciliation for {selectedStudentForBilling.firstName}</p>
+                 </div>
+                 <button onClick={() => setIsBillingModalOpen(false)} className="text-gray-400 hover:text-red-600"><X size={24} /></button>
+              </div>
+              <form onSubmit={handleSaveBilling} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                     <div className="space-y-1">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Negotiated Fee (Termly)</label>
+                        <input type="number" value={billingFormData.agreedFee} onChange={e => setBillingFormData({...billingFormData, agreedFee: Number(e.target.value)})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-black outline-none focus:border-blue-500 shadow-inner" />
+                     </div>
+                     <div className="space-y-1">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Amount Paid to Date</label>
+                        <input type="number" value={billingFormData.paidFee} onChange={e => setBillingFormData({...billingFormData, paidFee: Number(e.target.value)})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-black outline-none focus:border-blue-500 shadow-inner" />
+                     </div>
+                  </div>
+
+                  <div className="p-6 bg-blue-50 rounded-3xl border-2 border-blue-100 flex items-center justify-between">
+                     <div className="flex items-center gap-4">
+                        <div className="p-3 bg-blue-600 text-white rounded-xl shadow-lg">
+                           <ShieldCheck size={20} />
+                        </div>
+                        <div>
+                           <p className="text-[10px] font-black text-blue-800 uppercase tracking-widest leading-none">Transport Services</p>
+                           <p className="text-[9px] text-blue-600 font-bold uppercase mt-1">Include School Bus Fees</p>
+                        </div>
+                     </div>
+                     <div className="flex items-center gap-4">
+                        {billingFormData.isUsingTransport && (
+                          <input 
+                            type="number" 
+                            placeholder="Transport Fee"
+                            value={billingFormData.transportFee} 
+                            onChange={e => setBillingFormData({...billingFormData, transportFee: Number(e.target.value)})}
+                            className="w-28 p-2 bg-white border border-blue-200 rounded-lg font-black text-xs outline-none focus:border-blue-600 shadow-sm" 
+                          />
+                        )}
+                        <button 
+                          type="button"
+                          onClick={() => setBillingFormData({...billingFormData, isUsingTransport: !billingFormData.isUsingTransport})}
+                          className={`w-12 h-6 rounded-full transition-all relative ${billingFormData.isUsingTransport ? 'bg-blue-600' : 'bg-gray-200'}`}
+                        >
+                           <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${billingFormData.isUsingTransport ? 'right-1' : 'left-1'}`}></div>
+                        </button>
+                     </div>
+                  </div>
+
+                  <div className="p-6 bg-gray-50 rounded-3xl border-2 border-gray-100 italic space-y-1 shadow-inner">
+                     <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Financial Projection</p>
+                     <p className="text-xl font-black text-gray-900 leading-none">
+                        KES {(billingFormData.agreedFee + (billingFormData.isUsingTransport ? billingFormData.transportFee : 0) - billingFormData.paidFee).toLocaleString()}
+                        <span className="text-[10px] text-gray-400 font-normal ml-3 uppercase non-italic tracking-widest">Outstanding Balance</span>
+                     </p>
+                  </div>
+
+                  <div className="flex gap-4 pt-4">
+                     <button type="button" onClick={() => setIsBillingModalOpen(false)} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest">Dismiss</button>
+                     <button type="submit" className="flex-[2] py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-black transition-all">
+                        <Save size={16} /> Sync Account Details
+                     </button>
+                  </div>
+              </form>
+           </div>
+        </div>
+      )}
+
       {/* Global Quick Collect Modal */}
       {isQuickCollectOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md no-print">
            <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl p-10 animate-in zoom-in duration-300">
               <div className="flex justify-between items-center mb-8">
                  <div>
-                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">Quick Collect</h2>
+                    <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">
+                       {quickCategory === 'TRANSPORT' ? 'Transport Collection' : 'Quick Collect'}
+                    </h2>
                     <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">Search for a Learner</p>
                  </div>
                  <button onClick={() => setIsQuickCollectOpen(false)} className="text-gray-400 hover:text-red-600"><X size={24} /></button>
@@ -536,8 +691,14 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                           </div>
                           <div className="flex items-center gap-3">
                              <div className="text-right">
-                                <p className="text-[9px] font-black text-gray-300 uppercase">Balance</p>
-                                <p className="font-black text-red-600">KES {s.feeBalance.toLocaleString()}</p>
+                                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                                   {quickCategory === 'TRANSPORT' ? 'Bus Bal' : 'School Bal'}
+                                </p>
+                                <p className="font-black text-red-600">
+                                   KES {quickCategory === 'TRANSPORT' 
+                                     ? Math.max(0, (s.transportFee || 0) - (s.paidTransportFee || 0)).toLocaleString() 
+                                     : Math.max(0, (s.agreedFee ?? s.totalFee) - (s.paidFee || 0)).toLocaleString()}
+                                </p>
                              </div>
                              <ChevronRight className="text-blue-500 group-hover:translate-x-1 transition-transform" />
                           </div>
@@ -571,9 +732,21 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
               </div>
               <form onSubmit={handleSavePayment} className="space-y-6">
                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Payment Category</label>
+                    <div className="grid grid-cols-2 gap-2">
+                       <button type="button" onClick={() => setPaymentFormData({...paymentFormData, category: 'TUITION'})} className={`py-3 rounded-xl text-[9px] font-black uppercase transition-all border-2 ${paymentFormData.category === 'TUITION' ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}>School Fees</button>
+                       <button type="button" onClick={() => setPaymentFormData({...paymentFormData, category: 'TRANSPORT', amount: selectedStudentForPayment.isUsingTransport ? Math.max(0, (selectedStudentForPayment.transportFee || 0) - (selectedStudentForPayment.paidTransportFee || 0)).toString() : ''})} className={`py-3 rounded-xl text-[9px] font-black uppercase transition-all border-2 ${paymentFormData.category === 'TRANSPORT' ? 'bg-blue-600 border-blue-600 text-white shadow-lg' : 'bg-gray-50 border-transparent text-gray-400'}`}>Transport</button>
+                    </div>
+                 </div>
+                 <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Payment Amount (KES)</label>
                     <input required autoFocus type="number" value={paymentFormData.amount} onChange={e => setPaymentFormData({...paymentFormData, amount: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-black text-2xl focus:border-blue-500 transition-all outline-none shadow-inner" placeholder="0.00" />
-                    <p className="text-[9px] text-gray-400 font-bold uppercase ml-1 italic">Current Balance: KES {selectedStudentForPayment.feeBalance.toLocaleString()}</p>
+                    <p className="text-[9px] text-gray-400 font-bold uppercase ml-1 italic">
+                       {paymentFormData.category === 'TRANSPORT' 
+                         ? `Outstanding Transport: KES ${((selectedStudentForPayment.transportFee || 0) - (selectedStudentForPayment.paidTransportFee || 0)).toLocaleString()}`
+                         : `Current Balance: KES ${selectedStudentForPayment.feeBalance.toLocaleString()}`
+                       }
+                    </p>
                  </div>
                  <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Channel / Method</label>

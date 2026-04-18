@@ -22,7 +22,9 @@ import {
   TrendingDown,
   Scale,
   Wallet,
-  Building2
+  Building2,
+  Bus,
+  Route
 } from 'lucide-react';
 import { 
   AreaChart, 
@@ -64,6 +66,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
     const totalExp = expenditures.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
     const netPosition = totalCollected - totalExp;
 
+    const transportExpected = students.reduce((sum, s) => sum + (s.isUsingTransport ? (Number(s.transportFee) || 0) : 0), 0);
+    const transportCollected = students.reduce((sum, s) => sum + (Number(s.paidTransportFee) || 0), 0);
+    const transportArrears = transportExpected - transportCollected;
+
     const formatKES = (val: number) => {
       const isNegative = val < 0;
       const absVal = Math.abs(val);
@@ -83,6 +89,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
       prepaid: formatKES(totalPrepaid),
       expenditure: formatKES(totalExp),
       net: formatKES(netPosition),
+      transportExpected: formatKES(transportExpected),
+      transportCollected: formatKES(transportCollected),
+      transportArrears: formatKES(transportArrears),
       rawExpected: totalExpected,
       rawCollected: totalCollected,
       rawNet: netPosition,
@@ -217,6 +226,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
           { label: "Total Expenditure", value: stats.expenditure, icon: TrendingDown, color: 'orange', change: 'Institutional Costs' },
           { label: "Net Cash Position", value: stats.net, icon: Wallet, color: 'emerald', change: 'Cash Remainder' },
           { label: "Prepaid Credit", value: stats.prepaid, icon: Forward, color: 'blue', change: 'Future Term Funds' },
+          { label: "Transport (Expected)", value: stats.transportExpected, icon: Route, color: 'blue', change: 'Active Routes' },
+          { label: "Transport (Collected)", value: stats.transportCollected, icon: Bus, color: 'green', change: 'Bus Fees Received' },
+          { label: "Transport (Balanced)", value: stats.transportArrears, icon: AlertCircle, color: 'red', change: 'Unpaid Bus Fees' },
         ].map((stat, idx) => {
           const Icon = stat.icon;
           return (

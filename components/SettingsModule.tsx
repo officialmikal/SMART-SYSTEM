@@ -282,6 +282,21 @@ export const SettingsModule: React.FC<SettingsModuleProps> = ({
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">School Motto / Vision</label>
                         <input type="text" value={schoolConfig.motto} onChange={e => setSchoolConfig({...schoolConfig, motto: e.target.value})} className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl font-bold italic outline-none focus:border-blue-500 shadow-inner" />
                       </div>
+                      
+                      {/* ADDED: SIGNATORY CONFIGURATION */}
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-red-600">Principal Name (Signatory)</label>
+                        <input type="text" value={schoolConfig.principalName || ''} onChange={e => setSchoolConfig({...schoolConfig, principalName: e.target.value})} placeholder="e.g. Principal Maina" className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl font-black uppercase italic outline-none focus:border-red-500 shadow-inner" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-red-600">Default Class Teacher</label>
+                        <input type="text" value={schoolConfig.defaultClassTeacher || ''} onChange={e => setSchoolConfig({...schoolConfig, defaultClassTeacher: e.target.value})} placeholder="e.g. Tr. Sarah Wambui" className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl font-black uppercase italic outline-none focus:border-red-500 shadow-inner" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 text-red-600">Examination Officer</label>
+                        <input type="text" value={schoolConfig.examinationOfficer || ''} onChange={e => setSchoolConfig({...schoolConfig, examinationOfficer: e.target.value})} placeholder="e.g. Mr. John Koech" className="w-full p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl font-black uppercase italic outline-none focus:border-red-500 shadow-inner" />
+                      </div>
+
                       <div className="md:col-span-2 pt-4">
                         <button type="submit" className="w-full py-6 bg-gray-900 text-white rounded-[32px] font-black uppercase text-xs tracking-[0.2em] shadow-2xl hover:bg-black transition-all flex items-center justify-center gap-3">
                            <Save size={20} /> Update Metadata Records

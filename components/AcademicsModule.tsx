@@ -125,7 +125,7 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
           studentName: `${s.firstName} ${s.lastName}`,
           admissionNumber: s.admissionNumber,
           score: existing?.score || 0,
-          competency: existing?.competency || CBCGrade.BE,
+          competency: existing?.competency || 'BE2',
           remarks: existing?.remarks || ''
         };
       });
@@ -248,9 +248,10 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
 
   const handleScoreChange = (studentId: string, scoreStr: string) => {
     const score = parseInt(scoreStr) || 0;
+    const assessment = schoolService.calculateCBCGrade(score);
     setMarks(prev => prev.map(m => 
       m.studentId === studentId 
-        ? { ...m, score, competency: schoolService.calculateCBCGrade(score) } 
+        ? { ...m, score, competency: assessment.level } 
         : m
     ));
   };
@@ -586,7 +587,7 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
                   <tr className="bg-gray-50 border-b-2 border-gray-100 text-[10px] font-black uppercase text-gray-400 tracking-[0.4em]">
                     <th className="px-12 py-8">Learner Credentials</th>
                     <th className="px-12 py-8 text-center">Score %</th>
-                    <th className="px-12 py-8 text-center">Descriptor</th>
+                    <th className="px-12 py-8 text-center">Level & Points</th>
                     <th className="px-12 py-8">Professional Remark</th>
                     <th className="px-12 py-8 text-right">Verification</th>
                   </tr>
@@ -606,14 +607,22 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
                         />
                       </td>
                       <td className="px-12 py-8 text-center">
-                        <span className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-sm border-2 ${
-                          entry.competency === CBCGrade.EE ? 'bg-green-50 text-green-700 border-green-100' :
-                          entry.competency === CBCGrade.ME ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                          entry.competency === CBCGrade.AE ? 'bg-amber-50 text-amber-700 border-amber-100' :
-                          'bg-red-50 text-red-700 border-red-100'
-                        }`}>
-                          {entry.competency}
-                        </span>
+                        {(() => {
+                          const assessment = schoolService.calculateCBCGrade(entry.score);
+                          return (
+                            <div className="flex flex-col items-center gap-2">
+                              <span className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-sm border-2 ${
+                                assessment.level.startsWith('EE') ? 'bg-green-50 text-green-700 border-green-100' :
+                                assessment.level.startsWith('ME') ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                assessment.level.startsWith('AE') ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                                'bg-red-50 text-red-700 border-red-100'
+                              }`}>
+                                {assessment.level}
+                              </span>
+                              <div className="text-[10px] font-black text-gray-400">Pts: {assessment.points.toFixed(1)}</div>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-12 py-8 min-w-[450px]">
                         <div className="flex items-center gap-3 bg-gray-50 px-6 py-4 rounded-[32px] border-2 border-transparent focus-within:border-blue-400 focus-within:bg-white transition-all shadow-inner">

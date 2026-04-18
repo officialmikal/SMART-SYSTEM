@@ -50,11 +50,24 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Identify principal from users list for signatures
+  // Identify principal from school settings or users list for signatures
   const principalName = useMemo(() => {
+    if (schoolConfig.principalName) return schoolConfig.principalName;
     const p = users.find(u => u.role === UserRole.PRINCIPAL);
     return p ? p.name : 'The Principal';
-  }, [users]);
+  }, [users, schoolConfig.principalName]);
+
+  const classTeacherName = useMemo(() => {
+    if (schoolConfig.defaultClassTeacher) return schoolConfig.defaultClassTeacher;
+    const ct = users.find(u => u.role === UserRole.CLASS_TEACHER);
+    return ct ? ct.name : 'Tr. Sarah Wambui';
+  }, [users, schoolConfig.defaultClassTeacher]);
+
+  const examinationOfficerName = useMemo(() => {
+    if (schoolConfig.examinationOfficer) return schoolConfig.examinationOfficer;
+    const eo = users.find(u => u.name.toLowerCase().includes('exam') || u.role === UserRole.ADMIN);
+    return eo ? eo.name : 'Mr. John Koech';
+  }, [users, schoolConfig.examinationOfficer]);
 
   const filteredStudents = useMemo(() => {
     return (students || []).filter(s => {
@@ -82,6 +95,8 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
           schoolLogo={schoolLogo} 
           schoolConfig={schoolConfig} 
           principalName={principalName} 
+          classTeacherName={classTeacherName}
+          examinationOfficerName={examinationOfficerName}
         />
       </div>
     );

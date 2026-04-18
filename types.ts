@@ -63,7 +63,7 @@ export interface ExamResult {
   subject: string;
   score: number;
   grade: string;
-  competency: CBCGrade;
+  competency: string; // Changed from CBCGrade to string to hold levels like 'EE1'
   remarks: string;
 }
 
@@ -81,6 +81,9 @@ export interface Student {
   feeBalance: number;
   totalFee: number; // This is the Grade Default Fee
   agreedFee?: number; // Optional negotiated amount
+  transportFee?: number; // Added: Transport specific fee
+  isUsingTransport?: boolean; // Added: Transport toggle
+  paidTransportFee?: number; // Added: Collected transport fees
   paidFee: number;
   prepaidFee: number;
   photo?: string;
@@ -112,7 +115,7 @@ export interface MarkEntry {
   studentName: string;
   admissionNumber: string;
   score: number;
-  competency: CBCGrade;
+  competency: string; // Changed from CBCGrade to string to hold levels like 'EE1'
   remarks: string;
 }
 

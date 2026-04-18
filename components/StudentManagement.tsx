@@ -55,7 +55,10 @@ export const StudentManagement: React.FC<Props> = ({ students = [], setStudents,
     agreedFee: undefined,
     paidFee: 0,
     prepaidFee: 0,
-    feeBalance: 45000
+    feeBalance: 45000,
+    isUsingTransport: false,
+    transportFee: 0,
+    paidTransportFee: 0
   });
 
   const openModal = (student?: Student) => {
@@ -80,7 +83,10 @@ export const StudentManagement: React.FC<Props> = ({ students = [], setStudents,
         agreedFee: undefined,
         paidFee: 0,
         prepaidFee: 0,
-        feeBalance: defaultFee
+        feeBalance: defaultFee,
+        isUsingTransport: false,
+        transportFee: 0,
+        paidTransportFee: 0
       });
     }
     setIsModalOpen(true);
@@ -117,8 +123,8 @@ export const StudentManagement: React.FC<Props> = ({ students = [], setStudents,
     }));
   };
 
-  const handleFeeFieldChange = (field: 'agreedFee' | 'paidFee', val: string) => {
-    const value = val === '' ? undefined : parseFloat(val);
+  const handleFeeFieldChange = (field: 'agreedFee' | 'paidFee' | 'transportFee' | 'paidTransportFee', val: string) => {
+    const value = val === '' ? (field === 'agreedFee' ? undefined : 0) : parseFloat(val);
     const nextData = { ...formData, [field]: value };
     const { balance, prepaid } = calculateBalances(nextData);
     setFormData({ ...nextData, feeBalance: balance, prepaidFee: prepaid });
@@ -405,6 +411,35 @@ export const StudentManagement: React.FC<Props> = ({ students = [], setStudents,
                           <input required type="tel" value={formData.guardianPhone} onChange={e => setFormData({...formData, guardianPhone: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-blue-500" placeholder="07XX..." />
                        </div>
                     </div>
+                 </div>
+
+                 <div className="pt-6 border-t space-y-6">
+                    <div className="flex items-center justify-between">
+                       <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Transport Services (School Bus)</h4>
+                       <button 
+                         type="button"
+                         onClick={() => setFormData({...formData, isUsingTransport: !formData.isUsingTransport})}
+                         className={`w-12 h-6 rounded-full transition-all relative ${formData.isUsingTransport ? 'bg-blue-600' : 'bg-gray-200'}`}
+                       >
+                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${formData.isUsingTransport ? 'right-1' : 'left-1'}`}></div>
+                       </button>
+                    </div>
+                    {formData.isUsingTransport && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-2 duration-300">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Assigned Transport Fee</label>
+                          <input type="number" value={formData.transportFee ?? 0} onChange={e => handleFeeFieldChange('transportFee', e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black outline-none focus:border-blue-500 shadow-inner" />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Transport Paid to Date</label>
+                          <input type="number" value={formData.paidTransportFee ?? 0} onChange={e => handleFeeFieldChange('paidTransportFee', e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black outline-none focus:border-blue-500 shadow-inner" />
+                        </div>
+                        <div className="md:col-span-2 p-4 bg-blue-50 rounded-2xl border border-blue-100 flex justify-between items-center">
+                           <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Outstanding Transport Balance</span>
+                           <span className="text-sm font-black text-blue-800">KES {((formData.transportFee || 0) - (formData.paidTransportFee || 0)).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    )}
                  </div>
 
                  <div className="pt-6 border-t space-y-6">
