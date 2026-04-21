@@ -45,7 +45,13 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
+
+    // Professional SPA fallback: Avoids wildcard strings to prevent Express 5 path-to-regexp crashes
+    // and explicitly protects API routes from being served HTML accidentally.
+    app.use((req, res, next) => {
+      if (req.method !== "GET" || req.path.startsWith("/api")) {
+        return next();
+      }
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
