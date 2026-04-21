@@ -1,0 +1,9 @@
+# ElimuSmart Netlify Proxy Configuration
+# Reroute /api/* calls to the Render Backend
+/api/*    https://smart-system-wlnh.onrender.com/api/:splat  200
+
+# Reroute /health for system status monitoring
+/health   https://smart-system-wlnh.onrender.com/health      200
+
+# SPA Routing: Fallback all other routes to index.html for React Router
+/*        /index.html  200
