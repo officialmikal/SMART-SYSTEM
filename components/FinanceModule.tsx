@@ -455,35 +455,44 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                  <table className="w-full text-left">
                    <thead>
                      <tr className="text-[9px] font-black uppercase text-gray-400 tracking-widest border-b pb-4">
-                       <th className="pb-4 px-2">Learner Name</th>
+                       <th className="pb-4 px-2">Learner & Period</th>
                        <th className="pb-4 px-2">Grade</th>
-                       <th className="pb-4 px-2">Tuition Bal</th>
-                       <th className="pb-4 px-2 text-center">Bus Bal</th>
-                       <th className="pb-4 px-2">Total Bal</th>
+                       <th className="pb-4 px-2">Expected Fee</th>
+                       <th className="pb-4 px-2">Paid Fee</th>
+                       <th className="pb-4 px-2">Outstanding</th>
                        <th className="pb-4 px-2 text-right">Actions</th>
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-gray-50">
                      {filteredStudents.map(student => {
-                       const tuitionExpected = student.agreedFee ?? student.totalFee;
-                       const tuitionBal = Math.max(0, tuitionExpected - (student.paidFee || 0));
-                       const busBal = student.isUsingTransport ? Math.max(0, (student.transportFee || 0) - (student.paidTransportFee || 0)) : 0;
+                       const totalExpected = (student.agreedFee ?? student.totalFee) + (student.isUsingTransport ? (student.transportFee || 0) : 0);
+                       const totalPaid = (student.paidFee || 0) + (student.paidTransportFee || 0);
+                       const balance = student.feeBalance;
                        
                        return (
                          <tr key={student.id} className="hover:bg-gray-50/50 transition-colors">
                            <td className="py-4 px-2">
                               <p className="font-bold text-gray-900">{student.firstName} {student.lastName}</p>
-                              <p className="text-[9px] font-mono text-blue-600 uppercase tracking-tighter">{student.admissionNumber}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                 <p className="text-[9px] font-mono text-blue-600 uppercase tracking-tighter">{student.admissionNumber}</p>
+                                 <span className="text-[8px] px-1.5 py-0.5 bg-gray-900 text-white rounded font-black uppercase tracking-widest">T{schoolConfig?.term || 1} • {schoolConfig?.year || 2024}</span>
+                              </div>
                            </td>
                            <td className="py-4 px-2"><span className="px-2 py-0.5 bg-gray-100 rounded text-[9px] font-black uppercase">{student.class}</span></td>
-                           <td className="py-4 px-2 text-gray-600 font-bold text-xs">KES {tuitionBal.toLocaleString()}</td>
-                           <td className="py-4 px-2 text-center text-blue-600 font-bold text-xs">
-                             {student.isUsingTransport ? `KES ${busBal.toLocaleString()}` : '-'}
+                           <td className="py-4 px-2">
+                              <p className="text-xs font-black text-gray-900 uppercase">KES {totalExpected.toLocaleString()}</p>
+                              {student.isUsingTransport && <p className="text-[8px] text-gray-400 font-bold">Incl. Bus: KES {student.transportFee?.toLocaleString()}</p>}
                            </td>
                            <td className="py-4 px-2">
-                              <p className={`text-[10px] font-black ${student.feeBalance > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                 KES {(student.feeBalance || 0).toLocaleString()}
-                              </p>
+                              <p className="text-xs font-black text-emerald-600 uppercase">KES {totalPaid.toLocaleString()}</p>
+                              <p className="text-[8px] text-gray-400 font-bold uppercase tracking-tighter italic">Last Action: {new Date().toLocaleDateString()}</p>
+                           </td>
+                           <td className="py-4 px-2">
+                              <div className={`inline-block px-3 py-1.5 rounded-xl border-2 ${balance > 0 ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
+                                 <p className={`text-[10px] font-black ${balance > 0 ? 'text-red-700' : 'text-green-700'}`}>
+                                    KES {balance.toLocaleString()}
+                                 </p>
+                              </div>
                            </td>
                            <td className="py-4 px-2 text-right">
                               <div className="flex justify-end gap-2">

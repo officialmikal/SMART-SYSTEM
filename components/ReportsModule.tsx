@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { TranscriptModule } from './TranscriptModule';
 import { Language, translations } from '../services/localizationService';
-import { KENYAN_CLASSES, SCHOOL_STREAMS, Student, User, UserRole } from '../types';
+import { KENYAN_CLASSES, Student, User, UserRole } from '../types';
 
 type ReportView = 'selection' | 'transcript' | 'attendance' | 'fees';
 type ReportType = 'academic' | 'attendance' | 'finance';
@@ -69,6 +69,11 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
     return eo ? eo.name : 'Mr. John Koech';
   }, [users, schoolConfig.examinationOfficer]);
 
+  const availableStreams = useMemo(() => {
+    const streams = new Set(students.map(s => s.stream).filter(Boolean));
+    return Array.from(streams).sort();
+  }, [students]);
+
   const filteredStudents = useMemo(() => {
     return (students || []).filter(s => {
       const matchesClass = s.class.toLowerCase() === selectedClass.toLowerCase();
@@ -97,6 +102,7 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
           principalName={principalName} 
           classTeacherName={classTeacherName}
           examinationOfficerName={examinationOfficerName}
+          reportType={reportType}
         />
       </div>
     );
@@ -107,14 +113,14 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
       <datalist id="kenyan-classes-reports">
         {KENYAN_CLASSES.map(c => <option key={c} value={c} />)}
       </datalist>
-      <datalist id="school-streams-reports">
-        <option value="">All Streams</option>
-        {SCHOOL_STREAMS.map(s => <option key={s} value={s} />)}
-      </datalist>
+        <datalist id="school-streams-reports">
+          <option value="">All Streams</option>
+          {availableStreams.map(s => <option key={s} value={s}>{s}</option>)}
+        </datalist>
 
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
         <div>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tighter uppercase leading-none italic">Insight Hub</h1>
+          <h1 className="text-4xl font-black text-gray-900 tracking-tighter uppercase leading-none">Insight Hub</h1>
           <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.3em] mt-3 flex items-center gap-3">
              <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
              Report Generation • Official Records
@@ -182,7 +188,7 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
           <div className="bg-white rounded-[48px] border-2 border-gray-50 overflow-hidden shadow-2xl relative">
              <div className="p-10 border-b bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                   <h3 className="text-2xl font-black text-gray-900 tracking-tighter uppercase italic leading-none">Student Directory</h3>
+                   <h3 className="text-2xl font-black text-gray-900 tracking-tighter uppercase leading-none">Student Directory</h3>
                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">{selectedClass} {selectedStream || 'All Streams'} • {filteredStudents.length} Found</p>
                 </div>
                 <div className="relative w-full md:w-80">
@@ -209,7 +215,7 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                            )}
                         </div>
                         <div>
-                           <p className="font-black text-gray-900 text-xl tracking-tighter leading-none uppercase italic">{student.firstName} {student.lastName}</p>
+                           <p className="font-black text-gray-900 text-xl tracking-tighter leading-none uppercase">{student.firstName} {student.lastName}</p>
                            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">ADM: {student.admissionNumber} • {student.stream}</p>
                         </div>
                      </div>
@@ -227,7 +233,7 @@ export const ReportsModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                 {filteredStudents.length === 0 && (
                   <div className="py-24 text-center">
                     <Search className="w-16 h-16 text-gray-100 mx-auto mb-6" />
-                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.4em] italic">No learners match your current filter.</p>
+                    <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.4em]">No learners match your current filter.</p>
                     <button 
                       onClick={() => { setSelectedClass('Grade 7'); setSelectedStream(''); setSearchQuery(''); }}
                       className="mt-6 px-6 py-3 bg-gray-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all"

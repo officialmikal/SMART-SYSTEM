@@ -141,228 +141,179 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, lang, students = [],
   ], [stats.rawCollected]);
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div className="h-[calc(100vh-120px)] flex flex-col gap-3 animate-in fade-in duration-700 overflow-hidden">
       
-      {/* PWA Install Invitation Banner */}
-      {installApp && showInstallCard && (
-        <div className="bg-indigo-600 rounded-[32px] p-6 text-white shadow-xl shadow-indigo-100 flex flex-col md:flex-row items-center justify-between gap-6 border-2 border-indigo-400">
-           <div className="flex items-center gap-5">
-              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/30 animate-pulse-install">
-                 <SmartphoneNfc className="w-10 h-10 text-white" />
-              </div>
-              <div>
-                 <h3 className="text-xl font-black uppercase tracking-tight leading-none">Install {institutionName} Portal</h3>
-                 <p className="text-[11px] font-bold text-indigo-100 uppercase tracking-widest mt-2">Access institutional data from any device home screen</p>
-              </div>
-           </div>
-           <div className="flex items-center gap-3">
-              <button 
-                onClick={installApp}
-                className="bg-white text-indigo-600 px-10 py-4 rounded-2xl font-black uppercase text-[11px] tracking-widest hover:bg-indigo-50 transition-all flex items-center gap-3 shadow-lg"
-              >
-                <Download size={16} /> Install App
-              </button>
-              <button onClick={() => setShowInstallCard(false)} className="p-4 bg-indigo-500/30 hover:bg-indigo-500/50 rounded-2xl transition-all">
-                <X size={20} />
-              </button>
-           </div>
+      {/* Header Area (Compact) */}
+      <div className="flex flex-col md:flex-row items-center gap-3 shrink-0">
+        <div className="flex-grow bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 rounded-[28px] p-4 text-white shadow-lg relative overflow-hidden flex items-center min-h-[80px]">
+          <div className="absolute top-0 right-0 p-4 opacity-5 rotate-12">
+            <Sparkles size={60} />
+          </div>
+          <div className="relative z-10 flex items-center gap-4 w-full">
+            <div className="bg-blue-400/20 p-2 rounded-xl backdrop-blur-md border border-white/10 shrink-0">
+              <Wand2 className="w-5 h-5 text-blue-200" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-[9px] font-black uppercase tracking-[0.4em] text-blue-200 mb-0.5">AI Institutional Briefing</h2>
+              {isBriefingLoading ? (
+                <div className="flex items-center gap-2 text-blue-200/60 text-xs font-semibold">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  <span>Syncing...</span>
+                </div>
+              ) : (
+                <p className="text-sm font-black tracking-tight truncate">
+                  {aiBriefing || `Syncing diagnostics for ${institutionName}...`}
+                </p>
+              )}
+            </div>
+          </div>
         </div>
-      )}
 
-      {/* Principal's Briefing Card */}
-      <div className="bg-gradient-to-r from-blue-700 via-blue-800 to-indigo-900 rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-12 opacity-10 rotate-12 group-hover:scale-110 transition-transform duration-1000">
-          <Sparkles size={160} />
-        </div>
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-          <div className="space-y-4 max-w-2xl">
+        {installApp && showInstallCard && (
+          <div className="bg-indigo-600 rounded-[28px] p-4 text-white shadow-lg flex items-center justify-between gap-4 border-2 border-indigo-400 shrink-0">
             <div className="flex items-center gap-3">
-              <div className="bg-blue-400/20 p-2 rounded-xl backdrop-blur-md border border-white/10">
-                <Wand2 className="w-5 h-5 text-blue-200" />
+              <SmartphoneNfc className="w-6 h-6 text-white" />
+              <div className="hidden sm:block">
+                <p className="text-[10px] font-black uppercase tracking-tight">Portal App</p>
+                <p className="text-[9px] font-bold text-indigo-100 uppercase">Available for Install</p>
               </div>
-              <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-200">AI Institutional Briefing</h2>
             </div>
-            {isBriefingLoading ? (
-              <div className="flex items-center gap-3 text-blue-200/60 font-medium italic">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Syncing institutional insights...</span>
-              </div>
-            ) : (
-              <p className="text-2xl font-black tracking-tight leading-snug">
-                {aiBriefing || `Initializing system diagnostics for ${institutionName}...`}
-              </p>
-            )}
+            <button onClick={installApp} className="bg-white text-indigo-600 px-4 py-2 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-indigo-50">
+              INSTALL
+            </button>
           </div>
-          <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-6 rounded-[32px] shrink-0">
-             <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-green-400 rounded-full flex items-center justify-center shadow-lg shadow-green-400/20">
-                   <Building2 className="w-6 h-6 text-green-900" />
-                </div>
-                <div>
-                   <p className="text-[10px] font-black uppercase tracking-widest text-blue-100">Tenant Status</p>
-                   <p className="text-xl font-black text-white uppercase tracking-tighter">{institutionName.split(' ')[0]}</p>
-                </div>
-             </div>
-          </div>
+        )}
+      </div>
+
+      <div className="flex items-end justify-between shrink-0">
+        <div className="flex items-baseline gap-2">
+          <h1 className="text-xl font-black text-gray-900 tracking-tighter uppercase leading-none">{t.karibu}, {user.name.split(' ')[0]}</h1>
+          <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest px-2 py-0.5 bg-blue-50 rounded-md">SECURED SESSION</span>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase leading-none">{t.karibu}, {user.name.split(' ')[0]}</h1>
-          <p className="text-gray-500 font-medium tracking-tight mt-2">Active Multi-Device Session for <strong className="text-blue-600">{institutionName}</strong>.</p>
-        </div>
-        <div className="bg-blue-50 px-4 py-2 rounded-2xl border border-blue-100 hidden md:block">
-           <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Global Sync Status: SECURED</span>
-        </div>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* 9 Stats Grid (Restored All) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2 shrink-0">
         {[
-          { label: "Total Invoiced", value: stats.expected, icon: Target, color: 'indigo', change: 'Current Year' },
-          { label: "Fees Collected", value: stats.collected, icon: Banknote, color: 'green', change: stats.collectionRate + ' Rate' },
-          { label: "Fee Balances", value: stats.arrears, icon: AlertCircle, color: 'red', change: 'Outstanding Arrears' },
-          { label: "Total Expenditure", value: stats.expenditure, icon: TrendingDown, color: 'orange', change: 'Institutional Costs' },
-          { label: "Net Cash Position", value: stats.net, icon: Wallet, color: 'emerald', change: 'Cash Remainder' },
-          { label: "Prepaid Credit", value: stats.prepaid, icon: Forward, color: 'blue', change: 'Future Term Funds' },
-          { label: "Transport (Expected)", value: stats.transportExpected, icon: Route, color: 'blue', change: 'Active Routes' },
-          { label: "Transport (Collected)", value: stats.transportCollected, icon: Bus, color: 'green', change: 'Bus Fees Received' },
-          { label: "Transport (Balanced)", value: stats.transportArrears, icon: AlertCircle, color: 'red', change: 'Unpaid Bus Fees' },
-        ].map((stat, idx) => {
-          const Icon = stat.icon;
-          return (
-            <div key={idx} className="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 flex items-start justify-between group hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
-              <div className="min-w-0">
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest truncate mb-1">{stat.label}</p>
-                <div className="flex items-baseline gap-1">
-                   <span className="text-xs font-bold text-gray-300">KES</span>
-                   <h3 className={`text-3xl font-black tracking-tighter ${
-                     stat.color === 'red' || stat.color === 'orange' ? 'text-red-600' : 
-                     stat.color === 'green' || stat.color === 'emerald' ? 'text-emerald-600' : 
-                     'text-gray-900'
-                   }`}>{stat.value}</h3>
-                </div>
-                <div className={`mt-3 flex items-center text-[10px] font-black uppercase tracking-widest ${
-                  stat.color === 'red' || stat.color === 'orange' ? 'text-red-500' : 'text-blue-500'
-                }`}>
-                  <Clock className="w-3 h-3 mr-1" />
-                  {stat.change}
-                </div>
-              </div>
-              <div className={`p-4 rounded-2xl transition-transform group-hover:scale-110 shrink-0 ${
-                stat.color === 'blue' ? 'bg-blue-50 text-blue-600' : 
-                stat.color === 'green' || stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-600' : 
-                stat.color === 'red' ? 'bg-red-50 text-red-600' : 
-                stat.color === 'orange' ? 'bg-orange-50 text-orange-600' :
-                stat.color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
-                'bg-purple-50 text-purple-600'
-              } border-2 border-white shadow-lg shadow-gray-100/50`}>
-                <Icon className="w-6 h-6" />
-              </div>
+          { label: "Total Invoiced", value: stats.expected, icon: Target, color: 'indigo', meta: 'Current Year' },
+          { label: "Fees Collected", value: stats.collected, icon: Banknote, color: 'green', meta: stats.collectionRate + ' Rate' },
+          { label: "Fee Balances", value: stats.arrears, icon: AlertCircle, color: 'red', meta: 'Outstanding Arrears' },
+          { label: "Total Expenditure", value: stats.expenditure, icon: TrendingDown, color: 'orange', meta: 'Institutional Costs' },
+          { label: "Net Cash Position", value: stats.net, icon: Wallet, color: 'emerald', meta: 'Cash Remainder' },
+          { label: "Prepaid Credit", value: stats.prepaid, icon: Forward, color: 'blue', meta: 'Future Term Funds' },
+          { label: "Transport (Expected)", value: stats.transportExpected, icon: Route, color: 'blue', meta: 'Active Routes' },
+          { label: "Transport (Collected)", value: stats.transportCollected, icon: Bus, color: 'green', meta: 'Bus Fees Received' },
+          { label: "Transport (Balanced)", value: stats.transportArrears, icon: AlertCircle, color: 'red', meta: 'Unpaid Bus Fees' },
+        ].map((stat, idx) => (
+          <div key={idx} className="bg-white p-3 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-3 group">
+            <div className={`p-2 rounded-xl shrink-0 ${
+              stat.color === 'blue' ? 'bg-blue-50 text-blue-600' : 
+              stat.color === 'green' || stat.color === 'emerald' ? 'bg-emerald-50 text-emerald-600' : 
+              stat.color === 'red' ? 'bg-red-50 text-red-600' : 
+              stat.color === 'orange' ? 'bg-orange-50 text-orange-600' :
+              'bg-indigo-50 text-indigo-600'
+            }`}>
+              <stat.icon size={16} />
             </div>
-          );
-        })}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 overflow-hidden flex flex-col group hover:shadow-2xl transition-all duration-500 min-w-0">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h3 className="text-xl font-black text-gray-800 uppercase tracking-tighter">Collection Velocity</h3>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Real-time KES Flow</p>
-            </div>
-            <div className="flex items-center gap-2 bg-gray-50 px-3 py-1.5 rounded-full text-[10px] font-black text-gray-500 uppercase">
-              <TrendingUp className="w-3.5 h-3.5" /> Growth Trend
+            <div className="min-w-0">
+              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest truncate">{stat.label}</p>
+              <div className="flex items-baseline gap-0.5">
+                <span className="text-[8px] font-bold text-gray-300">KES</span>
+                <p className="text-sm font-black text-gray-900 tracking-tighter">{stat.value}</p>
+              </div>
+              <p className="text-[7px] font-black text-blue-500 uppercase tracking-tighter mt-0.5">{stat.meta}</p>
             </div>
           </div>
-          <div className="w-full h-[350px] relative min-h-[350px] min-w-0 overflow-hidden bg-gray-50/30 rounded-3xl">
-            <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-              <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+        ))}
+      </div>
+
+      {/* Main Row: Chart & operational Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 flex-grow min-h-0">
+        {/* Chart (Compact) */}
+        <div className="md:col-span-8 bg-white p-4 rounded-[32px] shadow-sm border border-gray-100 flex flex-col min-h-0">
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h3 className="text-xs font-black text-gray-800 uppercase tracking-tighter">Collection Velocity</h3>
+              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mt-0.5">Real-time KES Flow</p>
+            </div>
+            <div className="flex items-center gap-1 bg-gray-50 px-2 py-1 rounded-full text-[8px] font-black text-gray-500 uppercase tracking-widest">
+              <TrendingUp className="w-3 h-3" /> Growth Trend
+            </div>
+          </div>
+          <div className="flex-grow">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 0, right: 0, left: -30, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorColl" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.2}/>
+                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
                     <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f8fafc" />
-                <XAxis dataKey="name" stroke="#cbd5e1" fontSize={10} fontWeight="900" tickLine={false} axisLine={false} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" stroke="#cbd5e1" fontSize={8} fontWeight="900" tickLine={false} axisLine={false} />
                 <YAxis hide />
                 <Tooltip 
-                  cursor={{ stroke: '#2563eb', strokeWidth: 2, strokeDasharray: '5 5' }}
-                  contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)', padding: '20px' }}
-                  labelStyle={{ fontWeight: '900', textTransform: 'uppercase', fontSize: '12px', color: '#1e293b', marginBottom: '8px' }}
-                  formatter={(value: any) => [`KES ${value.toLocaleString()}`, 'Total Collected']}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1)', padding: '10px' }}
+                  labelStyle={{ fontWeight: '900', textTransform: 'uppercase', fontSize: '9px', color: '#1e293b' }}
                 />
-                <Area type="monotone" dataKey="collection" stroke="#2563eb" strokeWidth={5} fillOpacity={1} fill="url(#colorColl)" animationDuration={2000} />
+                <Area type="monotone" dataKey="collection" stroke="#2563eb" strokeWidth={3} fillOpacity={1} fill="url(#colorColl)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-           <div className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 hover:shadow-xl transition-all group">
-              <div className="flex items-center gap-4 mb-6">
-                 <div className="p-4 bg-blue-50 text-blue-600 rounded-[20px] shadow-sm group-hover:scale-110 transition-transform">
-                    <Users className="w-6 h-6" />
-                 </div>
-                 <div>
-                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.total_students}</p>
-                   <p className="text-xs font-bold text-blue-600">Active Learners</p>
-                 </div>
+        {/* Operational Cards Container */}
+        <div className="md:col-span-4 flex flex-col gap-3 min-h-0">
+          <div className="grid grid-cols-2 gap-3 flex-grow">
+            <div className="bg-white p-4 rounded-[28px] shadow-sm border border-gray-100 flex flex-col justify-center relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-5 rotate-12 group-hover:scale-110 transition-transform">
+                <Users size={40} />
               </div>
-              <h4 className="text-5xl font-black text-gray-900 tracking-tighter">{students.length}</h4>
-              <p className="text-[10px] text-green-600 font-black uppercase mt-4 tracking-widest">{stats.enrollmentChange}</p>
-           </div>
-           
-           <div className="bg-white p-8 rounded-[40px] shadow-sm border border-gray-100 hover:shadow-xl transition-all group">
-              <div className="flex items-center gap-4 mb-6">
-                 <div className="p-4 bg-emerald-50 text-emerald-600 rounded-[20px] shadow-sm group-hover:scale-110 transition-transform">
-                    <CheckCircle className="w-6 h-6" />
-                 </div>
-                 <div>
-                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{t.avg_attendance}</p>
-                   <p className="text-xs font-bold text-emerald-600">Daily Average</p>
-                 </div>
+              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t.total_students}</p>
+              <h4 className="text-3xl font-black text-gray-900 tracking-tighter leading-none mt-1">{students.length}</h4>
+              <p className="text-[9px] text-gray-800 font-bold uppercase mt-1">Active Learners</p>
+              <p className="text-[8px] text-green-600 font-black uppercase mt-2 tracking-tighter">{stats.enrollmentChange}</p>
+            </div>
+            
+            <div className="bg-white p-4 rounded-[28px] shadow-sm border border-gray-100 flex flex-col justify-center relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 opacity-5 rotate-12 group-hover:scale-110 transition-transform">
+                <CheckCircle size={40} />
               </div>
-              <h4 className="text-5xl font-black text-gray-900 tracking-tighter">94%</h4>
-              <p className="text-[10px] text-blue-600 font-black uppercase mt-4 tracking-widest">Target Met for Term 3</p>
-           </div>
+              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{t.avg_attendance}</p>
+              <h4 className="text-3xl font-black text-gray-900 tracking-tighter leading-none mt-1">94%</h4>
+              <p className="text-[9px] text-gray-800 font-bold uppercase mt-1">Daily Average</p>
+              <p className="text-[8px] text-blue-600 font-black uppercase mt-2 tracking-tighter">Target Met for Term 3</p>
+            </div>
+          </div>
 
-           <div className="bg-gradient-to-br from-indigo-700 to-blue-900 p-8 rounded-[48px] shadow-2xl shadow-blue-200 text-white sm:col-span-2 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-12 opacity-5 rotate-12 group-hover:scale-110 transition-transform duration-700">
-                 <Target size={200} />
-              </div>
-              <div className="relative z-10">
-                <div className="flex justify-between items-start mb-10">
-                   <div>
-                      <h4 className="text-2xl font-black uppercase tracking-tighter">Institutional Health Index</h4>
-                      <p className="text-[10px] opacity-70 font-black uppercase tracking-[0.2em] mt-2">Operational Integrity Status</p>
-                   </div>
-                   <Shield className="w-10 h-10 text-blue-300" />
-                </div>
-                <div className="space-y-6">
-                   <div className="space-y-2">
-                      <div className="flex justify-between text-[11px] font-black uppercase tracking-widest">
-                         <span>Fee Collection Goal</span>
-                         <span className="text-green-300">{stats.collectionRate} Complete</span>
-                      </div>
-                      <div className="w-full h-2.5 bg-blue-800/50 rounded-full overflow-hidden border border-blue-400/20 shadow-inner">
-                         <div className="h-full bg-green-400 shadow-[0_0_15px_rgba(74,222,128,0.5)] transition-all duration-1000" style={{ width: stats.collectionRate }}></div>
-                      </div>
-                   </div>
-                   <div className="space-y-2">
-                      <div className="flex justify-between text-[11px] font-black uppercase tracking-widest">
-                         <span>Cash Reserve Liquidity</span>
-                         <span className="text-blue-300">{stats.rawNet > 0 ? 'Surplus' : 'Deficit'} Detected</span>
-                      </div>
-                      <div className="w-full h-2.5 bg-blue-800/50 rounded-full overflow-hidden border border-blue-400/20 shadow-inner">
-                         <div className={`h-full ${stats.rawNet > 0 ? 'bg-blue-300' : 'bg-red-400'} shadow-[0_0_15px_rgba(147,197,253,0.5)] transition-all duration-1000`} style={{ width: stats.rawNet > 0 ? '100%' : '20%' }}></div>
-                      </div>
-                   </div>
-                </div>
-              </div>
-           </div>
+          <div className="bg-gradient-to-br from-indigo-700 to-blue-900 p-5 rounded-[32px] text-white overflow-hidden relative flex flex-col justify-center min-h-[120px]">
+            <div className="absolute top-0 right-0 p-6 opacity-10 rotate-12">
+               <Target size={120} />
+            </div>
+            <div className="relative z-10">
+               <h4 className="text-xs font-black uppercase tracking-[0.2em] mb-3">Institutional Health</h4>
+               <div className="space-y-3">
+                  <div className="space-y-1">
+                     <div className="flex justify-between text-[8px] font-black uppercase tracking-widest opacity-60">
+                        <span>Goal</span>
+                        <span>{stats.collectionRate}</span>
+                     </div>
+                     <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-full bg-blue-500" style={{ width: stats.collectionRate }}></div>
+                     </div>
+                  </div>
+                  <div className="space-y-1">
+                     <div className="flex justify-between text-[8px] font-black uppercase tracking-widest opacity-60">
+                        <span>Reserves</span>
+                        <span>{stats.rawNet > 0 ? 'Surplus' : 'Deficit'}</span>
+                     </div>
+                     <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                        <div className={`h-full ${stats.rawNet > 0 ? 'bg-emerald-500' : 'bg-red-500'}`} style={{ width: stats.rawNet > 0 ? '100%' : '20%' }}></div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

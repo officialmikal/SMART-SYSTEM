@@ -12,6 +12,7 @@ interface TranscriptModuleProps {
   principalName?: string;
   classTeacherName?: string;
   examinationOfficerName?: string;
+  reportType?: 'academic' | 'attendance' | 'finance';
 }
 
 export const TranscriptModule: React.FC<TranscriptModuleProps> = ({ 
@@ -21,7 +22,8 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({
   schoolConfig,
   principalName = 'Principal Maina',
   classTeacherName = 'Tr. Sarah Wambui',
-  examinationOfficerName = 'Mr. John Koech'
+  examinationOfficerName = 'Mr. John Koech',
+  reportType = 'academic'
 }) => {
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -58,6 +60,37 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({
     return displayResults.length > 0 ? schoolService.calculateCBCGrade(meanScore) : null;
   }, [meanScore, displayResults]);
 
+  const attendanceStats = useMemo(() => {
+    const events = activeStudent.attendance || [];
+    const presentCount = events.filter(e => e.status === 'present').length;
+    const lateCount = events.filter(e => e.status === 'late').length;
+    const absentCount = events.filter(e => e.status === 'absent').length;
+    const total = events.length;
+    const rate = total > 0 ? Math.round(((presentCount + lateCount) / total) * 100) : 0;
+
+    // Longitudinal Monthly Breakdown
+    const monthlyMap: Record<string, { openings: number, attended: number }> = {};
+    events.forEach(e => {
+      const month = new Date(e.date).toLocaleString('default', { month: 'long' });
+      if (!monthlyMap[month]) monthlyMap[month] = { openings: 0, attended: 0 };
+      monthlyMap[month].openings++;
+      if (e.status !== 'absent') monthlyMap[month].attended++;
+    });
+
+    return { 
+      present: presentCount, 
+      late: lateCount, 
+      absent: absentCount, 
+      total, 
+      rate,
+      breakdown: Object.entries(monthlyMap).map(([month, data]) => ({
+        month,
+        ...data,
+        percent: data.openings > 0 ? Math.round((data.attended / data.openings) * 100) : 0
+      }))
+    };
+  }, [activeStudent.attendance]);
+
   const exportToPDF = (elementId: string, fileName: string) => {
     const element = document.getElementById(elementId);
     if (!element) return;
@@ -88,7 +121,9 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({
       {!hideControls && (
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 no-print bg-white p-8 rounded-[40px] shadow-2xl border-2 border-gray-50">
           <div>
-            <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase italic leading-none">Official Report Card</h1>
+            <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase leading-none">
+              {reportType === 'academic' ? 'Official Report Card' : reportType === 'attendance' ? 'Attendance Statement' : 'Financial Statement'}
+            </h1>
             <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.3em] mt-3">Term {schoolConfig?.term || 1} • {activeStudent.firstName} {activeStudent.lastName}</p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -104,118 +139,288 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({
         </div>
       )}
 
-      <div className={`bg-white shadow-2xl mx-auto overflow-hidden p-16 relative ${hideControls ? 'mb-8' : ''}`} id="reportcard-container" style={{ minHeight: '1123px', width: '100%', maxWidth: '210mm', border: '1px solid #eee' }}>
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.01] rotate-12 select-none">
-          <ShieldCheck className="w-[800px] h-[800px]" />
+      <div 
+        className={`bg-white mx-auto relative overflow-hidden print:shadow-none print:border-0 ${hideControls ? 'mb-4' : ''}`} 
+        id="reportcard-container" 
+        style={{ 
+          width: '210mm', 
+          height: '297mm', 
+          padding: '12mm', 
+          border: '1px solid #eee',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
+        <style dangerouslySetInnerHTML={{ __html: `
+          @media print {
+            body { margin: 0; padding: 0; background: white; }
+            .no-print { display: none !important; }
+            #reportcard-container { 
+              margin: 0 !important; 
+              border: none !important; 
+              width: 210mm !important; 
+              height: 297mm !important; 
+              padding: 12mm !important;
+              box-shadow: none !important;
+            }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          }
+        `}} />
+
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.02] rotate-12 select-none">
+          <ShieldCheck className="w-[600px] h-[600px]" />
         </div>
 
-        <div className="relative z-10 flex flex-col items-center text-center border-b-8 border-red-900 pb-12 mb-12">
-          <div className="mb-8">
+        {/* HEADER SECTION */}
+        <div className="relative z-10 flex flex-col items-center text-center border-b-4 border-red-900 pb-6 mb-6">
+          <div className="flex items-center gap-8 mb-4">
             {schoolLogo ? (
-              <img src={schoolLogo} alt="Logo" className="w-36 h-36 rounded-[48px] border-8 border-white shadow-2xl object-cover" />
+              <img src={schoolLogo} alt="Logo" className="w-24 h-24 rounded-[24px] border-4 border-white shadow-xl object-cover" />
             ) : (
-              <div className="w-36 h-36 rounded-[48px] bg-red-900 flex items-center justify-center text-white text-5xl font-black shadow-2xl">ES</div>
+              <div className="w-24 h-24 rounded-[24px] bg-red-900 flex items-center justify-center text-white text-3xl font-black shadow-xl">ES</div>
             )}
+            <div className="text-left">
+              <h2 className="text-3xl font-black text-red-900 uppercase tracking-tighter leading-none mb-1">{schoolConfig?.schoolName || 'ElimuSmart Academy'}</h2>
+              <div className="text-[9px] font-black text-gray-400 font-mono uppercase tracking-[0.3em] mb-2">{schoolConfig?.motto || 'Excellence through Innovation'}</div>
+              <p className="text-gray-900 text-[9px] font-black uppercase tracking-widest bg-gray-50 px-3 py-1 rounded-full border border-gray-100 inline-block">Reg No: {schoolConfig?.registrationNo || 'MOE/P/2024/0981'}</p>
+            </div>
           </div>
-          <h2 className="text-5xl font-black text-red-900 uppercase tracking-tighter leading-none mb-4 italic">{schoolConfig?.schoolName || 'ElimuSmart Academy'}</h2>
-          <div className="text-[11px] font-black text-gray-400 uppercase tracking-[0.5em] mb-4 opacity-70">"{schoolConfig?.motto || 'Excellence in Knowledge and Character'}"</div>
-          <p className="text-gray-900 text-xs font-black uppercase tracking-widest bg-gray-50 px-6 py-1 rounded-full border border-gray-100">Ministry Registration: {schoolConfig?.registrationNo || 'MOE/P/2024/0981'}</p>
-          <div className="mt-12 bg-red-900 text-white px-20 py-4 rounded-[32px] text-2xl font-black uppercase tracking-[0.3em] shadow-2xl italic border-b-8 border-red-800">Learner's Assessment Summary</div>
-        </div>
-
-        <div className="relative z-10 grid grid-cols-2 gap-16 mb-16">
-          <div className="space-y-6">
-            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-3"><span className="text-gray-300 font-black uppercase text-[9px] tracking-[0.2em]">Learner Name:</span><span className="font-black text-gray-900 uppercase text-lg italic">{activeStudent.firstName} {activeStudent.lastName}</span></div>
-            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-3"><span className="text-gray-300 font-black uppercase text-[9px] tracking-[0.2em]">Admission ID:</span><span className="font-mono font-black text-red-700 text-xl tracking-tighter">{activeStudent.admissionNumber}</span></div>
-            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-3"><span className="text-gray-300 font-black uppercase text-[9px] tracking-[0.2em]">Class Teacher:</span><span className="font-black text-gray-900 uppercase text-sm italic">{classTeacherName}</span></div>
-          </div>
-          <div className="space-y-6">
-            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-3"><span className="text-gray-300 font-black uppercase text-[9px] tracking-[0.2em]">Level / Section:</span><span className="font-black text-gray-900 uppercase text-lg italic">{activeStudent.class} {activeStudent.stream && `• ${activeStudent.stream}`}</span></div>
-            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-3"><span className="text-gray-300 font-black uppercase text-[9px] tracking-[0.2em]">Academic Cycle:</span><span className="font-black text-gray-900 uppercase text-lg italic">{schoolConfig?.year || 2024} • Term {schoolConfig?.term || 1}</span></div>
+          <div className="w-full bg-red-900 text-white py-2 rounded-xl text-lg font-black uppercase tracking-[0.4em] shadow-lg border-b-4 border-red-800">
+            {reportType === 'academic' ? 'Student Progress Report' : reportType === 'attendance' ? 'Institutional Presence Audit' : 'Learner Financial Statement'}
           </div>
         </div>
 
-        <div className="relative z-10 mb-16">
-          {displayResults.length > 0 ? (
-            <table className="w-full text-left border-collapse border-8 border-red-900/10">
-              <thead>
-                <tr className="bg-gray-900 text-white font-black uppercase text-[10px] tracking-[0.4em]">
-                  <th className="p-6 border-2 border-gray-800">Learning Area / Subject</th>
-                  <th className="p-6 border-2 border-gray-800 text-center">Performance Level</th>
-                  <th className="p-6 border-2 border-gray-800 text-center">Raw Marks</th>
-                  <th className="p-6 border-2 border-gray-800 text-center">Points</th>
-                </tr>
-              </thead>
-              <tbody>
-                {displayResults.map((res, i) => {
-                  const assessment = schoolService.calculateCBCGrade(res.score);
-                  return (
-                    <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                      <td className="p-6 border-2 border-gray-100 font-black text-gray-800 uppercase italic text-base tracking-tighter">{res.subject}</td>
-                      <td className="p-6 border-2 border-gray-100 text-center">
-                        <div className="font-black text-red-900 text-lg leading-none">{assessment.level}</div>
-                        <div className="text-[8px] text-gray-400 font-black uppercase tracking-widest mt-1">{assessment.descriptor}</div>
-                      </td>
-                      <td className="p-6 border-2 border-gray-100 text-center font-mono font-black text-2xl text-red-900">{res.score}</td>
-                      <td className="p-6 border-2 border-gray-100 text-center font-mono font-black text-2xl text-red-700">{assessment.points.toFixed(1)}</td>
+        {/* BIO SECTION */}
+        <div className="relative z-10 grid grid-cols-2 gap-x-12 gap-y-4 mb-6">
+          <div className="space-y-3">
+            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-1"><span className="text-gray-300 font-black uppercase text-[8px] tracking-[0.1em]">Learner Name</span><span className="font-black text-gray-900 uppercase text-sm">{activeStudent.firstName} {activeStudent.lastName}</span></div>
+            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-1"><span className="text-gray-300 font-black uppercase text-[8px] tracking-[0.1em]">Admission ID</span><span className="font-mono font-black text-red-700 text-base tracking-tighter">{activeStudent.admissionNumber}</span></div>
+            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-1"><span className="text-gray-300 font-black uppercase text-[8px] tracking-[0.1em]">Gender</span><span className="font-black text-gray-900 uppercase text-xs">{activeStudent.gender}</span></div>
+          </div>
+          <div className="space-y-3">
+            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-1"><span className="text-gray-300 font-black uppercase text-[8px] tracking-[0.1em]">Level / Section</span><span className="font-black text-gray-900 uppercase text-sm">{activeStudent.class} {activeStudent.stream && `• ${activeStudent.stream}`}</span></div>
+            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-1"><span className="text-gray-300 font-black uppercase text-[8px] tracking-[0.1em]">Academic Cycle</span><span className="font-black text-gray-900 uppercase text-sm">{schoolConfig?.year || 2024} • Term {schoolConfig?.term || 1}</span></div>
+            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-1"><span className="text-gray-300 font-black uppercase text-[8px] tracking-[0.1em]">Date of Birth</span><span className="font-black text-gray-900 uppercase text-xs">{activeStudent.dob}</span></div>
+          </div>
+        </div>
+
+        {/* DATA SECTION */}
+        <div className="relative z-10 mb-6 flex-grow">
+          {reportType === 'academic' && (
+            <>
+              {displayResults.length > 0 ? (
+                <table className="w-full text-left border-collapse border-4 border-red-900/5">
+                  <thead>
+                    <tr className="bg-gray-900 text-white font-black uppercase text-[9px] tracking-[0.3em]">
+                      <th className="p-3 border border-gray-800">Learning Area</th>
+                      <th className="p-3 border border-gray-800 text-center">Competency Level</th>
+                      <th className="p-3 border border-gray-800 text-center">Score</th>
+                      <th className="p-3 border border-gray-800 text-center">Points</th>
                     </tr>
-                  );
-                })}
-                <tr className="bg-red-900 text-white">
-                  <td className="p-8 border-4 border-red-800 font-black uppercase text-xl italic tracking-tighter">Mean Aggregate Assessment</td>
-                  <td className="p-8 border-4 border-red-800 text-center font-black text-2xl uppercase italic">{meanCompetency?.level || 'N/A'}</td>
-                  <td className="p-8 border-4 border-red-800 text-center font-mono font-black text-5xl">{meanScore}</td>
-                  <td className="p-8 border-4 border-red-800 text-center font-mono font-black text-4xl">{meanCompetency?.points.toFixed(1) || '0.0'}</td>
-                </tr>
-              </tbody>
-            </table>
-          ) : (
-            <div className="py-32 text-center bg-gray-50 rounded-[48px] border-4 border-dashed border-gray-100">
-               <AlertCircle className="w-20 h-20 text-gray-200 mx-auto mb-6" />
-               <p className="text-[12px] font-black uppercase text-gray-400 tracking-[0.4em] italic">No official results recorded for this term.</p>
+                  </thead>
+                  <tbody>
+                    {displayResults.map((res, i) => {
+                      const assessment = schoolService.calculateCBCGrade(res.score);
+                      return (
+                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}>
+                          <td className="p-3 border border-gray-100 font-black text-gray-800 uppercase text-sm tracking-tight">{res.subject}</td>
+                          <td className="p-3 border border-gray-100 text-center">
+                            <div className="font-black text-red-900 text-sm leading-none">{assessment.level}</div>
+                            <div className="text-[7px] text-gray-400 font-black uppercase tracking-widest mt-0.5">{assessment.descriptor}</div>
+                          </td>
+                          <td className="p-3 border border-gray-100 text-center font-mono font-black text-lg text-red-900">{res.score}</td>
+                          <td className="p-3 border border-gray-100 text-center font-mono font-black text-lg text-red-700">{assessment.points.toFixed(1)}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr className="bg-red-900 text-white">
+                      <td className="p-4 border border-red-800 font-black uppercase text-base tracking-tight">Mean Aggregate Assessment</td>
+                      <td className="p-4 border border-red-800 text-center font-black text-base uppercase">{meanCompetency?.level || 'N/A'}</td>
+                      <td className="p-4 border border-red-800 text-center font-mono font-black text-2xl">{meanScore}</td>
+                      <td className="p-4 border border-red-800 text-center font-mono font-black text-xl">{meanCompetency?.points.toFixed(1) || '0.0'}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              ) : (
+                <div className="py-16 text-center bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-100">
+                  <AlertCircle className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                  <p className="text-[10px] font-black uppercase text-gray-400 tracking-[0.3em]">No terminal assessments recorded.</p>
+                </div>
+              )}
+            </>
+          )}
+
+          {reportType === 'attendance' && (
+            <div className="space-y-8">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="p-6 bg-green-50 rounded-3xl border-2 border-green-100 text-center">
+                  <p className="text-[9px] font-black text-green-600 uppercase tracking-widest mb-1">Total Present</p>
+                  <p className="text-3xl font-black text-green-900 leading-none">{attendanceStats.present}</p>
+                  <p className="text-[8px] font-bold text-green-500 uppercase mt-2">Days Attended</p>
+                </div>
+                <div className="p-6 bg-red-50 rounded-3xl border-2 border-red-100 text-center">
+                  <p className="text-[9px] font-black text-red-600 uppercase tracking-widest mb-1">Total Absent</p>
+                  <p className="text-3xl font-black text-red-900 leading-none">{attendanceStats.absent}</p>
+                  <p className="text-[8px] font-bold text-red-500 uppercase mt-2">Excused/Unexcused</p>
+                </div>
+                <div className="p-6 bg-blue-50 rounded-3xl border-2 border-blue-100 text-center">
+                  <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest mb-1">Attendance Rate</p>
+                  <p className="text-3xl font-black text-blue-900 leading-none">{attendanceStats.rate}%</p>
+                  <p className="text-[8px] font-bold text-blue-500 uppercase mt-2">Term Average</p>
+                </div>
+              </div>
+              
+              {attendanceStats.breakdown.length > 0 ? (
+                <table className="w-full text-left border-collapse border-4 border-red-900/5">
+                   <thead>
+                      <tr className="bg-gray-900 text-white font-black uppercase text-[9px] tracking-[0.3em]">
+                         <th className="p-4 border border-gray-800">Month</th>
+                         <th className="p-4 border border-gray-800 text-center">Openings</th>
+                         <th className="p-4 border border-gray-800 text-center">Attended</th>
+                         <th className="p-4 border border-gray-800 text-right">Percentage</th>
+                      </tr>
+                   </thead>
+                   <tbody className="divide-y divide-gray-100">
+                      {attendanceStats.breakdown.map((row, idx) => (
+                        <tr key={row.month} className={`font-black text-[11px] uppercase ${idx % 2 === 1 ? 'bg-gray-50/30' : ''}`}>
+                           <td className="p-4 text-gray-900 text-sm">{row.month}</td>
+                           <td className="p-4 text-center text-gray-500">{row.openings}</td>
+                           <td className="p-4 text-center text-red-900">{row.attended}</td>
+                           <td className="p-4 text-right text-gray-900">{row.percent}%</td>
+                        </tr>
+                      ))}
+                   </tbody>
+                </table>
+              ) : (
+                <div className="py-16 text-center bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-100">
+                  <AlertCircle className="w-12 h-12 text-gray-200 mx-auto mb-4" />
+                  <p className="text-[10px] font-black uppercase text-gray-400 tracking-[0.3em]">No longitudinal attendance records found.</p>
+                </div>
+              )}
+              
+              <div className="p-6 bg-gray-50 rounded-3xl border-2 border-white shadow-inner">
+                 <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Longitudinal Context</p>
+                 <p className="text-xs font-bold text-gray-600 leading-relaxed font-serif">
+                   {attendanceStats.rate >= 90 
+                     ? "Learner demonstrates consistent discipline in attendance. Punctual arrivals recorded for most term openings."
+                     : attendanceStats.rate >= 75
+                     ? "Moderate consistency in attendance. Some irregular absences noted that may impact academic progression."
+                     : attendanceStats.total > 0
+                     ? "Critical attendance concerns identified. Urgent institutional intervention required to stabilize learner presence."
+                     : "Awaiting sufficient longitudinal data for context appraisal."}
+                 </p>
+              </div>
+            </div>
+          )}
+
+          {reportType === 'finance' && (
+            <div className="space-y-8">
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="p-8 bg-blue-50 rounded-[32px] border-2 border-white shadow-sm">
+                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] mb-4">Invoice Summary</p>
+                    <div className="space-y-3">
+                       <div className="flex justify-between items-center"><span className="text-[9px] font-black text-gray-400 uppercase">Grade Instruction</span><span className="font-black text-gray-900">KES {(activeStudent.totalFee || 0).toLocaleString()}</span></div>
+                       <div className="flex justify-between items-center"><span className="text-[9px] font-black text-gray-400 uppercase">Transport Levy</span><span className="font-black text-gray-900">KES {(activeStudent.transportFee || 0).toLocaleString()}</span></div>
+                       <div className="flex justify-between items-center pt-3 border-t-2 border-blue-100/50"><span className="text-[10px] font-black text-blue-800 uppercase">Gross Liability</span><span className="font-black text-blue-900 text-lg">KES {((activeStudent.agreedFee ?? activeStudent.totalFee) + (activeStudent.transportFee || 0)).toLocaleString()}</span></div>
+                    </div>
+                 </div>
+                 <div className="p-8 bg-emerald-50 rounded-[32px] border-2 border-white shadow-sm">
+                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] mb-4">Collection Status</p>
+                    <div className="space-y-3">
+                       <div className="flex justify-between items-center"><span className="text-[9px] font-black text-gray-400 uppercase">Payments to Date</span><span className="font-black text-emerald-600">KES {(activeStudent.paidFee + (activeStudent.paidTransportFee || 0)).toLocaleString()}</span></div>
+                       <div className="flex justify-between items-center"><span className="text-[9px] font-black text-gray-400 uppercase">Unallocated Credit</span><span className="font-black text-emerald-700">KES {(activeStudent.prepaidFee || 0).toLocaleString()}</span></div>
+                       <div className="flex justify-between items-center pt-3 border-t-2 border-emerald-100/50"><span className="text-[10px] font-black text-emerald-800 uppercase">Net Outstanding</span><span className="font-black text-red-600 text-lg">KES {(activeStudent.feeBalance + ((activeStudent.transportFee || 0) - (activeStudent.paidTransportFee || 0))).toLocaleString()}</span></div>
+                    </div>
+                 </div>
+              </div>
+
+              <div className="border-4 border-red-900/5 rounded-2xl overflow-hidden">
+                 <div className="bg-gray-900 text-white p-4 font-black uppercase text-[10px] tracking-[0.3em]">Transaction Ledger (Current Cycle)</div>
+                 <table className="w-full text-left border-collapse">
+                    <thead>
+                       <tr className="bg-gray-50 border-b border-gray-100 text-[9px] font-black text-gray-400 uppercase">
+                          <th className="p-4">Reference</th>
+                          <th className="p-4">Date</th>
+                          <th className="p-4 text-right">Debit (KES)</th>
+                          <th className="p-4 text-right">Credit (KES)</th>
+                       </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                       <tr className="text-[10px] font-black uppercase text-gray-900">
+                          <td className="p-4">Term Opening Invoice</td>
+                          <td className="p-4 text-gray-400">03 Jan 2024</td>
+                          <td className="p-4 text-right">{((activeStudent.agreedFee ?? activeStudent.totalFee) + (activeStudent.transportFee || 0)).toLocaleString()}</td>
+                          <td className="p-4 text-right">0</td>
+                       </tr>
+                       {activeStudent.paidFee > 0 && (
+                         <tr className="text-[10px] font-black uppercase text-emerald-600 bg-emerald-50/20">
+                            <td className="p-4">Electronic Funds Transfer</td>
+                            <td className="p-4 text-emerald-400">15 Jan 2024</td>
+                            <td className="p-4 text-right">0</td>
+                            <td className="p-4 text-right">{(activeStudent.paidFee + (activeStudent.paidTransportFee || 0)).toLocaleString()}</td>
+                         </tr>
+                       )}
+                    </tbody>
+                 </table>
+              </div>
+              <div className="p-6 bg-red-900/5 rounded-3xl border-2 border-red-900/10 flex justify-between items-center">
+                 <div>
+                    <p className="text-[8px] font-black text-red-900 uppercase tracking-widest mb-1">Institutional Status</p>
+                    <p className="text-xs font-bold text-red-900 leading-none">
+                       {activeStudent.feeBalance > 0 ? "Account currently in arrears. Clearance requested." : "Account cleared. Institutional standing: Active."}
+                    </p>
+                 </div>
+                 <div className="px-6 py-2 bg-white rounded-xl border border-red-900/10 font-black text-red-900 text-[10px] uppercase truncate">Official Ledger Receipt</div>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="relative z-10 grid grid-cols-1 gap-10 mb-20">
-           <div className="p-10 bg-gray-50 rounded-[48px] border-4 border-white shadow-inner">
-              <h3 className="text-[10px] font-black uppercase tracking-[0.5em] text-gray-400 mb-6 flex items-center gap-2"><div className="w-2 h-2 bg-red-500 rounded-full"></div> Class Teacher's Professional Observations</h3>
-              <p className="text-xl font-bold text-gray-700 italic leading-relaxed font-serif">
-                {displayResults.length > 0 ? (displayResults[0].remarks || "Consistent effort maintained throughout the term.") : "Awaiting final terminal assessments."}
+        {/* REMARKS SECTION */}
+        <div className="relative z-10 grid grid-cols-2 gap-6 mb-8">
+           <div className="p-5 bg-gray-50 rounded-[28px] border-2 border-white shadow-inner">
+              <h3 className="text-[8px] font-black uppercase tracking-[0.3em] text-gray-400 mb-3 flex items-center gap-2"><div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div> Class Teacher's Remarks</h3>
+              <p className="text-xs font-bold text-gray-600 leading-relaxed font-serif">
+                {displayResults.length > 0 ? (displayResults[0].remarks || "Consistent effort observed. Encouraged to maintain focus on technical subjects.") : "Awaiting final academic appraisal."}
               </p>
            </div>
-           <div className="p-10 bg-red-900 text-white rounded-[48px] border-4 border-red-800 shadow-2xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:scale-110 transition-transform"><ShieldCheck size={160} /></div>
-              <h3 className="text-[10px] font-black uppercase tracking-[0.5em] text-red-300 mb-6 relative z-10">Institutional Headteacher's Remarks</h3>
-              <p className="text-xl font-bold italic leading-relaxed font-serif relative z-10">"Performance metrics indicate strong academic discipline. Character growth aligns with the school's core pillars of excellence."</p>
+           <div className="p-5 bg-red-900/5 rounded-[28px] border-2 border-red-900/10 shadow-sm relative overflow-hidden">
+              <h3 className="text-[8px] font-black uppercase tracking-[0.3em] text-red-900/40 mb-3">Institutional Head's Appraisal</h3>
+              <p className="text-xs font-bold leading-relaxed font-serif text-red-900">"Satisfactory progression. Character development mirrors the institution's commitment to excellence and discipline."</p>
            </div>
         </div>
 
-        <div className="relative z-10 mt-auto pt-16 border-t-8 border-red-900">
-          <div className="flex justify-between items-end mb-12">
-            <div className="text-center space-y-4">
-               <div className="font-serif italic text-4xl text-red-900">{principalName}</div>
-               <div className="w-72 h-[2px] bg-red-900 shadow-sm"></div>
-               <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.5em]">Executive Signature (Principal)</p>
-            </div>
-            
-            <div className="text-center space-y-4">
-               <div className="font-serif italic text-4xl text-red-900">{examinationOfficerName}</div>
-               <div className="w-72 h-[2px] bg-red-900 shadow-sm"></div>
-               <p className="text-[10px] text-gray-500 font-black uppercase tracking-[0.5em]">Examination Officer</p>
+        {/* SIGNATURE SECTION */}
+        <div className="relative z-10 mt-auto pt-8 border-t-4 border-red-900">
+          <div className="grid grid-cols-3 gap-4 items-end mb-6">
+            <div className="text-center space-y-2">
+               <div className="font-serif text-xl text-red-900 leading-none h-8 flex items-end justify-center">{classTeacherName}</div>
+               <div className="w-full h-[1.5px] bg-red-900 mx-auto opacity-30"></div>
+               <p className="text-[7px] text-gray-500 font-black uppercase tracking-[0.2em]">Class Teacher</p>
             </div>
 
-            <div className="w-44 h-44 rounded-full border-[12px] border-double border-red-900/10 flex items-center justify-center rotate-[-15deg] shadow-inner relative">
-               <div className="text-[10px] font-black text-red-900/20 text-center uppercase leading-tight font-mono tracking-tighter">
-                 OFFICIAL SCHOOL SEAL<br/>
-                 {schoolConfig?.schoolName || 'ELIMUSMART'}<br/>
-                 ACADEMIC AUDIT<br/>
-                 {new Date().getFullYear()}
-               </div>
+            <div className="text-center space-y-2">
+               <div className="font-serif text-xl text-red-900 leading-none h-8 flex items-end justify-center">{principalName}</div>
+               <div className="w-full h-[1.5px] bg-red-900 mx-auto opacity-30"></div>
+               <p className="text-[7px] text-gray-500 font-black uppercase tracking-[0.2em]">Principal / Head</p>
+            </div>
+            
+            <div className="text-center space-y-2">
+               <div className="font-serif text-xl text-red-900 leading-none h-8 flex items-end justify-center">{examinationOfficerName}</div>
+               <div className="w-full h-[1.5px] bg-red-900 mx-auto opacity-30"></div>
+               <p className="text-[7px] text-gray-500 font-black uppercase tracking-[0.2em]">Exam Registrar</p>
             </div>
           </div>
-          <div className="text-center pt-8 border-t border-gray-50">
-             <p className="text-[8px] text-gray-300 font-black uppercase tracking-[0.6em] opacity-50">ElimuSmart Digital Integrity Protocol • Certificate No: ES-ASSESS-{Math.random().toString(36).substring(2, 10).toUpperCase()}</p>
+
+          <div className="flex justify-center items-center gap-12 pt-4 border-t border-gray-50 relative">
+             <div className="w-24 h-24 rounded-full border-4 border-double border-red-900/10 flex items-center justify-center rotate-[-12deg] shadow-inner absolute -top-16 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-sm">
+                <div className="text-[6px] font-black text-red-900/40 text-center uppercase leading-tight font-mono tracking-tighter">
+                  OFFICIAL SEAL<br/>
+                  {schoolConfig?.schoolName?.split(' ')[0] || 'ELIMUSMART'}<br/>
+                  {new Date().getFullYear()}
+                </div>
+             </div>
+             <p className="text-[7px] text-gray-300 font-black uppercase tracking-[0.5em] opacity-50">Digital Audit ID: ES-SEC-{Math.random().toString(36).substring(2, 8).toUpperCase()}</p>
           </div>
         </div>
       </div>

@@ -287,7 +287,7 @@ const App: React.FC = () => {
         {currentTab === 'students' && <StudentManagement students={students} setStudents={setStudents} feeStructure={feeStructure} />}
         {currentTab === 'staff' && <StaffManagement staffList={staff} setStaffList={setStaff} />}
         {currentTab === 'finance' && <FinanceModule lang={lang} students={students} setStudents={setStudents} expenditures={expenditures} setExpenditures={setExpenditures} feeStructure={feeStructure} setFeeStructure={setFeeStructure} schoolLogo={schoolLogo} schoolConfig={schoolConfig} isBackendLive={isBackendLive} />}
-        {currentTab === 'attendance' && <AttendanceModule lang={lang} students={students} />}
+        {currentTab === 'attendance' && <AttendanceModule lang={lang} students={students} setStudents={setStudents} />}
         {currentTab === 'academics' && <AcademicsModule lang={lang} students={students} setStudents={setStudents} schoolConfig={schoolConfig} />}
         {currentTab === 'reports' && <ReportsModule lang={lang} students={students} users={[]} schoolLogo={schoolLogo} schoolConfig={schoolConfig} />}
         {currentTab === 'timetable' && <TimetableModule lang={lang} />}

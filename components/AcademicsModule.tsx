@@ -25,7 +25,7 @@ import {
   UserX
 } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
-import { Exam, MarkEntry, CBCGrade, KENYAN_CLASSES, SCHOOL_STREAMS, Student, ExamResult } from '../types';
+import { Exam, MarkEntry, CBCGrade, KENYAN_CLASSES, Student, ExamResult } from '../types';
 import { schoolService } from '../services/schoolService';
 import { Language, translations } from '../services/localizationService';
 
@@ -109,6 +109,11 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
   useEffect(() => {
     localStorage.setItem('elimusmart_curriculum', JSON.stringify(subjects));
   }, [subjects]);
+
+  const availableStreams = useMemo(() => {
+    const streams = new Set(students.map(s => s.stream).filter(Boolean));
+    return Array.from(streams).sort();
+  }, [students]);
 
   // Sync marks whenever filters change while in mark-entry mode
   useEffect(() => {
@@ -318,7 +323,7 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
 
     setIsSaving(false);
     alert('Marks successfully recorded and synced with student report cards.');
-    setView('exams');
+    // Removed setView('exams') to keep user on same screen as requested
   };
 
   return (
@@ -328,12 +333,12 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
       </datalist>
       <datalist id="school-streams">
         <option value="">All Streams</option>
-        {SCHOOL_STREAMS.map(s => <option key={s} value={s} />)}
+        {availableStreams.map(s => <option key={s} value={s}>{s}</option>)}
       </datalist>
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase italic leading-none">Academics Engine</h1>
+          <h1 className="text-3xl font-black text-gray-900 tracking-tighter uppercase leading-none">Academics Engine</h1>
           <p className="text-gray-400 font-bold uppercase text-[10px] tracking-[0.3em] mt-3 flex items-center gap-3">
              <span className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></span>
              CBC Assessment Control • Flexible Routing
@@ -463,7 +468,7 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
               </div>
 
               <div className="space-y-2">
-                <h3 className="text-2xl font-black text-gray-900 tracking-tighter leading-none uppercase italic">{exam.title}</h3>
+                <h3 className="text-2xl font-black text-gray-900 tracking-tighter leading-none uppercase">{exam.title}</h3>
                 <div className="flex items-center gap-3 text-[10px] font-black text-blue-500 uppercase tracking-widest">
                   <span className="bg-blue-50 px-2 py-0.5 rounded-md">Term {exam.term} • {exam.year}</span>
                   <span className="w-1.5 h-1.5 bg-gray-200 rounded-full"></span>
@@ -488,7 +493,7 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
           {filteredExams.length === 0 && (
             <div className="col-span-full py-24 text-center bg-white rounded-[48px] border-2 border-dashed border-gray-100">
                <CalendarDays className="w-16 h-16 text-gray-100 mx-auto mb-6" />
-               <p className="text-[12px] font-black uppercase text-gray-400 tracking-[0.4em] italic">No scheduled assessments matching your filters.</p>
+               <p className="text-[12px] font-black uppercase text-gray-400 tracking-[0.4em]">No scheduled assessments matching your filters.</p>
             </div>
           )}
         </div>
@@ -526,7 +531,7 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
                  {filteredSubjects.map(subject => (
                    <tr key={subject.id} className="hover:bg-purple-50/10 transition-colors group">
                      <td className="px-10 py-8">
-                       <div className="font-black text-gray-900 text-xl tracking-tighter uppercase italic">{subject.name}</div>
+                       <div className="font-black text-gray-900 text-xl tracking-tighter uppercase leading-tight">{subject.name}</div>
                        <p className="text-[9px] text-gray-300 font-black uppercase mt-1 tracking-widest">Institutional Curriculum</p>
                      </td>
                      <td className="px-10 py-8">
@@ -539,7 +544,7 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
                         </span>
                      </td>
                      <td className="px-10 py-8">
-                        <div className="text-xs font-black text-gray-500 uppercase italic tracking-tight">{subject.gradeRange}</div>
+                        <div className="text-xs font-black text-gray-500 uppercase tracking-tight">{subject.gradeRange}</div>
                      </td>
                      <td className="px-10 py-8 text-right no-print">
                         <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -563,7 +568,7 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
                 <ArrowLeft className="w-6 h-6 text-gray-600" />
               </button>
               <div>
-                <h3 className="font-black text-3xl tracking-tighter text-gray-900 leading-none uppercase italic">{selectedExam.title}</h3>
+                <h3 className="font-black text-3xl tracking-tighter text-gray-900 leading-none uppercase">{selectedExam.title}</h3>
                 <p className="text-[10px] text-blue-600 uppercase font-black tracking-[0.4em] mt-3 flex items-center gap-2">
                    <CheckCircle2 size={12} /> Live Entry • {selectedClass} {selectedStream || 'All Streams'} • {selectedSubject}
                 </p>
@@ -585,33 +590,33 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-gray-50 border-b-2 border-gray-100 text-[10px] font-black uppercase text-gray-400 tracking-[0.4em]">
-                    <th className="px-12 py-8">Learner Credentials</th>
-                    <th className="px-12 py-8 text-center">Score %</th>
-                    <th className="px-12 py-8 text-center">Level & Points</th>
-                    <th className="px-12 py-8">Professional Remark</th>
-                    <th className="px-12 py-8 text-right">Verification</th>
+                    <th className="px-8 py-4">Learner Credentials</th>
+                    <th className="px-8 py-4 text-center">Score %</th>
+                    <th className="px-8 py-4 text-center">Level & Points</th>
+                    <th className="px-8 py-4">Professional Remark</th>
+                    <th className="px-8 py-4 text-right">Verification</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y-2 divide-gray-50">
                   {marks.map((entry) => (
                     <tr key={entry.studentId} className="hover:bg-blue-50/20 transition-colors group">
-                      <td className="px-12 py-8">
-                        <div className="font-black text-gray-900 text-xl tracking-tighter uppercase leading-tight">{entry.studentName}</div>
+                      <td className="px-8 py-4">
+                        <div className="font-black text-gray-900 text-base tracking-tighter uppercase leading-tight">{entry.studentName}</div>
                         <div className="text-[10px] font-black text-gray-300 uppercase tracking-widest mt-1">ADM: {entry.admissionNumber}</div>
                       </td>
-                      <td className="px-12 py-8 w-48 text-center">
+                      <td className="px-8 py-4 w-40 text-center">
                         <input 
                           type="number" max="100" min="0" value={entry.score}
                           onChange={e => handleScoreChange(entry.studentId, e.target.value)}
-                          className="w-24 p-5 bg-gray-50 border-2 border-gray-100 rounded-3xl text-center font-black text-2xl focus:ring-8 focus:ring-blue-100 focus:border-blue-500 focus:bg-white transition-all outline-none shadow-inner"
+                          className="w-20 p-3 bg-gray-50 border-2 border-gray-100 rounded-2xl text-center font-black text-lg focus:ring-8 focus:ring-blue-100 focus:border-blue-500 focus:bg-white transition-all outline-none shadow-inner"
                         />
                       </td>
-                      <td className="px-12 py-8 text-center">
+                      <td className="px-8 py-4 text-center">
                         {(() => {
                           const assessment = schoolService.calculateCBCGrade(entry.score);
                           return (
-                            <div className="flex flex-col items-center gap-2">
-                              <span className={`px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] shadow-sm border-2 ${
+                            <div className="flex flex-col items-center gap-1">
+                              <span className={`px-4 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-[0.2em] shadow-sm border-2 ${
                                 assessment.level.startsWith('EE') ? 'bg-green-50 text-green-700 border-green-100' :
                                 assessment.level.startsWith('ME') ? 'bg-blue-50 text-blue-700 border-blue-100' :
                                 assessment.level.startsWith('AE') ? 'bg-amber-50 text-amber-700 border-amber-100' :
@@ -619,31 +624,31 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
                               }`}>
                                 {assessment.level}
                               </span>
-                              <div className="text-[10px] font-black text-gray-400">Pts: {assessment.points.toFixed(1)}</div>
+                              <div className="text-[9px] font-black text-gray-400">Pts: {assessment.points.toFixed(1)}</div>
                             </div>
                           );
                         })()}
                       </td>
-                      <td className="px-12 py-8 min-w-[450px]">
-                        <div className="flex items-center gap-3 bg-gray-50 px-6 py-4 rounded-[32px] border-2 border-transparent focus-within:border-blue-400 focus-within:bg-white transition-all shadow-inner">
+                      <td className="px-8 py-4 min-w-[350px]">
+                        <div className="flex items-center gap-2 bg-gray-50 px-4 py-3 rounded-[24px] border-2 border-transparent focus-within:border-blue-400 focus-within:bg-white transition-all shadow-inner">
                           <input 
                             type="text" placeholder="Individualized observation..." value={entry.remarks}
                             onChange={e => handleRemarkChange(entry.studentId, e.target.value)}
-                            className="flex-1 bg-transparent border-none focus:ring-0 italic text-gray-700 font-bold placeholder:text-gray-300 placeholder:not-italic"
+                            className="flex-1 bg-transparent border-none focus:ring-0 text-gray-700 font-bold text-sm placeholder:text-gray-300 placeholder:not-italic"
                           />
                           <button 
                             onClick={() => generateAIRemark(entry)}
-                            className="p-3 bg-white text-blue-600 hover:bg-blue-600 hover:text-white rounded-2xl transition-all shadow-sm border border-blue-100"
+                            className="p-2.5 bg-white text-blue-600 hover:bg-blue-600 hover:text-white rounded-xl transition-all shadow-sm border border-blue-100"
                             title="Generate with Gemini"
                           >
-                            {isGeneratingRemarks === entry.studentId ? <Loader2 className="w-5 h-5 animate-spin" /> : <Wand2 className="w-5 h-5" />}
+                            {isGeneratingRemarks === entry.studentId ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wand2 className="w-4 h-4" />}
                           </button>
                         </div>
                       </td>
-                      <td className="px-12 py-8 text-right">
+                      <td className="px-8 py-4 text-right">
                         <div className="flex justify-end">
-                           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${entry.score > 0 ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-200'}`}>
-                              <CheckCircle2 size={24} />
+                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${entry.score > 0 ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-200'}`}>
+                              <CheckCircle2 size={20} />
                            </div>
                         </div>
                       </td>
@@ -675,7 +680,7 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
           <div className="bg-white rounded-[56px] w-full max-w-xl shadow-2xl relative overflow-hidden animate-in zoom-in duration-500 max-h-[95vh] flex flex-col border-8 border-gray-50">
             <div className="p-12 border-b bg-gray-50/50 flex items-center justify-between">
               <div>
-                <h2 className="text-4xl font-black text-gray-900 tracking-tighter uppercase leading-none italic">{editingSubject ? 'Edit Subject' : 'Add Subject'}</h2>
+                <h2 className="text-4xl font-black text-gray-900 tracking-tighter uppercase leading-none">{editingSubject ? 'Edit Subject' : 'Add Subject'}</h2>
                 <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.4em] mt-4">Global Curriculum Management</p>
               </div>
               <button onClick={() => setIsSubjectModalOpen(false)} className="p-5 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-all border-2 border-transparent hover:border-red-100 shadow-sm bg-white"><X size={28} /></button>
@@ -723,7 +728,7 @@ export const AcademicsModule: React.FC<AcademicsProps> = ({ lang, students = [],
           <div className="bg-white rounded-[56px] w-full max-w-xl shadow-2xl relative overflow-hidden animate-in zoom-in duration-500 max-h-[95vh] flex flex-col border-8 border-gray-50">
             <div className="p-12 border-b bg-gray-50/50 flex items-center justify-between">
               <div>
-                <h2 className="text-4xl font-black text-gray-900 tracking-tighter uppercase leading-none italic">{editingExam ? 'Modify Exam' : 'Schedule Exam'}</h2>
+                <h2 className="text-4xl font-black text-gray-900 tracking-tighter uppercase leading-none">{editingExam ? 'Modify Exam' : 'Schedule Exam'}</h2>
                 <p className="text-[10px] text-gray-400 font-black uppercase tracking-[0.4em] mt-4">Official Assessment Schedule</p>
               </div>
               <button onClick={() => setIsExamModalOpen(false)} className="p-5 hover:bg-red-50 text-gray-400 hover:text-red-500 rounded-full transition-all border-2 border-transparent hover:border-red-100 shadow-sm bg-white"><X size={28} /></button>

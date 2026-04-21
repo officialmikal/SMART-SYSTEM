@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Calendar, 
   UserCheck, 
@@ -23,27 +23,48 @@ import { KENYAN_CLASSES, Student } from '../types';
 interface AttendanceModuleProps {
   lang: Language;
   students: Student[];
+  setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
 }
 
-export const AttendanceModule: React.FC<AttendanceModuleProps> = ({ lang, students = [] }) => {
+export const AttendanceModule: React.FC<AttendanceModuleProps> = ({ lang, students = [], setStudents }) => {
   const t = translations[lang];
+  const today = new Date().toISOString().split('T')[0];
   
   // Selection criteria
   const [classSelected, setClassSelected] = useState('Grade 7');
-  const [streamSelected, setStreamSelected] = useState(''); // Custom Stream entry
+  const [streamSelected, setStreamSelected] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   
   // Tracking statuses for the active group
+  // We initialize from existing student data if marked today
   const [markedStatuses, setMarkedStatuses] = useState<Record<string, string>>({});
   
   const [sendSMS, setSendSMS] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Filter students based on Class and Custom Stream
+  // Dynamic Streams
+  const availableStreams = useMemo(() => {
+    const streams = new Set(students.map(s => s.stream).filter(Boolean));
+    return Array.from(streams).sort();
+  }, [students]);
+
+  // Load existing attendance for today
+  useEffect(() => {
+    const next: Record<string, string> = {};
+    students.forEach(s => {
+      const todayRecord = s.attendance?.find(a => a.date === today);
+      if (todayRecord) {
+        next[s.id] = todayRecord.status;
+      }
+    });
+    setMarkedStatuses(next);
+  }, [students, today]);
+
+  // Filter students based on Class and Stream
   const filteredStudents = useMemo(() => {
     return (students || []).filter(s => {
       const matchesClass = s.class.toLowerCase() === classSelected.toLowerCase();
-      const matchesStream = streamSelected === '' || s.stream.toLowerCase().includes(streamSelected.toLowerCase());
+      const matchesStream = streamSelected === '' || s.stream.toLowerCase() === streamSelected.toLowerCase();
       const matchesSearch = s.firstName.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             s.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             s.admissionNumber.toLowerCase().includes(searchQuery.toLowerCase());
@@ -55,15 +76,17 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({ lang, studen
     let present = 0;
     let absent = 0;
     let late = 0;
+    let unmarked = 0;
 
     filteredStudents.forEach(s => {
-      const status = markedStatuses[s.id] || 'present'; // Default to present if not marked
+      const status = markedStatuses[s.id];
       if (status === 'present') present++;
       else if (status === 'absent') absent++;
       else if (status === 'late') late++;
+      else unmarked++;
     });
 
-    return { present, absent, late, total: filteredStudents.length };
+    return { present, absent, late, unmarked, total: filteredStudents.length };
   }, [filteredStudents, markedStatuses]);
 
   const updateStatus = (id: string, newStatus: string) => {
@@ -105,8 +128,13 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({ lang, studen
 
   const handleSubmit = async () => {
     if (filteredStudents.length === 0) {
-      alert("No students in the current view to mark.");
+      alert("No students matching current filters to mark.");
       return;
+    }
+
+    const unmarkedCount = stats.unmarked;
+    if (unmarkedCount > 0) {
+      if (!confirm(`CAUTION: ${unmarkedCount} learners have not been marked. Proceeding will save the current ledger state. Continue?`)) return;
     }
 
     setIsSubmitting(true);
@@ -114,8 +142,22 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({ lang, studen
       const records = filteredStudents.map(s => ({
         id: s.id,
         name: `${s.firstName} ${s.lastName}`,
-        status: markedStatuses[s.id] || 'present',
+        status: markedStatuses[s.id] || 'present', // fallback to present on finalization if not touched
         phone: s.guardianPhone
+      }));
+
+      // Update Local State for Students
+      setStudents(prev => prev.map(student => {
+        const mark = records.find(r => r.id === student.id);
+        if (mark) {
+          const attendance = student.attendance || [];
+          const filtered = attendance.filter(a => a.date !== today);
+          return {
+            ...student,
+            attendance: [...filtered, { date: today, status: mark.status as any }]
+          };
+        }
+        return student;
       }));
 
       await schoolService.saveAttendance(`${classSelected} ${streamSelected}`, records);
@@ -126,7 +168,7 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({ lang, studen
           await smsService.sendBulkAbsenceAlerts(absents.map(a => ({ name: a.name, phone: a.phone })));
         }
       }
-      alert(`Success: Attendance for ${records.length} learners committed to registry.`);
+      alert(`Institutional Ledger Updated: Attendance for ${records.length} learners for ${today} has been committed.`);
     } catch (error) {
       console.error(error);
       alert('Failed to save attendance.');
@@ -186,14 +228,19 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({ lang, studen
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Custom Stream</label>
-              <input 
-                type="text"
-                placeholder="e.g. Oak, Eagle..."
-                value={streamSelected} 
-                onChange={(e) => setStreamSelected(e.target.value)}
-                className="w-full p-3.5 border-2 border-gray-100 rounded-2xl bg-gray-50 font-black text-xs uppercase focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all shadow-inner"
-              />
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 ml-1">Target Stream (Dynamic)</label>
+              <div className="flex items-center bg-gray-50 border-2 border-gray-100 rounded-2xl focus-within:border-blue-500 transition-all px-4 py-1 shadow-inner">
+                <input 
+                  list="school-streams-attendance"
+                  placeholder="All Streams"
+                  value={streamSelected} 
+                  onChange={(e) => setStreamSelected(e.target.value)}
+                  className="w-full bg-transparent py-2.5 font-black uppercase text-[11px] outline-none placeholder:text-gray-300"
+                />
+                <datalist id="school-streams-attendance">
+                  {availableStreams.map(s => <option key={s} value={s}>{s}</option>)}
+                </datalist>
+              </div>
             </div>
 
             <div className="pt-4 border-t space-y-3">
@@ -234,18 +281,21 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({ lang, studen
           <div className="bg-blue-900 p-8 rounded-[40px] text-white shadow-2xl shadow-blue-200 relative overflow-hidden group">
             <div className="relative z-10">
               <h4 className="text-[10px] font-black uppercase opacity-50 tracking-widest mb-2">Live Session Presence</h4>
-              <div className="text-5xl font-black tracking-tighter mb-6">{stats.present} <span className="text-2xl opacity-40">/ {stats.total}</span></div>
+              <div className="text-5xl font-black tracking-tighter mb-6">
+                {(stats.total - stats.unmarked)} <span className="text-2xl opacity-40">/ {stats.total} Marked</span>
+              </div>
               <div className="space-y-3">
                 <div className="h-3 w-full bg-blue-800/50 rounded-full overflow-hidden border border-blue-700/50">
                   <div 
                     className="h-full bg-green-400 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(74,222,128,0.5)]" 
-                    style={{ width: `${stats.total > 0 ? (stats.present / stats.total) * 100 : 0}%` }}
+                    style={{ width: `${stats.total > 0 ? ((stats.total - stats.unmarked) / stats.total) * 100 : 0}%` }}
                   ></div>
                 </div>
-                <div className="grid grid-cols-3 text-[9px] font-black uppercase tracking-tighter gap-1">
-                  <div className="text-green-300 bg-white/5 px-2 py-1 rounded-lg text-center">{stats.present} Present</div>
-                  <div className="text-red-300 bg-white/5 px-2 py-1 rounded-lg text-center">{stats.absent} Absent</div>
-                  <div className="text-amber-300 bg-white/5 px-2 py-1 rounded-lg text-center">{stats.late} Late</div>
+                <div className="grid grid-cols-4 text-[8px] font-black uppercase tracking-tighter gap-1">
+                  <div className="text-green-300 bg-white/5 px-1 py-1 rounded-lg text-center truncate">{stats.present} Presence</div>
+                  <div className="text-red-300 bg-white/5 px-1 py-1 rounded-lg text-center truncate">{stats.absent} Absence</div>
+                  <div className="text-amber-300 bg-white/5 px-1 py-1 rounded-lg text-center truncate">{stats.late} Tardy</div>
+                  <div className="text-blue-200 bg-white/10 px-1 py-1 rounded-lg text-center truncate">{stats.unmarked} Unmarked</div>
                 </div>
               </div>
             </div>
@@ -277,22 +327,26 @@ export const AttendanceModule: React.FC<AttendanceModuleProps> = ({ lang, studen
 
             <div className="divide-y-2 divide-gray-50 overflow-y-auto max-h-[700px]">
               {filteredStudents.map((student) => {
-                const status = markedStatuses[student.id] || 'present';
+                const status = markedStatuses[student.id]; // undefined if not marked
+                const isMarked = !!status;
+                
                 return (
-                  <div key={student.id} className="p-6 flex flex-col sm:flex-row sm:items-center justify-between hover:bg-blue-50/20 transition-all gap-4 group">
+                  <div key={student.id} className={`p-6 flex flex-col sm:flex-row sm:items-center justify-between transition-all gap-4 group ${isMarked ? 'bg-white hover:bg-blue-50/20' : 'bg-gray-50/30'}`}>
                     <div className="flex items-center space-x-5">
                       <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black uppercase border-2 shadow-sm transition-all overflow-hidden ${
                         status === 'present' ? 'bg-white text-green-600 border-green-100 shadow-green-100' : 
-                        status === 'absent' ? 'bg-white text-red-600 border-red-100 shadow-red-100' : 'bg-white text-amber-600 border-amber-100 shadow-amber-100'
+                        status === 'absent' ? 'bg-white text-red-600 border-red-100 shadow-red-100' : 
+                        status === 'late' ? 'bg-white text-amber-600 border-amber-100 shadow-amber-100' :
+                        'bg-gray-100 text-gray-300 border-gray-200 shadow-inner'
                       }`}>
                         {student.photo ? (
-                          <img src={student.photo} className="w-full h-full object-cover" />
+                          <img src={student.photo} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
                           <span className="text-xl">{student.firstName[0]}</span>
                         )}
                       </div>
                       <div>
-                        <div className="font-black text-gray-900 text-lg tracking-tight leading-none">{student.firstName} {student.lastName}</div>
+                        <div className={`font-black text-lg tracking-tight leading-none ${isMarked ? 'text-gray-900' : 'text-gray-400'}`}>{student.firstName} {student.lastName}</div>
                         <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest mt-2">{student.admissionNumber} • {student.stream} • {student.gender}</div>
                       </div>
                     </div>

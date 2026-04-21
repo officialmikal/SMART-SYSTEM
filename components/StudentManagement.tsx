@@ -123,7 +123,7 @@ export const StudentManagement: React.FC<Props> = ({ students = [], setStudents,
     }));
   };
 
-  const handleFeeFieldChange = (field: 'agreedFee' | 'paidFee' | 'transportFee' | 'paidTransportFee', val: string) => {
+  const handleFeeFieldChange = (field: 'totalFee' | 'agreedFee' | 'paidFee' | 'transportFee' | 'paidTransportFee', val: string) => {
     const value = val === '' ? (field === 'agreedFee' ? undefined : 0) : parseFloat(val);
     const nextData = { ...formData, [field]: value };
     const { balance, prepaid } = calculateBalances(nextData);
@@ -365,119 +365,174 @@ export const StudentManagement: React.FC<Props> = ({ students = [], setStudents,
                  </button>
               </div>
 
-              <form onSubmit={handleSave} className="p-8 space-y-8 overflow-y-auto">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">First Name</label>
-                       <input required type="text" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-bold" />
+              <form onSubmit={handleSave} className="p-10 space-y-10 overflow-y-auto">
+                 {/* Section 1: Academic Identity */}
+                 <div className="space-y-6">
+                    <div className="flex items-center gap-3">
+                       <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                          <User size={18} />
+                       </div>
+                       <h4 className="text-[11px] font-black text-blue-900 uppercase tracking-[0.2em]">Learner Academic Identity</h4>
                     </div>
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Last Name</label>
-                       <input required type="text" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-bold" />
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">First Name</label>
+                          <input required type="text" value={formData.firstName} onChange={e => setFormData({...formData, firstName: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-8 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none font-black text-gray-900 placeholder:text-gray-300" placeholder="e.g. John" />
+                       </div>
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Last Name</label>
+                          <input required type="text" value={formData.lastName} onChange={e => setFormData({...formData, lastName: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-8 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none font-black text-gray-900 placeholder:text-gray-300" placeholder="e.g. Doe" />
+                       </div>
                     </div>
-                    <div className="space-y-2">
-                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Admission Number</label>
-                       <input required type="text" value={formData.admissionNumber} onChange={e => setFormData({...formData, admissionNumber: e.target.value.toUpperCase()})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-black text-blue-600" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Admission No</label>
+                          <input required type="text" value={formData.admissionNumber} onChange={e => setFormData({...formData, admissionNumber: e.target.value.toUpperCase()})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-8 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none font-black text-blue-600 uppercase" placeholder="ADM-001" />
+                       </div>
                        <div className="space-y-2">
                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Class Level</label>
-                          <select value={formData.class} onChange={e => handleClassChange(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-bold">
+                          <select value={formData.class} onChange={e => handleClassChange(e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-8 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none font-black uppercase text-gray-700">
                              {KENYAN_CLASSES.map(c => <option key={c} value={c}>{c}</option>)}
                           </select>
                        </div>
                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Stream (Custom)</label>
-                          <input 
-                            type="text" 
-                            placeholder="e.g. West" 
-                            value={formData.stream} 
-                            onChange={e => setFormData({...formData, stream: e.target.value})} 
-                            className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all outline-none font-bold" 
-                          />
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Stream / Section</label>
+                          <input type="text" placeholder="e.g. West" value={formData.stream} onChange={e => setFormData({...formData, stream: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-8 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none font-black text-gray-900 uppercase" />
                        </div>
                     </div>
-                 </div>
 
-                 <div className="pt-6 border-t space-y-6">
-                    <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Guardian Information</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Name</label>
-                          <input required type="text" value={formData.guardianName} onChange={e => setFormData({...formData, guardianName: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-blue-500" />
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Gender</label>
+                          <div className="flex gap-2">
+                             {['Male', 'Female'].map(g => (
+                                <button 
+                                   key={g}
+                                   type="button"
+                                   onClick={() => setFormData({...formData, gender: g as 'Male' | 'Female'})}
+                                   className={`flex-1 py-4 rounded-2xl font-black uppercase text-[10px] tracking-widest border-2 transition-all ${
+                                      formData.gender === g ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-100' : 'bg-white border-gray-100 text-gray-400 hover:border-blue-200'
+                                   }`}
+                                >
+                                   {g}
+                                </button>
+                             ))}
+                          </div>
                        </div>
                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Phone Number</label>
-                          <input required type="tel" value={formData.guardianPhone} onChange={e => setFormData({...formData, guardianPhone: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-bold outline-none focus:border-blue-500" placeholder="07XX..." />
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Date of Birth</label>
+                          <input type="date" value={formData.dob} onChange={e => setFormData({...formData, dob: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-8 focus:ring-blue-50 focus:border-blue-500 transition-all outline-none font-black text-gray-900" />
                        </div>
                     </div>
                  </div>
 
-                 <div className="pt-6 border-t space-y-6">
+                 {/* Section 2: Guardian Logistics */}
+                 <div className="space-y-6 pt-10 border-t-2 border-gray-50 border-dashed">
+                    <div className="flex items-center gap-3">
+                       <div className="p-2 bg-purple-50 text-purple-600 rounded-xl">
+                          <ShieldCheck size={18} />
+                       </div>
+                       <h4 className="text-[11px] font-black text-purple-900 uppercase tracking-[0.2em]">Guardian Contact Logistics</h4>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Full Primary Name</label>
+                          <input required type="text" value={formData.guardianName} onChange={e => setFormData({...formData, guardianName: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-8 focus:ring-purple-50 focus:border-purple-500 transition-all outline-none font-black text-gray-900" placeholder="e.g. Richard Roe" />
+                       </div>
+                       <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Mobile Access Number</label>
+                          <div className="relative">
+                             <Phone className="absolute left-4 top-4.5 w-4 h-4 text-gray-300" />
+                             <input required type="tel" value={formData.guardianPhone} onChange={e => setFormData({...formData, guardianPhone: e.target.value})} className="w-full p-4 pl-12 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:ring-8 focus:ring-purple-50 focus:border-purple-500 transition-all outline-none font-black text-gray-900" placeholder="07XX XXX XXX" />
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+
+                 {/* Section 3: Value Add Services */}
+                 <div className="space-y-6 pt-10 border-t-2 border-gray-50 border-dashed">
                     <div className="flex items-center justify-between">
-                       <h4 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em]">Transport Services (School Bus)</h4>
+                       <div className="flex items-center gap-3">
+                          <div className="p-2 bg-amber-50 text-amber-600 rounded-xl">
+                             <Calendar size={18} />
+                       </div>
+                       <h4 className="text-[11px] font-black text-amber-900 uppercase tracking-[0.2em]">Auxiliary Services (Optional)</h4>
+                    </div>
                        <button 
                          type="button"
                          onClick={() => setFormData({...formData, isUsingTransport: !formData.isUsingTransport})}
-                         className={`w-12 h-6 rounded-full transition-all relative ${formData.isUsingTransport ? 'bg-blue-600' : 'bg-gray-200'}`}
+                         className={`w-14 h-7 rounded-full transition-all relative ${formData.isUsingTransport ? 'bg-amber-500' : 'bg-gray-200'}`}
                        >
-                          <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${formData.isUsingTransport ? 'right-1' : 'left-1'}`}></div>
+                          <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${formData.isUsingTransport ? 'right-1' : 'left-1'} shadow-sm`}></div>
                        </button>
                     </div>
+
                     {formData.isUsingTransport && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-2 duration-300">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in slide-in-from-top-4 duration-500 bg-amber-50/50 p-6 rounded-[32px] border-2 border-amber-100">
                         <div className="space-y-2">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Assigned Transport Fee</label>
-                          <input type="number" value={formData.transportFee ?? 0} onChange={e => handleFeeFieldChange('transportFee', e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black outline-none focus:border-blue-500 shadow-inner" />
+                          <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest ml-1">Allocated Transport Cost</label>
+                          <input type="number" value={formData.transportFee ?? 0} onChange={e => handleFeeFieldChange('transportFee', e.target.value)} className="w-full p-4 bg-white border-2 border-amber-200 rounded-2xl font-black text-amber-900 outline-none focus:ring-8 focus:ring-amber-50 transition-all" />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Transport Paid to Date</label>
-                          <input type="number" value={formData.paidTransportFee ?? 0} onChange={e => handleFeeFieldChange('paidTransportFee', e.target.value)} className="w-full p-4 bg-gray-50 border-2 border-gray-100 rounded-2xl font-black outline-none focus:border-blue-500 shadow-inner" />
+                          <label className="text-[10px] font-black text-amber-600 uppercase tracking-widest ml-1">Initial Transport Deposit</label>
+                          <input type="number" value={formData.paidTransportFee ?? 0} onChange={e => handleFeeFieldChange('paidTransportFee', e.target.value)} className="w-full p-4 bg-white border-2 border-amber-200 rounded-2xl font-black text-amber-900 outline-none focus:ring-8 focus:ring-amber-50 transition-all" />
                         </div>
-                        <div className="md:col-span-2 p-4 bg-blue-50 rounded-2xl border border-blue-100 flex justify-between items-center">
-                           <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Outstanding Transport Balance</span>
-                           <span className="text-sm font-black text-blue-800">KES {((formData.transportFee || 0) - (formData.paidTransportFee || 0)).toLocaleString()}</span>
+                        <div className="md:col-span-2 flex justify-between items-center p-4 bg-white/60 rounded-xl border border-dashed border-amber-300">
+                           <span className="text-[10px] font-black text-amber-700 uppercase tracking-widest">Active Transport Balance</span>
+                           <span className="text-sm font-black text-amber-900 tracking-tighter">KES {((formData.transportFee || 0) - (formData.paidTransportFee || 0)).toLocaleString()}</span>
                         </div>
                       </div>
                     )}
                  </div>
 
-                 <div className="pt-6 border-t space-y-6">
-                    <div className="flex items-center justify-between">
-                       <h4 className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em]">Negotiated Fees (Institutional)</h4>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Default Grade Fee</label>
-                        <div className="w-full p-4 bg-gray-100 border-2 border-gray-200 rounded-2xl font-black text-gray-500">KES {(formData.totalFee || 0).toLocaleString()}</div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest ml-1">Agreed Fee Override</label>
-                        <input type="number" value={formData.agreedFee ?? ''} onChange={e => handleFeeFieldChange('agreedFee', e.target.value)} placeholder="Same as Grade Fee if empty" className="w-full p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl font-black outline-none focus:border-blue-500 shadow-inner" />
-                      </div>
-                    </div>
-                    <div className="space-y-4">
-                       <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Actual Amount Paid (To Date)</label>
-                       <input type="number" value={formData.paidFee} onChange={e => handleFeeFieldChange('paidFee', e.target.value)} className="w-full p-5 bg-green-50/50 border-2 border-green-100 rounded-[24px] text-2xl font-black text-green-700 outline-none focus:border-green-500 transition-all shadow-inner" placeholder="0.00" />
-                       <div className="flex justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
-                          <div>
-                             <p className="text-[9px] font-black text-gray-400 uppercase">Closing Balance</p>
-                             <p className="text-sm font-black text-red-600">KES {(formData.feeBalance || 0).toLocaleString()}</p>
-                          </div>
-                          {formData.prepaidFee! > 0 && (
-                            <div className="text-right">
-                               <p className="text-[9px] font-black text-gray-400 uppercase">Prepaid Credit</p>
-                               <p className="text-sm font-black text-green-600">KES {(formData.prepaidFee || 0).toLocaleString()}</p>
-                            </div>
-                          )}
+                 {/* Section 4: Institutional Finance Package */}
+                 <div className="space-y-6 pt-10 border-t-2 border-gray-50 border-dashed">
+                    <div className="flex items-center gap-3">
+                       <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+                          <Banknote size={18} />
                        </div>
+                       <h4 className="text-[11px] font-black text-emerald-900 uppercase tracking-[0.2em]">Institutional Finance Protocol</h4>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-8 bg-gray-50/50 rounded-[40px] border-2 border-gray-100">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Standard Grade Tuition</label>
+                        <input type="number" value={formData.totalFee ?? 0} onChange={e => handleFeeFieldChange('totalFee', e.target.value)} className="w-full p-4 bg-white border-2 border-gray-100 rounded-2xl font-black text-gray-600 outline-none focus:border-blue-500 transition-all" />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-blue-600 uppercase tracking-widest ml-1">Agreed Special Rate (Override)</label>
+                        <input type="number" value={formData.agreedFee ?? ''} onChange={e => handleFeeFieldChange('agreedFee', e.target.value)} placeholder="Automatic if blank" className="w-full p-4 bg-blue-50 border-2 border-blue-200 rounded-2xl font-black text-blue-900 outline-none focus:ring-8 focus:ring-blue-100/50 transition-all" />
+                      </div>
+
+                      <div className="md:col-span-2 space-y-4 mt-4">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.3em] text-center w-full block">Actual Disbursement (Paid to Date)</label>
+                        <div className="relative">
+                           <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-emerald-300 text-3xl">KES</span>
+                           <input type="number" value={formData.paidFee} onChange={e => handleFeeFieldChange('paidFee', e.target.value)} className="w-full p-8 pl-24 bg-emerald-50 border-2 border-emerald-100 rounded-[32px] text-4xl font-black text-emerald-700 outline-none focus:border-emerald-500 transition-all shadow-xl shadow-emerald-50/50" placeholder="0.00" />
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                           <div className="p-6 bg-white rounded-3xl border-2 border-red-50 flex flex-col items-center">
+                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Current Arrears</p>
+                              <p className="text-xl font-black text-red-600 tracking-tighter">KES {(formData.feeBalance || 0).toLocaleString()}</p>
+                           </div>
+                           <div className="p-6 bg-white rounded-3xl border-2 border-green-50 flex flex-col items-center">
+                              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Prepaid Credit</p>
+                              <p className="text-xl font-black text-green-600 tracking-tighter">KES {(formData.prepaidFee || 0).toLocaleString()}</p>
+                           </div>
+                        </div>
+                      </div>
                     </div>
                  </div>
 
-                 <div className="flex gap-4 pt-10">
-                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-5 text-gray-400 font-black uppercase tracking-widest hover:bg-gray-50 rounded-3xl transition-all">Discard</button>
-                    <button type="submit" className="flex-1 py-5 bg-blue-600 text-white font-black uppercase tracking-widest rounded-3xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 flex items-center justify-center gap-3">
-                       <CheckCircle2 className="w-6 h-6" /> {editingStudent ? 'Update Account' : 'Confirm Enrollment'}
+                 <div className="flex gap-4 pt-10 no-print">
+                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-6 bg-gray-50 text-gray-400 font-black uppercase tracking-widest hover:bg-gray-100 rounded-[32px] transition-all border-2 border-transparent">Discard Change</button>
+                    <button type="submit" className="flex-[2] py-6 bg-gray-900 text-white font-black uppercase tracking-widest rounded-[32px] hover:bg-black transition-all shadow-2xl shadow-gray-200 flex items-center justify-center gap-4 active:scale-95 border-b-4 border-black">
+                       <CheckCircle2 className="w-6 h-6" /> 
+                       <span>{editingStudent ? 'Commit Institutional Update' : 'Authorize Final Enrollment'}</span>
                     </button>
                  </div>
               </form>

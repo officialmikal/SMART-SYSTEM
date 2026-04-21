@@ -69,6 +69,11 @@ export interface ExamResult {
   remarks: string;
 }
 
+export interface AttendanceEvent {
+  date: string;
+  status: 'present' | 'absent' | 'late';
+}
+
 export interface Student {
   id: string;
   admissionNumber: string;
@@ -90,6 +95,7 @@ export interface Student {
   prepaidFee: number;
   photo?: string;
   results?: ExamResult[];
+  attendance?: AttendanceEvent[];
 }
 
 export interface Staff {
