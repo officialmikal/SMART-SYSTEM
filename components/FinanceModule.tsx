@@ -236,11 +236,19 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
     
     setIsReceiptDownloading(true);
     const opt = {
-      margin: 0.5,
+      margin: 10,
       filename: fileName,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+      image: { type: 'jpeg', quality: 1 },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true, 
+        logging: false, 
+        letterRendering: true,
+        scrollX: 0,
+        scrollY: 0
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
     const h2p = (window as any).html2pdf;
@@ -833,10 +841,10 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                  {schoolLogo ? (
                    <img src={schoolLogo} className="w-20 h-20 mx-auto mb-4 rounded-xl object-contain" alt="Institution Logo" />
                  ) : (
-                   <div className="w-16 h-16 bg-blue-600 text-white rounded-xl flex items-center justify-center mx-auto mb-4 text-2xl font-black">ES</div>
+                   <div className="w-16 h-16 bg-red-900 text-white rounded-xl flex items-center justify-center mx-auto mb-4 text-2xl font-black">ES</div>
                  )}
                  <h2 className="text-xl font-black text-gray-900 uppercase tracking-tighter leading-tight">{schoolConfig.schoolName}</h2>
-                 <p className="text-[9px] font-black text-blue-600 uppercase tracking-[0.2em] mt-2 italic">Institutional Revenue Department</p>
+                 <p className="text-[9px] font-black text-red-900/60 uppercase tracking-[0.2em] mt-2 italic">Institutional Revenue Department</p>
               </div>
               
               <div className="space-y-5 text-left mb-10">
@@ -855,7 +863,7 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                     </div>
                     <div className="flex justify-between items-center">
                        <span className="text-[9px] text-gray-400 font-black uppercase">ADM Number</span>
-                       <span className="text-xs font-mono font-black text-blue-600">{lastReceipt.adm}</span>
+                       <span className="text-xs font-mono font-black text-red-600">{lastReceipt.adm}</span>
                     </div>
                     <div className="flex justify-between items-center">
                        <span className="text-[9px] text-gray-400 font-black uppercase">Grade</span>
@@ -878,12 +886,12 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                  </div>
               </div>
 
-              <div className="mt-8 flex flex-col sm:flex-row gap-3 no-print">
+              <div className="mt-8 flex flex-col sm:flex-row gap-3 no-print" data-html2canvas-ignore>
                  <button onClick={() => setShowReceipt(false)} className="flex-1 py-3.5 bg-gray-100 text-gray-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-gray-200 transition-all">Dismiss</button>
                  <button 
                   onClick={() => downloadReceiptPDF('official-receipt-print', `Receipt_${lastReceipt.receiptNo}.pdf`)} 
                   disabled={isReceiptDownloading}
-                  className="flex-1 py-3.5 bg-white border-2 border-blue-100 text-blue-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
+                  className="flex-1 py-3.5 bg-white border-2 border-red-100 text-red-900 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-50 transition-all flex items-center justify-center gap-2"
                  >
                     {isReceiptDownloading ? <Loader2 size={12} className="animate-spin" /> : <FileBadge size={12} />} Save PDF
                  </button>

@@ -13,20 +13,18 @@ dotenv.config();
 // Import backend components
 import backendModule from "./backend/src/app.ts";
 import sequelizeModule from "./backend/src/config/database.ts";
-import InstitutionModule from "./backend/src/models/Institution.ts";
-import UserModule from "./backend/src/models/User.ts";
+import * as Models from "./backend/src/models/index.ts";
 
 const backendApp = (backendModule as any).default || backendModule;
 const sequelize = (sequelizeModule as any).default || sequelizeModule;
-const Institution = (InstitutionModule as any).default || InstitutionModule;
-const User = (UserModule as any).default || UserModule;
+const { Institution, User } = Models;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = 3000; // Force 3000 for this environment
+  const PORT = Number(process.env.PORT) || 3000;
 
   // Mount the backend app
   // The backend app already has /api prefix for its routes

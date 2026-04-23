@@ -98,11 +98,19 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({
     setIsDownloading(true);
     
     const opt = {
-      margin: 0.2,
+      margin: 0,
       filename: fileName,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 1.5, useCORS: true, logging: false },
-      jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
+      image: { type: 'jpeg', quality: 1 },
+      html2canvas: { 
+        scale: 2, 
+        useCORS: true, 
+        logging: false, 
+        letterRendering: true,
+        scrollX: 0,
+        scrollY: 0
+      },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
 
     const h2p = (window as any).html2pdf;
@@ -144,26 +152,39 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({
         id="reportcard-container" 
         style={{ 
           width: '210mm', 
-          height: '297mm', 
-          padding: '12mm', 
+          height: '296.5mm', 
+          padding: '10mm', 
           border: '1px solid #eee',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          boxSizing: 'border-box'
         }}
       >
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
-            body { margin: 0; padding: 0; background: white; }
+            @page { size: A4; margin: 0; }
+            body { margin: 0; padding: 0; background: white !important; -webkit-print-color-adjust: exact !important; }
             .no-print { display: none !important; }
             #reportcard-container { 
               margin: 0 !important; 
               border: none !important; 
               width: 210mm !important; 
               height: 297mm !important; 
-              padding: 12mm !important;
+              padding: 10mm !important;
               box-shadow: none !important;
+              position: absolute !important;
+              top: 0 !important;
+              left: 0 !important;
+              z-index: 9999 !important;
+              box-sizing: border-box !important;
+              page-break-after: avoid !important;
+              page-break-before: avoid !important;
             }
-            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            main, nav, footer, aside, header { display: none !important; }
+            body > div:not(#reportcard-container) { display: none !important; }
+            #reportcard-container, #reportcard-container * {
+              visibility: visible !important;
+            }
           }
         `}} />
 
@@ -191,16 +212,46 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({
         </div>
 
         {/* BIO SECTION */}
-        <div className="relative z-10 grid grid-cols-2 gap-x-12 gap-y-4 mb-6">
+        <div className="relative z-10 grid grid-cols-4 gap-4 mb-6 bg-gray-50/50 p-5 rounded-[24px] border border-gray-100/50">
           <div className="space-y-3">
-            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-1"><span className="text-gray-300 font-black uppercase text-[8px] tracking-[0.1em]">Learner Name</span><span className="font-black text-gray-900 uppercase text-sm">{activeStudent.firstName} {activeStudent.lastName}</span></div>
-            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-1"><span className="text-gray-300 font-black uppercase text-[8px] tracking-[0.1em]">Admission ID</span><span className="font-mono font-black text-red-700 text-base tracking-tighter">{activeStudent.admissionNumber}</span></div>
-            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-1"><span className="text-gray-300 font-black uppercase text-[8px] tracking-[0.1em]">Gender</span><span className="font-black text-gray-900 uppercase text-xs">{activeStudent.gender}</span></div>
+            <div>
+              <p className="text-[7px] font-black text-gray-400 uppercase tracking-[0.2em] mb-0.5">Full Legal Name</p>
+              <p className="font-black text-gray-900 uppercase text-xs leading-none">{activeStudent.firstName} {activeStudent.lastName}</p>
+            </div>
+            <div>
+              <p className="text-[7px] font-black text-gray-400 uppercase tracking-[0.2em] mb-0.5">Gender</p>
+              <p className="font-black text-gray-900 uppercase text-[10px] leading-none">{activeStudent.gender}</p>
+            </div>
           </div>
-          <div className="space-y-3">
-            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-1"><span className="text-gray-300 font-black uppercase text-[8px] tracking-[0.1em]">Level / Section</span><span className="font-black text-gray-900 uppercase text-sm">{activeStudent.class} {activeStudent.stream && `• ${activeStudent.stream}`}</span></div>
-            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-1"><span className="text-gray-300 font-black uppercase text-[8px] tracking-[0.1em]">Academic Cycle</span><span className="font-black text-gray-900 uppercase text-sm">{schoolConfig?.year || 2024} • Term {schoolConfig?.term || 1}</span></div>
-            <div className="flex justify-between items-end border-b-2 border-gray-50 pb-1"><span className="text-gray-300 font-black uppercase text-[8px] tracking-[0.1em]">Date of Birth</span><span className="font-black text-gray-900 uppercase text-xs">{activeStudent.dob}</span></div>
+          <div className="space-y-3 border-l-2 border-gray-100/50 pl-4">
+            <div>
+              <p className="text-[7px] font-black text-gray-400 uppercase tracking-[0.2em] mb-0.5">Admission Index</p>
+              <p className="font-mono font-black text-red-700 text-sm tracking-tighter leading-none">{activeStudent.admissionNumber}</p>
+            </div>
+            <div>
+              <p className="text-[7px] font-black text-gray-400 uppercase tracking-[0.2em] mb-0.5">Academic Cycle</p>
+              <p className="font-black text-gray-900 uppercase text-[10px] leading-none">Term {schoolConfig?.term || 1} • {schoolConfig?.year || 2024}</p>
+            </div>
+          </div>
+          <div className="space-y-3 border-l-2 border-gray-100/50 pl-4">
+            <div>
+              <p className="text-[7px] font-black text-red-900/40 uppercase tracking-[0.2em] mb-0.5">Academic Stream</p>
+              <p className="font-black text-gray-900 uppercase text-xs leading-none">{activeStudent.class} {activeStudent.stream && `• ${activeStudent.stream}`}</p>
+            </div>
+            <div>
+              <p className="text-[7px] font-black text-red-900/40 uppercase tracking-[0.2em] mb-0.5">Issue Date</p>
+              <p className="font-black text-gray-900 uppercase text-[10px] leading-none">{new Intl.DateTimeFormat('en-KE', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date())}</p>
+            </div>
+          </div>
+          <div className="space-y-3 border-l-2 border-gray-100/50 pl-4">
+            <div>
+              <p className="text-[7px] font-black text-red-900/40 uppercase tracking-[0.2em] mb-0.5">Class Teacher</p>
+              <p className="font-black text-red-900 uppercase text-xs leading-none italic underline decoration-red-200">{classTeacherName}</p>
+            </div>
+            <div>
+              <p className="text-[7px] font-black text-red-900/40 uppercase tracking-[0.2em] mb-0.5">ID Status</p>
+              <p className="font-black text-gray-900 uppercase text-[10px] leading-none">Active • Verified</p>
+            </div>
           </div>
         </div>
 
@@ -209,38 +260,54 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({
           {reportType === 'academic' && (
             <>
               {displayResults.length > 0 ? (
-                <table className="w-full text-left border-collapse border-4 border-red-900/5">
-                  <thead>
-                    <tr className="bg-gray-900 text-white font-black uppercase text-[9px] tracking-[0.3em]">
-                      <th className="p-3 border border-gray-800">Learning Area</th>
-                      <th className="p-3 border border-gray-800 text-center">Competency Level</th>
-                      <th className="p-3 border border-gray-800 text-center">Score</th>
-                      <th className="p-3 border border-gray-800 text-center">Points</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {displayResults.map((res, i) => {
-                      const assessment = schoolService.calculateCBCGrade(res.score);
-                      return (
-                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}>
-                          <td className="p-3 border border-gray-100 font-black text-gray-800 uppercase text-sm tracking-tight">{res.subject}</td>
-                          <td className="p-3 border border-gray-100 text-center">
-                            <div className="font-black text-red-900 text-sm leading-none">{assessment.level}</div>
-                            <div className="text-[7px] text-gray-400 font-black uppercase tracking-widest mt-0.5">{assessment.descriptor}</div>
-                          </td>
-                          <td className="p-3 border border-gray-100 text-center font-mono font-black text-lg text-red-900">{res.score}</td>
-                          <td className="p-3 border border-gray-100 text-center font-mono font-black text-lg text-red-700">{assessment.points.toFixed(1)}</td>
-                        </tr>
-                      );
-                    })}
-                    <tr className="bg-red-900 text-white">
-                      <td className="p-4 border border-red-800 font-black uppercase text-base tracking-tight">Mean Aggregate Assessment</td>
-                      <td className="p-4 border border-red-800 text-center font-black text-base uppercase">{meanCompetency?.level || 'N/A'}</td>
-                      <td className="p-4 border border-red-800 text-center font-mono font-black text-2xl">{meanScore}</td>
-                      <td className="p-4 border border-red-800 text-center font-mono font-black text-xl">{meanCompetency?.points.toFixed(1) || '0.0'}</td>
-                    </tr>
-                  </tbody>
-                </table>
+                <>
+                  <table className="w-full text-left border-collapse border-4 border-red-900/5">
+                    <thead>
+                      <tr className="bg-gray-900 text-white font-black uppercase text-[9px] tracking-[0.3em]">
+                        <th className="p-3 border border-gray-800">Learning Area</th>
+                        <th className="p-3 border border-gray-800 text-center">Competency Level</th>
+                        <th className="p-3 border border-gray-800 text-center">Score</th>
+                        <th className="p-3 border border-gray-800 text-center">Points</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayResults.map((res, i) => {
+                        const assessment = schoolService.calculateCBCGrade(res.score);
+                        return (
+                          <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}>
+                            <td className="p-3 border border-gray-100 font-black text-gray-800 uppercase text-sm tracking-tight">{res.subject}</td>
+                            <td className="p-3 border border-gray-100 text-center">
+                              <div className="font-black text-red-900 text-sm leading-none">{assessment.level}</div>
+                              <div className="text-[7px] text-gray-400 font-black uppercase tracking-widest mt-0.5">{assessment.descriptor}</div>
+                            </td>
+                            <td className="p-3 border border-gray-100 text-center font-mono font-black text-lg text-red-900">{res.score}</td>
+                            <td className="p-3 border border-gray-100 text-center font-mono font-black text-lg text-red-700">{assessment.points.toFixed(1)}</td>
+                          </tr>
+                        );
+                      })}
+                      <tr className="bg-red-900 text-white">
+                        <td className="p-4 border border-red-800 font-black uppercase text-base tracking-tight">Mean Aggregate Assessment</td>
+                        <td className="p-4 border border-red-800 text-center font-black text-base uppercase">{meanCompetency?.level || 'N/A'}</td>
+                        <td className="p-4 border border-red-800 text-center font-mono font-black text-2xl">{meanScore}</td>
+                        <td className="p-4 border border-red-800 text-center font-mono font-black text-xl">{meanCompetency?.points.toFixed(1) || '0.0'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  {/* GRADING LEGEND */}
+                  <div className="mt-4 grid grid-cols-4 gap-2">
+                    {[
+                      { l: 'EE', d: 'Exceeding Expectations', c: 'bg-emerald-50 text-emerald-700' },
+                      { l: 'ME', d: 'Meeting Expectations', c: 'bg-blue-50 text-blue-700' },
+                      { l: 'AE', d: 'Approaching Expectations', c: 'bg-amber-50 text-amber-700' },
+                      { l: 'BE', d: 'Below Expectations', c: 'bg-red-50 text-red-700' }
+                    ].map(grade => (
+                      <div key={grade.l} className={`p-2 rounded-lg border border-current opacity-40 flex items-center gap-2 ${grade.c}`}>
+                        <span className="font-black text-[10px]">{grade.l}</span>
+                        <span className="text-[7px] font-bold uppercase tracking-tighter truncate">{grade.d}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="py-16 text-center bg-gray-50 rounded-[32px] border-2 border-dashed border-gray-100">
                   <AlertCircle className="w-12 h-12 text-gray-200 mx-auto mb-4" />
@@ -377,50 +444,63 @@ export const TranscriptModule: React.FC<TranscriptModuleProps> = ({
         </div>
 
         {/* REMARKS SECTION */}
-        <div className="relative z-10 grid grid-cols-2 gap-6 mb-8">
-           <div className="p-5 bg-gray-50 rounded-[28px] border-2 border-white shadow-inner">
-              <h3 className="text-[8px] font-black uppercase tracking-[0.3em] text-gray-400 mb-3 flex items-center gap-2"><div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div> Class Teacher's Remarks</h3>
-              <p className="text-xs font-bold text-gray-600 leading-relaxed font-serif">
-                {displayResults.length > 0 ? (displayResults[0].remarks || "Consistent effort observed. Encouraged to maintain focus on technical subjects.") : "Awaiting final academic appraisal."}
+        <div className="relative z-10 grid grid-cols-2 gap-6 mb-8 mt-auto">
+           <div className="p-5 bg-gray-50/80 rounded-[32px] border-2 border-white shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-1 h-full bg-gray-200"></div>
+              <h3 className="text-[7px] font-black uppercase tracking-[0.3em] text-gray-400 mb-2 flex items-center gap-2">
+                <div className="w-1 h-1 bg-gray-400 rounded-full"></div> 
+                Teacher's Academic Appraisal
+              </h3>
+              <p className="text-[11px] font-bold text-gray-700 leading-relaxed font-serif italic">
+                "{displayResults.length > 0 ? (displayResults[0].remarks || "Consistent effort observed. Encouraged to maintain focus on technical subjects.") : "Awaiting final academic appraisal."}"
               </p>
            </div>
-           <div className="p-5 bg-red-900/5 rounded-[28px] border-2 border-red-900/10 shadow-sm relative overflow-hidden">
-              <h3 className="text-[8px] font-black uppercase tracking-[0.3em] text-red-900/40 mb-3">Institutional Head's Appraisal</h3>
-              <p className="text-xs font-bold leading-relaxed font-serif text-red-900">"Satisfactory progression. Character development mirrors the institution's commitment to excellence and discipline."</p>
+           <div className="p-5 bg-red-900/[0.03] rounded-[32px] border-2 border-red-900/5 shadow-sm relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-1 h-full bg-red-900/20"></div>
+              <h3 className="text-[7px] font-black uppercase tracking-[0.3em] text-red-900/40 mb-2 flex items-center gap-2">
+                <div className="w-1 h-1 bg-red-900/40 rounded-full"></div>
+                Institutional Head's Comment
+              </h3>
+              <p className="text-[11px] font-bold leading-relaxed font-serif text-red-900/80 italic">
+                "Satisfactory progression. Character development mirrors the institution's commitment to excellence and discipline."
+              </p>
            </div>
         </div>
 
         {/* SIGNATURE SECTION */}
-        <div className="relative z-10 mt-auto pt-8 border-t-4 border-red-900">
-          <div className="grid grid-cols-3 gap-4 items-end mb-6">
-            <div className="text-center space-y-2">
-               <div className="font-serif text-xl text-red-900 leading-none h-8 flex items-end justify-center">{classTeacherName}</div>
-               <div className="w-full h-[1.5px] bg-red-900 mx-auto opacity-30"></div>
-               <p className="text-[7px] text-gray-500 font-black uppercase tracking-[0.2em]">Class Teacher</p>
+        <div className="relative z-10 pt-4 border-t-4 border-red-900">
+          <div className="grid grid-cols-3 gap-12 items-end mb-12">
+            <div className="text-center">
+               <div className="font-serif text-[11px] text-gray-900 h-10 flex items-end justify-center pb-2 italic leading-none">{examinationOfficerName}</div>
+               <div className="w-full h-0.5 bg-gray-100 mx-auto"></div>
+               <p className="text-[7px] text-red-900/40 font-black uppercase tracking-[0.2em] mt-2.5">Exam Officer</p>
             </div>
 
-            <div className="text-center space-y-2">
-               <div className="font-serif text-xl text-red-900 leading-none h-8 flex items-end justify-center">{principalName}</div>
-               <div className="w-full h-[1.5px] bg-red-900 mx-auto opacity-30"></div>
-               <p className="text-[7px] text-gray-500 font-black uppercase tracking-[0.2em]">Principal / Head</p>
+            <div className="text-center">
+               <div className="font-serif text-[11px] text-red-900 h-10 flex items-end justify-center pb-2 italic font-black leading-none">{principalName}</div>
+               <div className="w-full h-0.5 bg-red-100 mx-auto"></div>
+               <p className="text-[7px] text-red-900/60 font-black uppercase tracking-[0.2em] mt-2.5">Principal / Head</p>
             </div>
-            
-            <div className="text-center space-y-2">
-               <div className="font-serif text-xl text-red-900 leading-none h-8 flex items-end justify-center">{examinationOfficerName}</div>
-               <div className="w-full h-[1.5px] bg-red-900 mx-auto opacity-30"></div>
-               <p className="text-[7px] text-gray-500 font-black uppercase tracking-[0.2em]">Exam Registrar</p>
+
+            <div className="text-center">
+               <div className="font-serif text-[10px] text-gray-500 h-10 flex items-end justify-center pb-2 italic leading-none">
+                 {new Intl.DateTimeFormat('en-KE', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date())}
+               </div>
+               <div className="w-full h-0.5 bg-gray-100 mx-auto"></div>
+               <p className="text-[7px] text-red-900/40 font-black uppercase tracking-[0.2em] mt-2.5">Issue Date</p>
             </div>
           </div>
 
-          <div className="flex justify-center items-center gap-12 pt-4 border-t border-gray-50 relative">
-             <div className="w-24 h-24 rounded-full border-4 border-double border-red-900/10 flex items-center justify-center rotate-[-12deg] shadow-inner absolute -top-16 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-sm">
-                <div className="text-[6px] font-black text-red-900/40 text-center uppercase leading-tight font-mono tracking-tighter">
+          <div className="flex justify-between items-center pt-4 border-t border-gray-50 relative">
+             <div className="w-24 h-24 rounded-full border-4 border-double border-red-900/10 flex items-center justify-center rotate-[-15deg] shadow-inner absolute -top-16 right-4 sm:right-12 bg-white/60 backdrop-blur-[2px] z-20 pointer-events-none">
+                <div className="text-[6px] font-black text-red-900/30 text-center uppercase leading-tight font-mono tracking-tighter">
                   OFFICIAL SEAL<br/>
                   {schoolConfig?.schoolName?.split(' ')[0] || 'ELIMUSMART'}<br/>
                   {new Date().getFullYear()}
                 </div>
              </div>
-             <p className="text-[7px] text-gray-300 font-black uppercase tracking-[0.5em] opacity-50">Digital Audit ID: ES-SEC-{Math.random().toString(36).substring(2, 8).toUpperCase()}</p>
+             <p className="text-[6px] text-gray-200 font-black uppercase tracking-[0.4em] italic">Validated Electronic Document</p>
+             <p className="text-[6px] text-gray-300 font-black uppercase tracking-[0.2em]">Audit ID: ES-TR-{Math.random().toString(36).substring(2, 8).toUpperCase()}</p>
           </div>
         </div>
       </div>
