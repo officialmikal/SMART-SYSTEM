@@ -409,16 +409,30 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
     setShowReceipt(true);
   };
 
-  const handleSaveExpenditure = (e: React.FormEvent) => {
+  const handleSaveExpenditure = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingExpId) {
-      setExpenditures(prev => prev.map(exp => exp.id === editingExpId ? { ...exp, ...expForm } as Expenditure : exp));
-    } else {
-      const newExp = { ...expForm, id: Math.random().toString(36).substr(2, 9) } as Expenditure;
-      setExpenditures(prev => [newExp, ...prev]);
+    setIsSubmitting(true);
+    try {
+      if (editingExpId) {
+        const updated = await apiService.request(`/expenditures/${editingExpId}`, {
+          method: 'PUT',
+          body: JSON.stringify(expForm)
+        });
+        setExpenditures(prev => prev.map(exp => exp.id === editingExpId ? { ...exp, ...updated } : exp));
+      } else {
+        const created = await apiService.request('/expenditures', {
+          method: 'POST',
+          body: JSON.stringify(expForm)
+        });
+        setExpenditures(prev => [created, ...prev]);
+      }
+      setShowExpModal(false);
+      setEditingExpId(null);
+    } catch (err: any) {
+      alert("Failed to save expenditure: " + err.message);
+    } finally {
+      setIsSubmitting(false);
     }
-    setShowExpModal(false);
-    setEditingExpId(null);
   };
 
   const openExpEditor = (exp?: Expenditure) => {
@@ -891,10 +905,11 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                     <textarea required value={expForm.description} onChange={e => setExpForm({...expForm, description: e.target.value})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold outline-none focus:border-red-500 transition-all h-24" />
                  </div>
                  <div className="flex gap-4 pt-6">
-                    <button type="button" onClick={() => setShowExpModal(false)} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest">Cancel</button>
-                    <button type="submit" className="flex-2 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2">
-                       <Save size={16} /> {editingExpId ? 'Update Record' : 'Save Record'}
-                    </button>
+                    <button type="button" disabled={isSubmitting} onClick={() => setShowExpModal(false)} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest disabled:opacity-50">Cancel</button>
+                    <button type="submit" disabled={isSubmitting} className="flex-2 py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-black transition-all disabled:opacity-50">
+                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save size={16} />}
+                        <span>{editingExpId ? 'Update Record' : 'Save Record'}</span>
+                     </button>
                  </div>
               </form>
            </div>

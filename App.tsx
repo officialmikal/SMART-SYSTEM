@@ -160,13 +160,32 @@ const App: React.FC = () => {
   const fetchCloudData = async () => {
     setIsSyncing(true);
     try {
-      const [cloudStudents, cloudStaff, cloudClasses] = await Promise.all([
+      const [cloudStudents, cloudStaff, cloudClasses, cloudUsers] = await Promise.all([
         apiService.request('/students'),
         apiService.request('/staff'),
-        apiService.request('/classes')
+        apiService.request('/classes'),
+        apiService.request('/users')
       ]);
-      if (cloudStudents) setStudents(cloudStudents);
+
+      if (cloudStudents) {
+        // Normalize class data for the frontend mapping from object to string
+        const normalizedStudents = cloudStudents.map((s: any) => ({
+          ...s,
+          class: s.class?.name || 'Unassigned',
+          // Ensure financial numbers are actual numbers
+          paidFee: Number(s.paidFee || 0),
+          feeBalance: Number(s.feeBalance || 0),
+          totalFee: Number(s.totalFee || 0),
+          agreedFee: s.agreedFee !== null ? Number(s.agreedFee) : undefined,
+          paidTransportFee: Number(s.paidTransportFee || 0),
+          transportFee: Number(s.transportFee || 0),
+        }));
+        setStudents(normalizedStudents);
+      }
+      
       if (cloudStaff) setStaff(cloudStaff);
+      if (cloudUsers) setUsers(cloudUsers);
+      
       if (cloudClasses) {
         setCloudClasses(cloudClasses);
         const fees = cloudClasses.map((c: any) => ({
@@ -175,6 +194,15 @@ const App: React.FC = () => {
         }));
         setFeeStructure(fees);
       }
+      
+      // Also try to fetch expenditures
+      try {
+        const cloudExp = await apiService.request('/expenditures');
+        if (Array.isArray(cloudExp)) setExpenditures(cloudExp);
+      } catch (e) {
+        console.debug("Expenditure fetch failed");
+      }
+      
     } catch (e) {
       console.error("Cloud sync failed, using local cache");
     } finally {

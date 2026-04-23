@@ -1,5 +1,6 @@
 
 import { CBCGrade, Exam, MarkEntry, TimetableEntry } from '../types';
+import { apiService } from './apiService';
 
 export interface AcademicConfig {
   year: number;
@@ -69,10 +70,28 @@ export const schoolService = {
     return { level: 'BE2', descriptor: 'Below Expectation', points: 0.5 };
   },
 
-  async saveAttendance(classId: string, records: any[]) {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    console.log(`Saved attendance for ${classId}`, records);
-    return { success: true };
+  async saveAttendance(classInfo: string, records: any[]) {
+    return await apiService.request('/attendance/bulk', {
+      method: 'POST',
+      body: JSON.stringify({
+        date: new Date().toISOString().split('T')[0],
+        records: records.map(r => ({
+          studentId: r.id,
+          status: r.status.charAt(0).toUpperCase() + r.status.slice(1), // Capitalize
+          remarks: ''
+        }))
+      })
+    });
+  },
+
+  async recordAttendance(date: string, records: any[]) {
+    return await apiService.request('/attendance/bulk', {
+      method: 'POST',
+      body: JSON.stringify({
+        date,
+        records
+      })
+    });
   },
 
   async getStudentTranscript(studentId: string) {

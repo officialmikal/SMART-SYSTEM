@@ -1,7 +1,8 @@
 
 import React, { useState } from 'react';
-import { Plus, Search, Filter, Mail, Phone, X, Camera, Trash2, Edit2, UserSquare2, BookOpen, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Filter, Mail, Phone, X, Camera, Trash2, Edit2, UserSquare2, BookOpen, AlertTriangle, Loader2 } from 'lucide-react';
 import { Staff } from '../types';
+import { apiService } from '../services/apiService';
 
 interface StaffManagementProps {
   staffList: Staff[];
@@ -42,19 +43,31 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({ staffList, set
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingStaff) {
-      setStaffList(staffList.map(s => s.id === editingStaff.id ? { ...s, ...formData } as Staff : s));
-    } else {
-      const newStaff = {
-        ...formData,
-        id: Math.random().toString(36).substr(2, 9),
-        photo: `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.name}${Date.now()}`
-      } as Staff;
-      setStaffList([...staffList, newStaff]);
+    setIsSubmitting(true);
+    try {
+      if (editingStaff) {
+        const updated = await apiService.request(`/staff/${editingStaff.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(formData)
+        });
+        setStaffList(staffList.map(s => s.id === editingStaff.id ? { ...s, ...updated } : s));
+      } else {
+        const created = await apiService.request('/staff', {
+          method: 'POST',
+          body: JSON.stringify(formData)
+        });
+        setStaffList([...staffList, created]);
+      }
+      setIsModalOpen(false);
+    } catch (err: any) {
+      alert("Failed to save staff: " + err.message);
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsModalOpen(false);
   };
 
   const openDeleteModal = (staff: Staff) => {
@@ -62,11 +75,21 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({ staffList, set
     setIsDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (staffToDelete) {
-      setStaffList(prev => prev.filter(s => s.id !== staffToDelete.id));
-      setIsDeleteModalOpen(false);
-      setStaffToDelete(null);
+      setIsSubmitting(true);
+      try {
+        await apiService.request(`/staff/${staffToDelete.id}`, {
+          method: 'DELETE'
+        });
+        setStaffList(prev => prev.filter(s => s.id !== staffToDelete.id));
+        setIsDeleteModalOpen(false);
+        setStaffToDelete(null);
+      } catch (err: any) {
+        alert("Failed to delete staff member: " + err.message);
+      } finally {
+        setIsSubmitting(false);
+      }
     }
   };
 
@@ -243,8 +266,19 @@ export const StaffManagement: React.FC<StaffManagementProps> = ({ staffList, set
 
               <div className="flex gap-4 pt-6 border-t">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-5 text-gray-400 font-black uppercase tracking-widest hover:bg-gray-50 rounded-3xl transition-all">Discard</button>
-                <button type="submit" className="flex-1 py-5 bg-blue-600 text-white font-black uppercase tracking-widest rounded-3xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95 border-b-4 border-blue-800">
-                  {editingStaff ? 'Commit Updates' : 'Authorize Enrollment'}
+                <button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className="flex-1 py-5 bg-blue-600 text-white font-black uppercase tracking-widest rounded-3xl hover:bg-blue-700 transition-all shadow-xl shadow-blue-100 active:scale-95 border-b-4 border-blue-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>Processing...</span>
+                    </>
+                  ) : (
+                    <span>{editingStaff ? 'Commit Updates' : 'Authorize Enrollment'}</span>
+                  )}
                 </button>
               </div>
             </form>

@@ -11,6 +11,7 @@ import Exam from './Exam.ts';
 import Mark from './Mark.ts';
 import AuditLog from './AuditLog.ts';
 import SmsLog from './SmsLog.ts';
+import Expenditure from './Expenditure.ts';
 
 // Tenant-level Associations
 // Fix: Cast models to any for static association methods
@@ -22,6 +23,9 @@ import SmsLog from './SmsLog.ts';
 
 (Institution as any).hasMany(SmsLog, { foreignKey: 'institutionId', as: 'smsLogs' });
 (SmsLog as any).belongsTo(Institution, { foreignKey: 'institutionId' });
+
+(Institution as any).hasMany(Expenditure, { foreignKey: 'institutionId', as: 'expenditures' });
+(Expenditure as any).belongsTo(Institution, { foreignKey: 'institutionId' });
 
 // Module Associations
 (Class as any).hasMany(Student, { foreignKey: 'classId', as: 'students' });
@@ -54,5 +58,6 @@ export {
   Exam,
   Mark,
   AuditLog,
-  SmsLog
+  SmsLog,
+  Expenditure
 };

@@ -188,7 +188,14 @@ export const StudentManagement: React.FC<Props> = ({ students = [], setStudents,
           dob: formData.dob,
           guardianPhone: formData.guardianPhone,
           guardianName: formData.guardianName,
-          agreedFee: formData.agreedFee
+          agreedFee: formData.agreedFee,
+          totalFee: formData.totalFee,
+          paidFee: formData.paidFee,
+          transportFee: formData.transportFee,
+          isUsingTransport: formData.isUsingTransport,
+          paidTransportFee: formData.paidTransportFee,
+          feeBalance: balance,
+          prepaidFee: prepaid
         };
 
         if (editingStudent) {

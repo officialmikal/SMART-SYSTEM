@@ -15,6 +15,7 @@ import markRoutes from './routes/markRoutes';
 import mpesaRoutes from './routes/mpesaRoutes';
 import messagingRoutes from './routes/messagingRoutes';
 import userRoutes from './routes/userRoutes';
+import expenditureRoutes from './routes/expenditureRoutes';
 import { getAuditLogs } from './controllers/adminController';
 import { protect, authorize } from './middleware/auth';
 
@@ -72,6 +73,7 @@ app.use('/api/marks', markRoutes);
 app.use('/api/mpesa', mpesaRoutes);
 app.use('/api/messaging', messagingRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/expenditures', expenditureRoutes);
 
 // Admin Routes
 app.get('/api/admin/logs', protect, authorize('ADMIN'), (req: any, res: any) => {
