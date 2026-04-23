@@ -76,6 +76,8 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : INITIAL_ROLES;
   });
   
+  const [cloudClasses, setCloudClasses] = useState<any[]>([]);
+  
   const [schoolConfig, setSchoolConfig] = useState(() => {
     const saved = localStorage.getItem('elimusmart_config');
     return saved ? JSON.parse(saved) : INITIAL_SCHOOL_CONFIG;
@@ -166,6 +168,7 @@ const App: React.FC = () => {
       if (cloudStudents) setStudents(cloudStudents);
       if (cloudStaff) setStaff(cloudStaff);
       if (cloudClasses) {
+        setCloudClasses(cloudClasses);
         const fees = cloudClasses.map((c: any) => ({
           className: c.name,
           amount: c.feeStructure?.amount || 0
@@ -284,7 +287,15 @@ const App: React.FC = () => {
     >
       <div className="p-4 md:p-8">
         {currentTab === 'dashboard' && <Dashboard user={user} lang={lang} students={students} expenditures={expenditures} installApp={deferredPrompt ? handleInstallApp : undefined} />}
-        {currentTab === 'students' && <StudentManagement students={students} setStudents={setStudents} feeStructure={feeStructure} />}
+        {currentTab === 'students' && (
+          <StudentManagement 
+            students={students} 
+            setStudents={setStudents} 
+            feeStructure={feeStructure} 
+            isBackendLive={isBackendLive}
+            cloudClasses={cloudClasses}
+          />
+        )}
         {currentTab === 'staff' && <StaffManagement staffList={staff} setStaffList={setStaff} />}
         {currentTab === 'finance' && <FinanceModule lang={lang} students={students} setStudents={setStudents} expenditures={expenditures} setExpenditures={setExpenditures} feeStructure={feeStructure} setFeeStructure={setFeeStructure} schoolLogo={schoolLogo} schoolConfig={schoolConfig} isBackendLive={isBackendLive} />}
         {currentTab === 'attendance' && <AttendanceModule lang={lang} students={students} setStudents={setStudents} />}

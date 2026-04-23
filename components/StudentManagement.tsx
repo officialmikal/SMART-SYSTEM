@@ -25,16 +25,20 @@ import {
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Student, KENYAN_CLASSES, ClassFee, SCHOOL_STREAMS } from '../types';
+import { apiService } from '../services/apiService';
 
 interface Props {
   students: Student[];
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
   feeStructure: ClassFee[];
+  isBackendLive?: boolean;
+  cloudClasses?: any[];
 }
 
-export const StudentManagement: React.FC<Props> = ({ students = [], setStudents, feeStructure }) => {
+export const StudentManagement: React.FC<Props> = ({ students = [], setStudents, feeStructure, isBackendLive, cloudClasses = [] }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -130,15 +134,31 @@ export const StudentManagement: React.FC<Props> = ({ students = [], setStudents,
     setFormData({ ...nextData, feeBalance: balance, prepaidFee: prepaid });
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (studentToDelete) {
-      setStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
-      setIsDeleteModalOpen(false);
-      setStudentToDelete(null);
+      if (isBackendLive) {
+        try {
+          setIsSubmitting(true);
+          await apiService.request(`/students/${studentToDelete.id}`, {
+            method: 'DELETE'
+          });
+          setStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
+          setIsDeleteModalOpen(false);
+          setStudentToDelete(null);
+        } catch (err: any) {
+          alert("Failed to delete student: " + err.message);
+        } finally {
+          setIsSubmitting(false);
+        }
+      } else {
+        setStudents(prev => prev.filter(s => s.id !== studentToDelete.id));
+        setIsDeleteModalOpen(false);
+        setStudentToDelete(null);
+      }
     }
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const { balance, prepaid } = calculateBalances(formData);
 
@@ -149,16 +169,59 @@ export const StudentManagement: React.FC<Props> = ({ students = [], setStudents,
       photo: formData.photo || `https://api.dicebear.com/7.x/avataaars/svg?seed=${formData.firstName}${formData.admissionNumber}${Date.now()}`
     };
 
-    if (editingStudent) {
-      setStudents(prev => prev.map(s => s.id === editingStudent.id ? { ...finalStudentData, id: s.id } : s));
+    if (isBackendLive) {
+      try {
+        setIsSubmitting(true);
+        const classId = cloudClasses.find(c => c.name === formData.class)?.id;
+        
+        if (!classId && formData.class) {
+           console.warn("Class ID not found for", formData.class);
+        }
+
+        const payload = {
+          admissionNumber: formData.admissionNumber,
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          classId: classId || 1, // Fallback to 1 if not found
+          stream: formData.stream,
+          gender: formData.gender,
+          dob: formData.dob,
+          guardianPhone: formData.guardianPhone,
+          guardianName: formData.guardianName,
+          agreedFee: formData.agreedFee
+        };
+
+        if (editingStudent) {
+          const updated = await apiService.request(`/students/${editingStudent.id}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+          });
+          setStudents(prev => prev.map(s => s.id === editingStudent.id ? { ...finalStudentData, ...updated } : s));
+        } else {
+          const created = await apiService.request('/students', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+          setStudents(prev => [...prev, { ...finalStudentData, ...created }]);
+        }
+        setIsModalOpen(false);
+      } catch (err: any) {
+        alert("Failed to save student: " + err.message);
+      } finally {
+        setIsSubmitting(false);
+      }
     } else {
-      const newStudent: Student = {
-        ...finalStudentData,
-        id: Math.random().toString(36).substr(2, 9),
-      };
-      setStudents(prev => [...prev, newStudent]);
+      if (editingStudent) {
+        setStudents(prev => prev.map(s => s.id === editingStudent.id ? { ...finalStudentData, id: s.id } : s));
+      } else {
+        const newStudent: Student = {
+          ...finalStudentData,
+          id: Math.random().toString(36).substr(2, 9),
+        };
+        setStudents(prev => [...prev, newStudent]);
+      }
+      setIsModalOpen(false);
     }
-    setIsModalOpen(false);
   };
 
   const handleExportExcel = () => {
@@ -529,9 +592,9 @@ export const StudentManagement: React.FC<Props> = ({ students = [], setStudents,
                  </div>
 
                  <div className="flex gap-4 pt-10 no-print">
-                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-6 bg-gray-50 text-gray-400 font-black uppercase tracking-widest hover:bg-gray-100 rounded-[32px] transition-all border-2 border-transparent">Discard Change</button>
-                    <button type="submit" className="flex-[2] py-6 bg-gray-900 text-white font-black uppercase tracking-widest rounded-[32px] hover:bg-black transition-all shadow-2xl shadow-gray-200 flex items-center justify-center gap-4 active:scale-95 border-b-4 border-black">
-                       <CheckCircle2 className="w-6 h-6" /> 
+                    <button type="button" disabled={isSubmitting} onClick={() => setIsModalOpen(false)} className="flex-1 py-6 bg-gray-50 text-gray-400 font-black uppercase tracking-widest hover:bg-gray-100 rounded-[32px] transition-all border-2 border-transparent disabled:opacity-50">Discard Change</button>
+                    <button type="submit" disabled={isSubmitting} className="flex-[2] py-6 bg-gray-900 text-white font-black uppercase tracking-widest rounded-[32px] hover:bg-black transition-all shadow-2xl shadow-gray-200 flex items-center justify-center gap-4 active:scale-95 border-b-4 border-black disabled:opacity-50">
+                       {isSubmitting ? <Loader2 className="w-6 h-6 animate-spin" /> : <CheckCircle2 className="w-6 h-6" />}
                        <span>{editingStudent ? 'Commit Institutional Update' : 'Authorize Final Enrollment'}</span>
                     </button>
                  </div>
@@ -552,8 +615,11 @@ export const StudentManagement: React.FC<Props> = ({ students = [], setStudents,
                 You are about to permanently remove <strong className="text-gray-900">{studentToDelete.firstName} {studentToDelete.lastName}</strong> ({studentToDelete.admissionNumber}) from the school registry. This action cannot be undone.
               </p>
               <div className="grid grid-cols-2 gap-4">
-                 <button onClick={() => setIsDeleteModalOpen(false)} className="py-4 bg-gray-100 text-gray-400 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-200 transition-all">Cancel</button>
-                 <button onClick={confirmDelete} className="py-4 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-red-100 hover:bg-red-700 transition-all">Confirm Delete</button>
+                 <button disabled={isSubmitting} onClick={() => setIsDeleteModalOpen(false)} className="py-4 bg-gray-100 text-gray-400 rounded-2xl font-black uppercase tracking-widest text-[10px] hover:bg-gray-200 transition-all disabled:opacity-50">Cancel</button>
+                 <button disabled={isSubmitting} onClick={confirmDelete} className="py-4 bg-red-600 text-white rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-xl shadow-red-100 hover:bg-red-700 transition-all disabled:opacity-50 flex items-center justify-center gap-2">
+                   {isSubmitting && <Loader2 className="w-3 h-3 animate-spin" />}
+                   Confirm Delete
+                 </button>
               </div>
            </div>
         </div>
