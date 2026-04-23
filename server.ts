@@ -13,10 +13,13 @@ dotenv.config();
 // Import backend components
 import backendModule from "./backend/src/app.ts";
 import sequelizeModule from "./backend/src/config/database.ts";
-import { Institution, User } from "./backend/src/models/index.ts";
+import Institution from "./backend/src/models/Institution.ts";
+import User from "./backend/src/models/User.ts";
 
 const backendApp = (backendModule as any).default || backendModule;
 const sequelize = (sequelizeModule as any).default || sequelizeModule;
+const InstitutionModel = (Institution as any).default || Institution;
+const UserModel = (User as any).default || User;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -69,14 +72,14 @@ async function initializeDatabase() {
     await sequelize.sync({ alter: true });
     console.log("PostgreSQL: Models synced and schema updated.");
 
-    if (!Institution || !User) {
-      throw new Error(`Critical models failed to load. Institution: ${typeof Institution}, User: ${typeof User}`);
+    if (!InstitutionModel || !UserModel) {
+      throw new Error(`Critical models failed to load. Institution: ${typeof InstitutionModel}, User: ${typeof UserModel}`);
     }
 
     // Seed Data
-    let defaultInst = await (Institution as any).findOne({ where: { subdomain: "demo" } });
+    let defaultInst = await (InstitutionModel as any).findOne({ where: { subdomain: "demo" } });
     if (!defaultInst) {
-      defaultInst = await (Institution as any).create({
+      defaultInst = await (InstitutionModel as any).create({
         name: "ElimuSmart Demo Academy",
         motto: "Excellence Through Innovation",
         registrationNumber: "MOE/DEMO/001",
@@ -87,10 +90,10 @@ async function initializeDatabase() {
     }
 
     if (defaultInst && defaultInst.id) {
-      const adminExists = await (User as any).findOne({ where: { role: "ADMIN", institutionId: defaultInst.id } });
+      const adminExists = await (UserModel as any).findOne({ where: { role: "ADMIN", institutionId: defaultInst.id } });
       if (!adminExists) {
         const hashedPassword = await bcrypt.hash("adminpassword", 10);
-        await (User as any).create({
+        await (UserModel as any).create({
           name: "Master Admin",
           email: "admin@school.ac.ke",
           password: hashedPassword,
