@@ -20,13 +20,13 @@ if (process.env.DATABASE_URL) {
       underscored: true
     }
   });
-} else if (config.DB.HOST && config.DB.HOST !== 'localhost' && config.DB.HOST !== '127.0.0.1') {
-  // Production/Cloud: PostgreSQL (Manual Fields)
+} else if (config.DB.HOST) {
+  // PostgreSQL (Manual Fields)
   sequelize = new Sequelize(config.DB.NAME, config.DB.USER, config.DB.PASSWORD, {
     host: config.DB.HOST,
     port: config.DB.PORT,
     dialect: 'postgres',
-    dialectOptions: {
+    dialectOptions: config.DB.HOST === 'localhost' || config.DB.HOST === '127.0.0.1' ? {} : {
       ssl: {
         require: true,
         rejectUnauthorized: false
@@ -39,16 +39,8 @@ if (process.env.DATABASE_URL) {
     }
   });
 } else {
-  // Local/Development: SQLite
-  sequelize = new Sequelize({
-    dialect: 'sqlite',
-    storage: './database.sqlite',
-    logging: config.NODE_ENV === 'development' ? console.log : false,
-    define: {
-      timestamps: true,
-      underscored: true
-    }
-  });
+  // Fail fast: No SQLite fallback allowed in production/stabilized environments
+  throw new Error('DATABASE_URL or DB_HOST must be provided. PostgreSQL is the only supported database.');
 }
 
 export default sequelize;
