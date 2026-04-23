@@ -73,6 +73,7 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
   const [financeSearch, setFinanceSearch] = useState('');
   const [showReceipt, setShowReceipt] = useState(false);
   const [isReceiptDownloading, setIsReceiptDownloading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<TransactionReceipt | null>(null);
 
   // Global Collection States
@@ -177,57 +178,101 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
     setIsQuickCollectOpen(false); // Close search if it was open
   };
 
-  const handleSavePayment = (e: React.FormEvent) => {
+  const handleSavePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudentForPayment || !paymentFormData.amount) return;
 
     const amountToAdd = parseFloat(paymentFormData.amount);
-    setStudents(prev => prev.map(s => {
-      if (s.id === selectedStudentForPayment.id) {
-        let newPaidTuition = s.paidFee || 0;
-        let newPaidTransport = s.paidTransportFee || 0;
+    
+    if (isBackendLive) {
+      try {
+        setIsSubmitting(true);
+        const response = await apiService.request('/payments', {
+          method: 'POST',
+          body: JSON.stringify({
+            studentId: selectedStudentForPayment.id,
+            amount: amountToAdd,
+            method: paymentFormData.method,
+            transactionId: paymentFormData.reference || `RCT-${Math.random().toString(36).substr(2, 9).toUpperCase()}`,
+            description: `Payment for ${paymentFormData.category}`,
+            category: paymentFormData.category
+          })
+        });
 
-        if (paymentFormData.category === 'TRANSPORT') {
-          newPaidTransport += amountToAdd;
-        } else {
-          newPaidTuition += amountToAdd;
-        }
-
-        const base = s.agreedFee ?? s.totalFee;
-        const transport = s.isUsingTransport ? (s.transportFee || 0) : 0;
-        const totalExpected = base + transport;
-        const totalPaid = newPaidTuition + newPaidTransport;
-
-        const balance = Math.max(0, totalExpected - totalPaid);
-        const prepaid = totalPaid > totalExpected ? totalPaid - totalExpected : 0;
+        // After successful payment, fetch updated student data or update local state
+        const updatedStudent = await apiService.request(`/students/${selectedStudentForPayment.id}`);
+        setStudents(prev => prev.map(s => s.id === selectedStudentForPayment.id ? { ...s, ...updatedStudent } : s));
         
         // Generate receipt
         setLastReceipt({
-          receiptNo: `RCT-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
-          studentName: `${s.firstName} ${s.lastName}`,
-          adm: s.admissionNumber,
-          class: s.class,
+          receiptNo: response.transactionId,
+          studentName: `${selectedStudentForPayment.firstName} ${selectedStudentForPayment.lastName}`,
+          adm: selectedStudentForPayment.admissionNumber,
+          class: selectedStudentForPayment.class,
           amount: amountToAdd,
           method: paymentFormData.method as any,
-          reference: paymentFormData.reference || (paymentFormData.method === 'M-PESA' ? 'M-PESA MANUAL ENTRY' : 'DIRECT COLLECTION'),
+          reference: response.transactionId,
           date: new Date().toLocaleString(),
-          balance: balance,
+          balance: updatedStudent.feeBalance,
           servedBy: 'Institutional Finance'
         });
-        
-        return { 
-          ...s, 
-          paidFee: newPaidTuition, 
-          paidTransportFee: newPaidTransport,
-          feeBalance: balance, 
-          prepaidFee: prepaid 
-        };
-      }
-      return s;
-    }));
 
-    setIsPaymentModalOpen(false);
-    setShowReceipt(true);
+        setIsPaymentModalOpen(false);
+        setShowReceipt(true);
+      } catch (err: any) {
+        alert("Failed to record payment: " + err.message);
+      } finally {
+        setIsSubmitting(false);
+      }
+    } else {
+      // Offline fallback logic
+      setStudents(prev => prev.map(s => {
+        if (s.id === selectedStudentForPayment.id) {
+          let newPaidTuition = s.paidFee || 0;
+          let newPaidTransport = s.paidTransportFee || 0;
+
+          if (paymentFormData.category === 'TRANSPORT') {
+            newPaidTransport += amountToAdd;
+          } else {
+            newPaidTuition += amountToAdd;
+          }
+
+          const base = s.agreedFee ?? s.totalFee;
+          const transport = s.isUsingTransport ? (s.transportFee || 0) : 0;
+          const totalExpected = base + transport;
+          const totalPaid = newPaidTuition + newPaidTransport;
+
+          const balance = Math.max(0, totalExpected - totalPaid);
+          const prepaid = totalPaid > totalExpected ? totalPaid - totalExpected : 0;
+          
+          // Generate receipt
+          setLastReceipt({
+            receiptNo: `RCT-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
+            studentName: `${s.firstName} ${s.lastName}`,
+            adm: s.admissionNumber,
+            class: s.class,
+            amount: amountToAdd,
+            method: paymentFormData.method as any,
+            reference: paymentFormData.reference || (paymentFormData.method === 'M-PESA' ? 'M-PESA MANUAL ENTRY' : 'DIRECT COLLECTION'),
+            date: new Date().toLocaleString(),
+            balance: balance,
+            servedBy: 'Institutional Finance'
+          });
+          
+          return { 
+            ...s, 
+            paidFee: newPaidTuition, 
+            paidTransportFee: newPaidTransport,
+            feeBalance: balance, 
+            prepaidFee: prepaid 
+          };
+        }
+        return s;
+      }));
+
+      setIsPaymentModalOpen(false);
+      setShowReceipt(true);
+    }
   };
 
   const downloadReceiptPDF = (elementId: string, fileName: string) => {
@@ -299,28 +344,53 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
     setIsBillingModalOpen(true);
   };
 
-  const handleSaveBilling = (e: React.FormEvent) => {
+  const handleSaveBilling = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudentForBilling) return;
-    setStudents(prev => prev.map(s => {
-      if (s.id === selectedStudentForBilling.id) {
-        const target = billingFormData.agreedFee + (billingFormData.isUsingTransport ? billingFormData.transportFee : 0);
-        const paid = billingFormData.paidFee;
-        let balance = Math.max(0, target - paid);
-        let prepaid = paid > target ? paid - target : 0;
-        return { 
-          ...s, 
-          agreedFee: billingFormData.agreedFee, 
-          paidFee: paid, 
-          feeBalance: balance, 
-          prepaidFee: prepaid,
-          transportFee: billingFormData.transportFee,
-          isUsingTransport: billingFormData.isUsingTransport
-        };
+
+    const target = billingFormData.agreedFee + (billingFormData.isUsingTransport ? billingFormData.transportFee : 0);
+    const paid = (billingFormData.paidFee || 0);
+    const balance = Math.max(0, target - paid);
+    const prepaid = paid > target ? paid - target : 0;
+
+    if (isBackendLive) {
+      try {
+        setIsSubmitting(true);
+        const updated = await apiService.request(`/students/${selectedStudentForBilling.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            agreedFee: billingFormData.agreedFee,
+            paidFee: billingFormData.paidFee,
+            feeBalance: balance,
+            prepaidFee: prepaid,
+            transportFee: billingFormData.transportFee,
+            isUsingTransport: billingFormData.isUsingTransport
+          })
+        });
+        setStudents(prev => prev.map(s => s.id === selectedStudentForBilling.id ? { ...s, ...updated } : s));
+        setIsBillingModalOpen(false);
+      } catch (err: any) {
+        alert("Failed to sync billing: " + err.message);
+      } finally {
+        setIsSubmitting(false);
       }
-      return s;
-    }));
-    setIsBillingModalOpen(false);
+    } else {
+      setStudents(prev => prev.map(s => {
+        if (s.id === selectedStudentForBilling.id) {
+          return { 
+            ...s, 
+            agreedFee: billingFormData.agreedFee, 
+            paidFee: paid, 
+            feeBalance: balance, 
+            prepaidFee: prepaid,
+            transportFee: billingFormData.transportFee,
+            isUsingTransport: billingFormData.isUsingTransport
+          };
+        }
+        return s;
+      }));
+      setIsBillingModalOpen(false);
+    }
   };
 
   const generateStudentReceipt = (student: Student) => {
@@ -659,9 +729,10 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                   </div>
 
                   <div className="flex gap-4 pt-4">
-                     <button type="button" onClick={() => setIsBillingModalOpen(false)} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest">Dismiss</button>
-                     <button type="submit" className="flex-[2] py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-black transition-all">
-                        <Save size={16} /> Sync Account Details
+                     <button type="button" disabled={isSubmitting} onClick={() => setIsBillingModalOpen(false)} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest disabled:opacity-50">Dismiss</button>
+                     <button type="submit" disabled={isSubmitting} className="flex-[2] py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-black transition-all disabled:opacity-50">
+                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save size={16} />}
+                        <span>Sync Account Details</span>
                      </button>
                   </div>
               </form>
@@ -777,9 +848,9 @@ export const FinanceModule: React.FC<Props & { lang: Language }> = ({ lang, stud
                     <input type="text" value={paymentFormData.reference} onChange={e => setPaymentFormData({...paymentFormData, reference: e.target.value.toUpperCase()})} className="w-full p-4 bg-gray-50 border-2 border-transparent rounded-2xl font-bold uppercase outline-none focus:border-blue-500 shadow-inner" placeholder="E.G. BANK SLIP OR M-PESA CODE" />
                  </div>
                  <div className="flex gap-4 pt-4">
-                    <button type="button" onClick={() => setIsPaymentModalOpen(false)} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest">Discard</button>
-                    <button type="submit" className="flex-[2] py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-black transition-all active:scale-95">
-                       <Wallet size={16} /> Finalize Collection
+                    <button type="button" disabled={isSubmitting} onClick={() => setIsPaymentModalOpen(false)} className="flex-1 py-4 text-gray-400 font-black uppercase text-[10px] tracking-widest disabled:opacity-50">Discard</button>
+                    <button type="submit" disabled={isSubmitting} className="flex-[2] py-4 bg-gray-900 text-white rounded-2xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 hover:bg-black transition-all active:scale-95 disabled:opacity-50">
+                       {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Wallet size={16} />} <span>Finalize Collection</span>
                     </button>
                  </div>
               </form>

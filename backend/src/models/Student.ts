@@ -13,10 +13,17 @@ export interface StudentAttributes {
   guardianPhone: string;
   guardianName: string;
   agreedFee: number | null;
+  totalFee: number;
+  feeBalance: number;
+  paidFee: number;
+  transportFee: number;
+  isUsingTransport: boolean;
+  paidTransportFee: number;
+  prepaidFee: number;
   photo: string | null;
 }
 
-export interface StudentCreationAttributes extends Optional<StudentAttributes, 'id' | 'stream' | 'agreedFee' | 'photo'> {}
+export interface StudentCreationAttributes extends Optional<StudentAttributes, 'id' | 'stream' | 'agreedFee' | 'photo' | 'paidFee' | 'transportFee' | 'isUsingTransport' | 'paidTransportFee' | 'prepaidFee' | 'totalFee' | 'feeBalance'> {}
 
 export class Student extends Model<StudentAttributes, StudentCreationAttributes> implements StudentAttributes {
   declare id: string;
@@ -30,6 +37,13 @@ export class Student extends Model<StudentAttributes, StudentCreationAttributes>
   declare guardianPhone: string;
   declare guardianName: string;
   declare agreedFee: number | null;
+  declare totalFee: number;
+  declare feeBalance: number;
+  declare paidFee: number;
+  declare transportFee: number;
+  declare isUsingTransport: boolean;
+  declare paidTransportFee: number;
+  declare prepaidFee: number;
   declare photo: string | null;
 
   declare readonly createdAt: Date;
@@ -90,6 +104,65 @@ export class Student extends Model<StudentAttributes, StudentCreationAttributes>
     get(this: any) {
       const value = this.getDataValue('agreedFee');
       return value === null ? null : parseFloat(String(value));
+    },
+  },
+  totalFee: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: false,
+    defaultValue: 0,
+    get(this: any) {
+      const value = this.getDataValue('totalFee');
+      return value === null ? 0 : parseFloat(String(value));
+    },
+  },
+  feeBalance: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: false,
+    defaultValue: 0,
+    get(this: any) {
+      const value = this.getDataValue('feeBalance');
+      return value === null ? 0 : parseFloat(String(value));
+    },
+  },
+  paidFee: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: false,
+    defaultValue: 0,
+    get(this: any) {
+      const value = this.getDataValue('paidFee');
+      return value === null ? 0 : parseFloat(String(value));
+    },
+  },
+  transportFee: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: false,
+    defaultValue: 0,
+    get(this: any) {
+      const value = this.getDataValue('transportFee');
+      return value === null ? 0 : parseFloat(String(value));
+    },
+  },
+  isUsingTransport: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
+  paidTransportFee: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: false,
+    defaultValue: 0,
+    get(this: any) {
+      const value = this.getDataValue('paidTransportFee');
+      return value === null ? 0 : parseFloat(String(value));
+    },
+  },
+  prepaidFee: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: false,
+    defaultValue: 0,
+    get(this: any) {
+      const value = this.getDataValue('prepaidFee');
+      return value === null ? 0 : parseFloat(String(value));
     },
   },
   photo: {

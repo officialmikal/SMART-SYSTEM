@@ -36,6 +36,29 @@ export const recordPayment = async (req: any, res: any): Promise<void> => {
       description
     });
 
+    // Update Student record balances
+    const student = await (Student as any).findByPk(studentId);
+    if (student) {
+      // Find category from description or request body if provided
+      const category = req.body.category || 'TUITION';
+      
+      if (category === 'TRANSPORT') {
+        const newPaidTransport = (student.paidTransportFee || 0) + Number(amount);
+        await student.update({ paidTransportFee: newPaidTransport });
+      } else {
+        const newPaidFee = (student.paidFee || 0) + Number(amount);
+        await student.update({ paidFee: newPaidFee });
+      }
+      
+      // Recalculate balances (this logic should ideally be centralized but for now we follow the existing pattern)
+      const totalExpected = (student.agreedFee ?? 0) + (student.isUsingTransport ? (student.transportFee || 0) : 0);
+      const totalPaid = (student.paidFee || 0) + (student.paidTransportFee || 0);
+      const balance = Math.max(0, totalExpected - totalPaid);
+      const prepaid = totalPaid > totalExpected ? totalPaid - totalExpected : 0;
+      
+      await student.update({ feeBalance: balance, prepaidFee: prepaid });
+    }
+
     res.status(201).json(payment);
   } catch (error) {
     res.status(500).json({ message: 'Error recording payment', error });

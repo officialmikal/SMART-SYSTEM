@@ -28,7 +28,11 @@ export const getAllStudents = async (req: any, res: any): Promise<void> => {
  */
 export const createStudent = async (req: any, res: any): Promise<void> => {
   try {
-    const { admissionNumber, firstName, lastName, classId, stream, gender, dob, guardianPhone, guardianName, agreedFee } = req.body;
+    const { 
+      admissionNumber, firstName, lastName, classId, stream, gender, dob, 
+      guardianPhone, guardianName, agreedFee, totalFee, paidFee, 
+      transportFee, isUsingTransport, paidTransportFee, feeBalance, prepaidFee 
+    } = req.body;
 
     // Fix: Cast Student to any for static findOne method
     const existing = await (Student as any).findOne({ where: { admissionNumber } });
@@ -48,7 +52,14 @@ export const createStudent = async (req: any, res: any): Promise<void> => {
       dob: new Date(dob),
       guardianPhone,
       guardianName,
-      agreedFee
+      agreedFee,
+      totalFee,
+      paidFee,
+      transportFee,
+      isUsingTransport,
+      paidTransportFee,
+      feeBalance,
+      prepaidFee
     });
 
     // AUDIT LOG
