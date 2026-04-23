@@ -13,7 +13,7 @@ dotenv.config();
 // Import backend components
 import backendModule from "./backend/src/app.ts";
 import sequelizeModule from "./backend/src/config/database.ts";
-import * as Models from "./backend/src/models/index.ts";
+import { Institution, User } from "./backend/src/models/index.ts";
 
 const backendApp = (backendModule as any).default || backendModule;
 const sequelize = (sequelizeModule as any).default || sequelizeModule;
@@ -69,18 +69,14 @@ async function initializeDatabase() {
     await sequelize.sync({ alter: true });
     console.log("PostgreSQL: Models synced and schema updated.");
 
-    // Access models safely from the exported namespace
-    const Institution = (Models as any).Institution;
-    const User = (Models as any).User;
-
     if (!Institution || !User) {
-      throw new Error("Critical models (Institution/User) failed to load from registry.");
+      throw new Error(`Critical models failed to load. Institution: ${typeof Institution}, User: ${typeof User}`);
     }
 
     // Seed Data
-    let defaultInst = await Institution.findOne({ where: { subdomain: "demo" } });
+    let defaultInst = await (Institution as any).findOne({ where: { subdomain: "demo" } });
     if (!defaultInst) {
-      defaultInst = await Institution.create({
+      defaultInst = await (Institution as any).create({
         name: "ElimuSmart Demo Academy",
         motto: "Excellence Through Innovation",
         registrationNumber: "MOE/DEMO/001",
@@ -91,10 +87,10 @@ async function initializeDatabase() {
     }
 
     if (defaultInst && defaultInst.id) {
-      const adminExists = await User.findOne({ where: { role: "ADMIN", institutionId: defaultInst.id } });
+      const adminExists = await (User as any).findOne({ where: { role: "ADMIN", institutionId: defaultInst.id } });
       if (!adminExists) {
         const hashedPassword = await bcrypt.hash("adminpassword", 10);
-        await User.create({
+        await (User as any).create({
           name: "Master Admin",
           email: "admin@school.ac.ke",
           password: hashedPassword,
