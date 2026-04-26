@@ -8,9 +8,10 @@ import { WhereOptions } from 'sequelize';
  */
 export const getAllStudents = async (req: any, res: any): Promise<void> => {
   try {
+    const institutionId = req.institutionId;
     const classId = req.query.classId;
-    const where: WhereOptions = {};
-    if (classId) where.classId = Number(classId);
+    const where: WhereOptions = { institutionId };
+    if (classId) (where as any).classId = Number(classId);
 
     // Fix: Cast Student to any for static findAll method
     const students = await (Student as any).findAll({
@@ -43,6 +44,7 @@ export const createStudent = async (req: any, res: any): Promise<void> => {
 
     // Fix: Cast Student to any for static create method
     const student = await (Student as any).create({
+      institutionId: req.institutionId,
       admissionNumber,
       firstName,
       lastName,
@@ -65,6 +67,7 @@ export const createStudent = async (req: any, res: any): Promise<void> => {
     // AUDIT LOG
     // Fix: Cast AuditLog to any for static create method
     await (AuditLog as any).create({
+      institutionId: req.institutionId,
       userId: req.user?.id || 'system',
       userName: req.user?.name || 'System',
       action: 'CREATE',
@@ -85,8 +88,10 @@ export const createStudent = async (req: any, res: any): Promise<void> => {
  */
 export const getStudentById = async (req: any, res: any): Promise<void> => {
   try {
+    const institutionId = req.institutionId;
     // Fix: Cast Student to any for static findByPk method
-    const student = await (Student as any).findByPk(req.params.id, {
+    const student = await (Student as any).findOne({
+      where: { id: req.params.id, institutionId },
       include: [{ model: Class, as: 'class' }]
     });
     if (!student) {
@@ -104,8 +109,11 @@ export const getStudentById = async (req: any, res: any): Promise<void> => {
  */
 export const updateStudent = async (req: any, res: any): Promise<void> => {
   try {
+    const institutionId = req.institutionId;
     // Fix: Cast Student to any for static findByPk method
-    const student = await (Student as any).findByPk(req.params.id);
+    const student = await (Student as any).findOne({
+      where: { id: req.params.id, institutionId }
+    });
     if (!student) {
       res.status(404).json({ message: 'Student not found' });
       return;
@@ -118,6 +126,7 @@ export const updateStudent = async (req: any, res: any): Promise<void> => {
     // AUDIT LOG
     // Fix: Cast AuditLog to any for static create method
     await (AuditLog as any).create({
+      institutionId: req.institutionId,
       userId: req.user?.id || 'system',
       userName: req.user?.name || 'System',
       action: 'UPDATE',
@@ -138,8 +147,11 @@ export const updateStudent = async (req: any, res: any): Promise<void> => {
  */
 export const deleteStudent = async (req: any, res: any): Promise<void> => {
   try {
+    const institutionId = req.institutionId;
     // Fix: Cast Student to any for static findByPk method
-    const student = await (Student as any).findByPk(req.params.id);
+    const student = await (Student as any).findOne({
+      where: { id: req.params.id, institutionId }
+    });
     if (!student) {
       res.status(404).json({ message: 'Student not found' });
       return;
@@ -151,6 +163,7 @@ export const deleteStudent = async (req: any, res: any): Promise<void> => {
     // AUDIT LOG
     // Fix: Cast AuditLog to any for static create method
     await (AuditLog as any).create({
+      institutionId: req.institutionId,
       userId: req.user?.id || 'system',
       userName: req.user?.name || 'System',
       action: 'DELETE',

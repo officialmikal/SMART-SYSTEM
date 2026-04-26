@@ -25,11 +25,23 @@ export const protect = async (req: any, res: any, next: NextFunction): Promise<v
   let token: string | undefined;
 
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer')) {
-    token = authHeader.split(' ')[1];
+  
+  // Robust case-insensitive check for Bearer token
+  if (authHeader) {
+    const parts = authHeader.split(' ');
+    if (parts.length === 2 && parts[0].toLowerCase() === 'bearer') {
+      token = parts[1];
+    }
+  }
+
+  // Debug log for production incident resolution
+  if (!token && req.path.includes('students')) {
+    console.warn(`[AUTH_DEBUG] Token missing for path: ${req.originalUrl || req.path}. AuthHeader present: ${!!authHeader}`);
   }
 
   if (!token) {
+    // Enhanced logging for production debugging
+    console.warn(`[AUTH_FAILURE] 401 Identity missing. Path: ${req.originalUrl || req.path}. Method: ${req.method}. Origin: ${req.headers.origin}. UA: ${req.headers['user-agent']}. AuthHeader: ${authHeader ? 'present (first 5 chars: ' + authHeader.substring(0, 5) + ')' : 'absent'}`);
     res.status(401).json({ message: 'Identity missing. Please log in.' });
     return;
   }

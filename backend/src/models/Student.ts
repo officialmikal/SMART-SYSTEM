@@ -21,6 +21,7 @@ export interface StudentAttributes {
   paidTransportFee: number;
   prepaidFee: number;
   photo: string | null;
+  institutionId: string;
 }
 
 export interface StudentCreationAttributes extends Optional<StudentAttributes, 'id' | 'stream' | 'agreedFee' | 'photo' | 'paidFee' | 'transportFee' | 'isUsingTransport' | 'paidTransportFee' | 'prepaidFee' | 'totalFee' | 'feeBalance'> {}
@@ -45,6 +46,7 @@ export class Student extends Model<StudentAttributes, StudentCreationAttributes>
   declare paidTransportFee: number;
   declare prepaidFee: number;
   declare photo: string | null;
+  declare institutionId: string;
 
   declare readonly createdAt: Date;
   declare readonly updatedAt: Date;
@@ -56,6 +58,14 @@ export class Student extends Model<StudentAttributes, StudentCreationAttributes>
     type: DataTypes.UUID,
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true,
+  },
+  institutionId: {
+    type: DataTypes.UUID,
+    allowNull: false,
+    references: {
+      model: 'institutions',
+      key: 'id',
+    },
   },
   admissionNumber: {
     type: DataTypes.STRING,

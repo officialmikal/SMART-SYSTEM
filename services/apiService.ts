@@ -6,7 +6,8 @@
 
 // Detect the API base URL from environment or fallback to relative path for unified serving
 const env = (import.meta as any).env;
-const API_BASE_URL = env?.VITE_API_URL || '/api';
+const rawBaseUrl = env?.VITE_API_URL || '/api';
+const API_BASE_URL = rawBaseUrl.endsWith('/') ? rawBaseUrl.slice(0, -1) : rawBaseUrl;
 
 export const apiService = {
   getAuthToken() {
